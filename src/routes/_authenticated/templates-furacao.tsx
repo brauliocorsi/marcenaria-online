@@ -126,6 +126,7 @@ function TemplatesPage() {
           regras: {
             recuo_extremidade: Number(v.recuo_extremidade),
             espacamento_sistema: Number(v.espacamento_sistema),
+            espacamento_cavilha_minifix: Number(v.espacamento_cavilha_minifix),
             recuo_frontal: Number(v.recuo_frontal),
             conectores_min: Number(v.conectores_min),
             conectores_por_mm: Number(v.conectores_por_mm),
