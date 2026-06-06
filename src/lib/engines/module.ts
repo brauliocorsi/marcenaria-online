@@ -62,6 +62,20 @@ export interface GavetasConfig {
   alturaCaixaFolga: number;
 }
 
+export interface PesConfig {
+  ativo: boolean;
+  altura: number;       // mm
+  quantidade: 4 | 6;
+  recuo: number;        // mm (do canto)
+}
+
+export interface TamponamentoConfig {
+  esquerda: boolean;
+  direita: boolean;
+  topo: boolean;
+  espessura: number | null; // null = espessuraPadrao
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
@@ -76,6 +90,8 @@ export interface ModuleConfig {
   portas: PortasConfig;
   // REGRA: se nGavetas>0, a frente são gavetas (portas ignoradas).
   gavetas: GavetasConfig;
+  pes: PesConfig;
+  tamponamento: TamponamentoConfig;
 }
 
 export interface Peca {
