@@ -8,7 +8,7 @@
 import { resolverEspessuras, dimensoesPortas, posicoesDobradicasY, type ModuleConfig, type PieceType, type Vec3 } from "./module";
 import type { TemplateConfig } from "@/lib/drilling.functions";
 
-export type TipoFuro = "cavilha" | "minifix_corpo" | "minifix_perno" | "parafuso";
+export type TipoFuro = "cavilha" | "minifix_corpo" | "minifix_perno" | "parafuso" | "dobradica";
 
 export interface Furo {
   junta: string;
