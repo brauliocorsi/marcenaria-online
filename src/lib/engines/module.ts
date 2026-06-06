@@ -559,6 +559,9 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
       espessuraFundo: g.espessuraFundo,
       zBack: zStartCaixa,
       zFront: zStartCaixa + boxDepth,
+      folgaLateralPorLado: fl,
+      tipoCorredica: g.corredica.tipo,
+      requerRasgoTraseira: g.corredica.tipo === "oculta" && !!g.corredica.rebaixoFundo,
     });
   }
 
