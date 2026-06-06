@@ -21,6 +21,7 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
   const isPorta = p.tipo === "porta";
   const isGavFrente = p.tipo === "gaveta_frente";
   const isCaixa = p.tipo === "gaveta_lateral" || p.tipo === "gaveta_frenteCaixa" || p.tipo === "gaveta_fundo";
+  const isTamp = p.tipo === "tamponamento";
   const dx = (p.center[0] - center3D[0]) * explode * 0.8;
   const dy = (p.center[1] - center3D[1]) * explode * 0.8;
   const dz = (p.center[2] - center3D[2]) * explode * 0.8;
@@ -34,7 +35,7 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
     Math.max(p.size[1], 1) * MM_TO_M,
     Math.max(p.size[2], 1) * MM_TO_M,
   ];
-  const color = isPorta || isGavFrente ? "#D8D1C0" : isCaixa ? "#B8AE96" : COR_MELAMINA;
+  const color = isPorta || isGavFrente ? "#D8D1C0" : isCaixa ? "#B8AE96" : isTamp ? "#DCD5C4" : COR_MELAMINA;
   const opacity = isPorta || isGavFrente ? 0.85 : isCaixa ? 0.78 : 0.92;
   return (
     <mesh position={pos} castShadow receiveShadow>
