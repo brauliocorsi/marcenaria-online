@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment } from "@react-three/drei";
 import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo } from "@/lib/engines/module";
-import { calcularGeometria, dimensoesPortas } from "@/lib/engines/module";
+import { calcularGeometria, calcularPes, dimensoesPortas } from "@/lib/engines/module";
 import type { Furo } from "@/lib/engines/drilling";
 
 const MM_TO_M = 0.001;
