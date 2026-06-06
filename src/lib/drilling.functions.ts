@@ -77,6 +77,18 @@ export const listTemplates = createServerFn({ method: "GET" })
     return data;
   });
 
+export const getDefaultTemplate = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("drilling_templates")
+      .select("*")
+      .eq("is_default", true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data;
+  });
+
 export const upsertTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>

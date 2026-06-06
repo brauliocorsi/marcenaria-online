@@ -15,9 +15,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
 import { Module3D } from "@/components/viewer/Module3D";
+import { Switch } from "@/components/ui/switch";
 import { listMaterials } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
+import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
 import { calcularPecas, DEFAULT_MODULE_CONFIG, type ModuleConfig, type Veio } from "@/lib/engines/module";
+import { calcularFuros, type Furo, type TipoFuro } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
@@ -29,11 +32,13 @@ function ModulosPage() {
   const qc = useQueryClient();
   const fetchModules = useServerFn(listModules);
   const fetchMaterials = useServerFn(listMaterials);
+  const fetchDefaultTemplate = useServerFn(getDefaultTemplate);
   const save = useServerFn(upsertModule);
   const del = useServerFn(deleteModule);
 
   const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
   const { data: materials } = useQuery({ queryKey: ["materials"], queryFn: () => fetchMaterials() });
+  const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
 
   const [name, setName] = useState("Módulo sem nome");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,7 +47,8 @@ function ModulosPage() {
   const [showOverrides, setShowOverrides] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
-  const [viewTab, setViewTab] = useState<"3d" | "pecas">("3d");
+  const [viewTab, setViewTab] = useState<"3d" | "pecas" | "furacao">("3d");
+  const [showFuros, setShowFuros] = useState(true);
 
 
   const pecas = useMemo(() => {
@@ -50,6 +56,16 @@ function ModulosPage() {
   }, [config]);
 
   const invalid = useMemo(() => pecas.some((p) => p.comprimento_mm <= 0 || p.largura_mm <= 0), [pecas]);
+
+  const templateConfig: TemplateConfig | null = useMemo(() => {
+    if (!defaultTpl) return null;
+    return { ...DEFAULT_TEMPLATE_CONFIG, ...(defaultTpl.config as any) };
+  }, [defaultTpl]);
+
+  const furos: Furo[] = useMemo(() => {
+    if (!templateConfig || invalid) return [];
+    try { return calcularFuros(config, templateConfig); } catch { return []; }
+  }, [config, templateConfig, invalid]);
 
   const totals = useMemo(() => {
     const qtd = pecas.reduce((a, p) => a + p.qtd, 0);
@@ -290,28 +306,33 @@ function ModulosPage() {
 
         {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
         <div className="space-y-3">
-          <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as "3d" | "pecas")}>
+          <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as "3d" | "pecas" | "furacao")}>
             <div className="flex items-center justify-between gap-3">
               <TabsList>
                 <TabsTrigger value="3d">Vista 3D</TabsTrigger>
                 <TabsTrigger value="pecas">Peças</TabsTrigger>
+                <TabsTrigger value="furacao">Furação</TabsTrigger>
               </TabsList>
               <div className="text-xs text-muted-foreground tabular">
-                {totals.qtd} peças · {totals.areaM2.toFixed(3)} m²
+                {totals.qtd} peças · {totals.areaM2.toFixed(3)} m² {templateConfig ? `· ${furos.length} furos` : ""}
               </div>
             </div>
 
             <TabsContent value="3d" className="mt-3">
               <Card className="overflow-hidden">
-                <div className="flex items-center gap-3 border-b px-4 py-2.5">
+                <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2.5">
                   <Label className="text-xs text-muted-foreground shrink-0">Vista explodida</Label>
                   <Slider
                     value={[Math.round(explode * 100)]}
                     min={0} max={100} step={1}
                     onValueChange={([v]) => setExplode(v / 100)}
-                    className="flex-1"
+                    className="flex-1 min-w-[120px]"
                   />
                   <span className="text-xs tabular w-10 text-right text-muted-foreground">{Math.round(explode * 100)}%</span>
+                  <div className="flex items-center gap-2 pl-3 border-l">
+                    <Switch id="show-furos" checked={showFuros} onCheckedChange={setShowFuros} disabled={!templateConfig} />
+                    <Label htmlFor="show-furos" className="text-xs text-muted-foreground cursor-pointer">Mostrar furação</Label>
+                  </div>
                 </div>
                 {invalid && (
                   <div className="flex items-start gap-2 border-b bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
@@ -320,7 +341,7 @@ function ModulosPage() {
                   </div>
                 )}
                 <div className="h-[560px] w-full">
-                  <Module3D config={config} explode={explode} />
+                  <Module3D config={config} explode={explode} furos={showFuros ? furos : []} />
                 </div>
               </Card>
             </TabsContent>
@@ -359,8 +380,13 @@ function ModulosPage() {
                 </Table>
               </Card>
             </TabsContent>
+
+            <TabsContent value="furacao" className="mt-3">
+              <FuracaoPanel furos={furos} hasTemplate={!!templateConfig} />
+            </TabsContent>
           </Tabs>
         </div>
+
 
       </div>
 
@@ -389,3 +415,69 @@ function DimRow({ label, value, min, max, onChange }: { label: string; value: nu
     </div>
   );
 }
+
+const TIPO_LABEL: Record<TipoFuro, string> = {
+  cavilha: "Cavilha",
+  minifix_corpo: "Minifix (corpo)",
+  minifix_perno: "Minifix (perno)",
+  parafuso: "Parafuso",
+};
+
+function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: boolean }) {
+  if (!hasTemplate) {
+    return (
+      <Card>
+        <CardContent className="flex items-start gap-3 py-5 text-sm">
+          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <div className="font-medium">Sem template de furação padrão.</div>
+            <div className="text-muted-foreground mt-1">
+              Defina um template de furação padrão em <span className="font-medium">Templates de Furação</span> para gerar a furação automaticamente.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // agrupar por peca + tipo_furo + diametro
+  const grupos = new Map<string, { peca: string; tipo: TipoFuro; diametro: number; profundidade: number; n: number }>();
+  for (const f of furos) {
+    const k = `${f.peca}|${f.tipo_furo}|${f.diametro}|${f.profundidade}`;
+    const g = grupos.get(k);
+    if (g) g.n += 1;
+    else grupos.set(k, { peca: f.peca, tipo: f.tipo_furo, diametro: f.diametro, profundidade: f.profundidade, n: 1 });
+  }
+  const rows = Array.from(grupos.values()).sort((a, b) => a.peca.localeCompare(b.peca) || a.tipo.localeCompare(b.tipo));
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b px-4 py-2.5 text-xs text-muted-foreground">
+        Total de furos: <span className="text-foreground font-medium tabular">{furos.length}</span>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Peça</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead className="text-right">Ø (mm)</TableHead>
+            <TableHead className="text-right">Prof. (mm)</TableHead>
+            <TableHead className="text-right">Qtd</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r, i) => (
+            <TableRow key={i}>
+              <TableCell className="font-medium capitalize">{r.peca}</TableCell>
+              <TableCell>{TIPO_LABEL[r.tipo]}</TableCell>
+              <TableCell className="text-right tabular">{r.diametro}</TableCell>
+              <TableCell className="text-right tabular">{r.profundidade}</TableCell>
+              <TableCell className="text-right tabular">{r.n}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  );
+}
+

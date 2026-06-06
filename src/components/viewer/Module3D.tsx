@@ -1,24 +1,26 @@
 import { Suspense, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment } from "@react-three/drei";
+import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo } from "@/lib/engines/module";
 import { calcularGeometria } from "@/lib/engines/module";
+import type { Furo } from "@/lib/engines/drilling";
 
 const MM_TO_M = 0.001;
 const COR_MELAMINA = "#E8E2D5";
 const COR_ARESTA = "#3a3a3a";
+const COR_FURO = "#1a1a1a";
 
 interface Module3DProps {
   config: ModuleConfig;
-  explode?: number; // 0..1
+  explode?: number;
+  furos?: Furo[];
 }
 
 function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; center3D: [number, number, number] }) {
-  // deslocamento radial face ao centro do módulo
   const dx = (p.center[0] - center3D[0]) * explode * 0.8;
   const dy = (p.center[1] - center3D[1]) * explode * 0.8;
   const dz = (p.center[2] - center3D[2]) * explode * 0.8;
-
   const pos: [number, number, number] = [
     (p.center[0] + dx) * MM_TO_M,
     (p.center[1] + dy) * MM_TO_M,
@@ -29,17 +31,38 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
     Math.max(p.size[1], 1) * MM_TO_M,
     Math.max(p.size[2], 1) * MM_TO_M,
   ];
-
   return (
     <mesh position={pos} castShadow receiveShadow>
       <boxGeometry args={size} />
-      <meshStandardMaterial color={COR_MELAMINA} roughness={0.75} metalness={0.02} />
+      <meshStandardMaterial color={COR_MELAMINA} roughness={0.75} metalness={0.02} transparent opacity={0.92} />
       <Edges threshold={15} color={COR_ARESTA} />
     </mesh>
   );
 }
 
-export function Module3D({ config, explode = 0 }: Module3DProps) {
+const UP = new Vector3(0, 1, 0);
+function FuroMesh({ f }: { f: Furo }) {
+  const { pos, dir, q, len, r } = useMemo(() => {
+    const d = new Vector3(f.dir[0], f.dir[1], f.dir[2]).normalize();
+    const q = new Quaternion().setFromUnitVectors(UP, d);
+    const len = f.profundidade * MM_TO_M;
+    const r = (f.diametro / 2) * MM_TO_M;
+    // centro do cilindro = pos + dir * (prof/2)
+    const cx = (f.pos[0] + f.dir[0] * f.profundidade / 2) * MM_TO_M;
+    const cy = (f.pos[1] + f.dir[1] * f.profundidade / 2) * MM_TO_M;
+    const cz = (f.pos[2] + f.dir[2] * f.profundidade / 2) * MM_TO_M;
+    return { pos: [cx, cy, cz] as [number, number, number], dir: d, q, len, r };
+  }, [f]);
+  void dir;
+  return (
+    <mesh position={pos} quaternion={q}>
+      <cylinderGeometry args={[r, r, len, 16]} />
+      <meshStandardMaterial color={COR_FURO} roughness={0.4} metalness={0.6} />
+    </mesh>
+  );
+}
+
+export function Module3D({ config, explode = 0, furos = [] }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
   const { W, H, D } = useMemo(
     () => ({ W: config.dims.width, H: config.dims.height, D: config.dims.depth }),
@@ -47,7 +70,6 @@ export function Module3D({ config, explode = 0 }: Module3DProps) {
   );
   const center3D: [number, number, number] = [W / 2, H / 2, D / 2];
 
-  // câmara em vista 3/4 frontal
   const maxDim = Math.max(W, H, D) * MM_TO_M;
   const camPos: [number, number, number] = [
     (W * MM_TO_M) + maxDim * 0.9,
@@ -64,39 +86,23 @@ export function Module3D({ config, explode = 0 }: Module3DProps) {
       style={{ background: "linear-gradient(180deg, #f4f3ef 0%, #dcdad3 100%)" }}
     >
       <ambientLight intensity={0.55} />
-      <directionalLight
-        position={[3, 5, 4]}
-        intensity={1.1}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
+      <directionalLight position={[3, 5, 4]} intensity={1.1} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <directionalLight position={[-3, 2, -2]} intensity={0.25} />
-
-      <Suspense fallback={null}>
-        <Environment preset="apartment" />
-      </Suspense>
+      <Suspense fallback={null}><Environment preset="apartment" /></Suspense>
 
       {pecas.map((p, i) => (
         <PecaMesh key={i} p={p} explode={explode} center3D={center3D} />
       ))}
 
+      {furos.map((f, i) => <FuroMesh key={i} f={f} />)}
+
       <Grid
         position={[target[0], 0, target[2]]}
-        args={[10, 10]}
-        cellSize={0.1}
-        cellThickness={0.6}
-        sectionSize={1}
-        sectionThickness={1}
-        sectionColor="#7a7367"
-        cellColor="#b5afa3"
-        fadeDistance={15}
-        fadeStrength={1}
-        infiniteGrid
+        args={[10, 10]} cellSize={0.1} cellThickness={0.6} sectionSize={1} sectionThickness={1}
+        sectionColor="#7a7367" cellColor="#b5afa3" fadeDistance={15} fadeStrength={1} infiniteGrid
       />
 
       <OrbitControls target={target} enableDamping makeDefault />
-
       <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
         <GizmoViewport axisColors={["#d94a4a", "#4ab06a", "#4a7fd9"]} labelColor="white" />
       </GizmoHelper>
