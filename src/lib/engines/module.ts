@@ -38,12 +38,25 @@ export interface PortasConfig {
   folgaCentral: number;
 }
 
+export type CorredicaTipo = "telescopica" | "oculta" | "roldanas";
+
+export interface CorredicaConfig {
+  hardwareId: string | null;
+  comprimento: number;
+  // Params hidratados pela UI a partir da ferragem escolhida (category='corredica').
+  folgaLateralPorLado?: number;  // mm por lado; aceita decimais (ex. 12.5)
+  tipo?: CorredicaTipo;
+  rebaixoFundo?: boolean;
+  // Backwards-compat (config antigo)
+  folgaLateral?: number;
+}
+
 export interface GavetasConfig {
   nGavetas: number;
   modo: PortaModo;
   folga: number;
   espessuraFrente: number;
-  corredica: { comprimento: number; folgaLateral: number };
+  corredica: CorredicaConfig;
   espessuraCaixa: number;
   espessuraFundo: number;
   alturaCaixaFolga: number;
@@ -210,15 +223,31 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   portas: { nPortas: 0, modo: "sobreposta", ladoAbertura: "direita", espessura: null, folga: 2, folgaCentral: 3 },
   gavetas: {
     nGavetas: 0, modo: "sobreposta", folga: 3, espessuraFrente: 19,
-    corredica: { comprimento: 500, folgaLateral: 13 },
+    corredica: { hardwareId: null, comprimento: 500, folgaLateralPorLado: 13 },
     espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
   },
 };
 
-// Backwards-compat: assegura que módulos antigos têm o bloco gavetas.
+// Backwards-compat: assegura que módulos antigos têm o bloco gavetas
+// e migra corredica antiga {comprimento, folgaLateral} → novo formato.
 export function normalizarConfig(c: ModuleConfig): ModuleConfig {
-  if (c.gavetas && typeof c.gavetas.nGavetas === "number") return c;
-  return { ...c, gavetas: DEFAULT_MODULE_CONFIG.gavetas };
+  const out: ModuleConfig = c.gavetas && typeof c.gavetas.nGavetas === "number"
+    ? c
+    : { ...c, gavetas: DEFAULT_MODULE_CONFIG.gavetas };
+  const corr = out.gavetas.corredica as CorredicaConfig & { folgaLateral?: number };
+  if (corr && corr.folgaLateralPorLado == null && typeof corr.folgaLateral === "number") {
+    out.gavetas = {
+      ...out.gavetas,
+      corredica: {
+        hardwareId: corr.hardwareId ?? null,
+        comprimento: corr.comprimento ?? 500,
+        folgaLateralPorLado: corr.folgaLateral,
+      },
+    };
+  } else if (corr && corr.hardwareId === undefined) {
+    out.gavetas = { ...out.gavetas, corredica: { ...corr, hardwareId: corr.hardwareId ?? null } };
+  }
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -465,6 +494,9 @@ export interface GavetaCaixa {
   espessuraFundo: number;
   zBack: number;
   zFront: number;
+  folgaLateralPorLado: number; // efetiva, vinda da corrediça
+  tipoCorredica?: CorredicaTipo;
+  requerRasgoTraseira: boolean; // TODO: para corrediça oculta com rebaixoFundo
 }
 
 export interface GavetasResult {
@@ -499,7 +531,9 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
   const alturaFrente = Math.round((espacoY - (n - 1) * f) / n);
 
   // Geometria da caixa (igual para todas as gavetas)
-  const boxWidth = W - 2 * e.lateral - 2 * g.corredica.folgaLateral;
+  // folgaLateralPorLado vem da ferragem escolhida (category='corredica'); fallback 13mm.
+  const fl = g.corredica.folgaLateralPorLado ?? g.corredica.folgaLateral ?? 13;
+  const boxWidth = W - 2 * e.lateral - 2 * fl;
   const boxDepth = Math.min(g.corredica.comprimento, D - 10);
   const boxHeight = Math.max(60, alturaFrente - g.alturaCaixaFolga);
   // Caixa recuada da frente: zStart = e.lateral (proxy de folga interior); cz_caixa = zStart + boxDepth/2
@@ -525,6 +559,9 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
       espessuraFundo: g.espessuraFundo,
       zBack: zStartCaixa,
       zFront: zStartCaixa + boxDepth,
+      folgaLateralPorLado: fl,
+      tipoCorredica: g.corredica.tipo,
+      requerRasgoTraseira: g.corredica.tipo === "oculta" && !!g.corredica.rebaixoFundo,
     });
   }
 

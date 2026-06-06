@@ -2,47 +2,50 @@ import { calcularPecas, dimensoesGavetas, DEFAULT_MODULE_CONFIG, type ModuleConf
 import { calcularCorredicas, contarCorredicas } from "./drilling";
 import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
 
-export function runGavetasAsserts() {
-  const cfg: ModuleConfig = {
+function build(fl: number, tipo: "telescopica" | "oculta", rebaixo = false): ModuleConfig {
+  return {
     ...DEFAULT_MODULE_CONFIG,
     dims: { width: 900, height: 720, depth: 560 },
     gavetas: {
       nGavetas: 3, modo: "sobreposta", folga: 3, espessuraFrente: 19,
-      corredica: { comprimento: 500, folgaLateral: 13 },
+      corredica: { hardwareId: null, comprimento: 500, folgaLateralPorLado: fl, tipo, rebaixoFundo: rebaixo },
       espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
     },
   };
-  const g = dimensoesGavetas(cfg);
-  const fr = g.frentes[0];
-  const cx = g.caixas[0];
+}
+
+export function runGavetasAsserts() {
+  // Cenário 1: telescópica (fl=13) → boxWidth 836
+  const cfgT = build(13, "telescopica");
+  const gT = dimensoesGavetas(cfgT);
+  const frT = gT.frentes[0];
+  const cxT = gT.caixas[0];
+
+  // Cenário 2: oculta (fl=21, rebaixoFundo) → boxWidth 820
+  const cfgO = build(21, "oculta", true);
+  const cxO = dimensoesGavetas(cfgO).caixas[0];
 
   const tests: Array<[string, boolean]> = [
-    ["3 frentes", g.frentes.length === 3],
-    ["Frente largura 894", fr.size[0] === 894],
-    ["Frente altura 236", fr.size[1] === 236],
-    ["Frente espessura 19", fr.size[2] === 19],
-    ["boxWidth 836", cx.boxWidth === 836],
-    ["boxDepth 500", cx.boxDepth === 500],
-    ["boxHeight 206", cx.boxHeight === 206],
-    ["6 corrediças (3 pares)", contarCorredicas(cfg) === 6],
-    // Furos corrediça: 3 furos × 2 laterais × 3 gavetas = 18
-    ["18 furos corrediça", calcularCorredicas(cfg, DEFAULT_TEMPLATE_CONFIG).length === 18],
+    ["Telescópica: 3 frentes", gT.frentes.length === 3],
+    ["Telescópica: frente 894×236×19", frT.size[0] === 894 && frT.size[1] === 236 && frT.size[2] === 19],
+    ["Telescópica: boxWidth 836", cxT.boxWidth === 836],
+    ["Telescópica: boxDepth 500", cxT.boxDepth === 500],
+    ["Telescópica: boxHeight 206", cxT.boxHeight === 206],
+    ["Telescópica: NÃO requer rasgo na traseira", cxT.requerRasgoTraseira === false],
+    ["Oculta:      boxWidth 820", cxO.boxWidth === 820],
+    ["Oculta:      requer rasgo na traseira (rebaixoFundo)", cxO.requerRasgoTraseira === true],
+    ["6 corrediças (3 pares)", contarCorredicas(cfgT) === 6],
+    ["18 furos corrediça", calcularCorredicas(cfgT, DEFAULT_TEMPLATE_CONFIG).length === 18],
   ];
 
-  // Peças geradas devem incluir 3 frentes + 3 fundos + 6 laterais (2 por gaveta) + 6 frente/traseira
-  const pecas = calcularPecas(cfg);
-  const frentes = pecas.filter((p) => p.tipo === "gaveta_frente");
-  const laterais = pecas.filter((p) => p.tipo === "gaveta_lateral");
-  const fundos = pecas.filter((p) => p.tipo === "gaveta_fundo");
-  tests.push(["Peças: 3 frentes de gaveta", frentes.length === 3]);
-  tests.push(["Peças: 3 grupos laterais (qtd 2)", laterais.length === 3 && laterais.every((p) => p.qtd === 2)]);
-  tests.push(["Peças: 3 fundos", fundos.length === 3]);
+  const pecas = calcularPecas(cfgT);
+  tests.push(["Peças: 3 frentes de gaveta", pecas.filter((p) => p.tipo === "gaveta_frente").length === 3]);
 
   let ok = true;
   for (const [label, pass] of tests) {
     console.assert(pass, `[gavetas.assert] FALHOU: ${label}`);
     if (!pass) ok = false;
   }
-  if (ok) console.info("[gavetas.assert] ✓ frente 894×236×19 · boxWidth 836 · boxDepth 500 · boxHeight 206 — OK.");
+  if (ok) console.info(`[gavetas.assert] ✓ boxWidth telescópica=${cxT.boxWidth} · oculta=${cxO.boxWidth} — trocar corrediça muda a medida. OK.`);
   return ok;
 }

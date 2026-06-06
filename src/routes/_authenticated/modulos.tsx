@@ -16,10 +16,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
 import { Module3D } from "@/components/viewer/Module3D";
 import { Switch } from "@/components/ui/switch";
-import { listMaterials } from "@/lib/catalog.functions";
+import { listMaterials, listHardware } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
-import { calcularPecas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio } from "@/lib/engines/module";
+import { calcularPecas, dimensoesGavetas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo } from "@/lib/engines/module";
 import { calcularFuros, calcularDobradicas, calcularCorredicas, type Furo, type TipoFuro } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
@@ -32,13 +32,16 @@ function ModulosPage() {
   const qc = useQueryClient();
   const fetchModules = useServerFn(listModules);
   const fetchMaterials = useServerFn(listMaterials);
+  const fetchHardware = useServerFn(listHardware);
   const fetchDefaultTemplate = useServerFn(getDefaultTemplate);
   const save = useServerFn(upsertModule);
   const del = useServerFn(deleteModule);
 
   const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
   const { data: materials } = useQuery({ queryKey: ["materials"], queryFn: () => fetchMaterials() });
+  const { data: hardware } = useQuery({ queryKey: ["hardware"], queryFn: () => fetchHardware() });
   const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
+  const corredicas = useMemo(() => (hardware ?? []).filter((h: any) => h.category === "corredica"), [hardware]);
 
   const [name, setName] = useState("Módulo sem nome");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -413,23 +416,85 @@ function ModulosPage() {
                     onChange={(e) => updGav("espessuraCaixa", Math.max(1, Number(e.target.value) || 1))} />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Corrediça (mm)</Label>
-                  <Input type="number" min={100} max={1000} step={50} className="tabular"
-                    value={config.gavetas.corredica.comprimento} disabled={config.gavetas.nGavetas === 0}
-                    onChange={(e) => updGavCorr("comprimento", Math.max(100, Number(e.target.value) || 100))} />
-                </div>
-                <div className="space-y-1"><Label className="text-xs">Folga lateral</Label>
-                  <Input type="number" min={0} step={0.5} className="tabular"
-                    value={config.gavetas.corredica.folgaLateral} disabled={config.gavetas.nGavetas === 0}
-                    onChange={(e) => updGavCorr("folgaLateral", Number(e.target.value) || 0)} />
-                </div>
-                <div className="space-y-1"><Label className="text-xs">Folga caixa</Label>
-                  <Input type="number" min={0} step={1} className="tabular"
-                    value={config.gavetas.alturaCaixaFolga} disabled={config.gavetas.nGavetas === 0}
-                    onChange={(e) => updGav("alturaCaixaFolga", Number(e.target.value) || 0)} />
-                </div>
-              </div>
+              {(() => {
+                const corrSel = corredicas.find((c: any) => c.id === config.gavetas.corredica.hardwareId);
+                const comprimentos: number[] = (corrSel?.params as any)?.comprimentosDisponiveis ?? [];
+                const flEfetiva = config.gavetas.corredica.folgaLateralPorLado ?? 13;
+                const cxPreview = config.gavetas.nGavetas > 0 ? dimensoesGavetas(config).caixas[0] : null;
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1"><Label className="text-xs">Corrediça</Label>
+                        <Select
+                          value={config.gavetas.corredica.hardwareId ?? "__none__"}
+                          disabled={config.gavetas.nGavetas === 0}
+                          onValueChange={(v) => {
+                            if (v === "__none__") {
+                              setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, corredica: { hardwareId: null, comprimento: c.gavetas.corredica.comprimento } } }));
+                              return;
+                            }
+                            const h = corredicas.find((x: any) => x.id === v);
+                            if (!h) return;
+                            const p: any = h.params ?? {};
+                            const comps: number[] = Array.isArray(p.comprimentosDisponiveis) ? p.comprimentosDisponiveis : [];
+                            const cur = config.gavetas.corredica.comprimento;
+                            const comp = comps.includes(cur) ? cur : (comps[Math.floor(comps.length / 2)] ?? cur);
+                            setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, corredica: {
+                              hardwareId: v, comprimento: comp,
+                              folgaLateralPorLado: typeof p.folgaLateralPorLado === "number" ? p.folgaLateralPorLado : 13,
+                              tipo: p.tipo as CorredicaTipo | undefined,
+                              rebaixoFundo: !!p.rebaixoFundo,
+                            } } }));
+                          }}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— nenhuma —</SelectItem>
+                            {corredicas.map((h: any) => (
+                              <SelectItem key={h.id} value={h.id}>{h.name} {h.params?.tipo ? `· ${h.params.tipo}` : ""}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1"><Label className="text-xs">Comprimento (mm)</Label>
+                        <Select
+                          value={String(config.gavetas.corredica.comprimento)}
+                          disabled={config.gavetas.nGavetas === 0 || comprimentos.length === 0}
+                          onValueChange={(v) => setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, corredica: { ...c.gavetas.corredica, comprimento: Number(v) } } }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {comprimentos.map((n) => (
+                              <SelectItem key={n} value={String(n)}>{n} mm</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1"><Label className="text-xs">Folga caixa (vertical)</Label>
+                        <Input type="number" min={0} step={1} className="tabular"
+                          value={config.gavetas.alturaCaixaFolga} disabled={config.gavetas.nGavetas === 0}
+                          onChange={(e) => updGav("alturaCaixaFolga", Number(e.target.value) || 0)} />
+                      </div>
+                      <div className="space-y-1"><Label className="text-xs">Folga lateral (por lado)</Label>
+                        <div className="h-9 rounded-md border bg-muted/30 px-3 flex items-center text-sm tabular">
+                          {flEfetiva} mm <span className="ml-1.5 text-[10px] text-muted-foreground">(da corrediça)</span>
+                        </div>
+                      </div>
+                    </div>
+                    {config.gavetas.nGavetas > 0 && !corrSel && (
+                      <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
+                        Selecione uma corrediça. Sem seleção, está a usar a folga padrão de 13 mm.
+                      </div>
+                    )}
+                    {cxPreview && (
+                      <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground tabular">
+                        Caixa calculada: <span className="text-foreground">{cxPreview.boxWidth}</span> × <span className="text-foreground">{cxPreview.boxHeight}</span> × <span className="text-foreground">{cxPreview.boxDepth}</span> mm
+                        {cxPreview.requerRasgoTraseira && <span className="ml-2 text-amber-700">· requer rasgo na traseira (TODO)</span>}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
