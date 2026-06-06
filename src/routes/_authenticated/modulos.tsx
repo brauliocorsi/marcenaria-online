@@ -736,13 +736,14 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
     );
   }
 
-  // agrupar por peca + tipo_furo + diametro
-  const grupos = new Map<string, { peca: string; tipo: TipoFuro; diametro: number; profundidade: number; n: number }>();
+  // agrupar por peca + tipo_furo + diametro + ferramenta
+  const grupos = new Map<string, { peca: string; tipo: TipoFuro; diametro: number; profundidade: number; ferramenta: string; n: number }>();
   for (const f of furos) {
-    const k = `${f.peca}|${f.tipo_furo}|${f.diametro}|${f.profundidade}`;
+    const ferramenta = f.ferramentaNome ?? "—";
+    const k = `${f.peca}|${f.tipo_furo}|${f.diametro}|${f.profundidade}|${ferramenta}`;
     const g = grupos.get(k);
     if (g) g.n += 1;
-    else grupos.set(k, { peca: f.peca, tipo: f.tipo_furo, diametro: f.diametro, profundidade: f.profundidade, n: 1 });
+    else grupos.set(k, { peca: f.peca, tipo: f.tipo_furo, diametro: f.diametro, profundidade: f.profundidade, ferramenta, n: 1 });
   }
   const rows = Array.from(grupos.values()).sort((a, b) => a.peca.localeCompare(b.peca) || a.tipo.localeCompare(b.tipo));
 
@@ -756,6 +757,7 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
           <TableRow>
             <TableHead>Peça</TableHead>
             <TableHead>Tipo</TableHead>
+            <TableHead>Ferramenta</TableHead>
             <TableHead className="text-right">Ø (mm)</TableHead>
             <TableHead className="text-right">Prof. (mm)</TableHead>
             <TableHead className="text-right">Qtd</TableHead>
@@ -765,7 +767,13 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
           {rows.map((r, i) => (
             <TableRow key={i}>
               <TableCell className="font-medium capitalize">{r.peca}</TableCell>
-              <TableCell>{TIPO_LABEL[r.tipo]}</TableCell>
+              <TableCell>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: FURO_COR[r.tipo] }} />
+                  {TIPO_LABEL[r.tipo]}
+                </span>
+              </TableCell>
+              <TableCell className="text-muted-foreground">{r.ferramenta}</TableCell>
               <TableCell className="text-right tabular">{r.diametro}</TableCell>
               <TableCell className="text-right tabular">{r.profundidade}</TableCell>
               <TableCell className="text-right tabular">{r.n}</TableCell>
