@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
-import { listHardware, upsertHardware, deleteHardware, HARDWARE_CATEGORIES, PRICING_UNITS } from "@/lib/catalog.functions";
+import { listHardware, upsertHardware, deleteHardware, seedCorredicasPadrao, HARDWARE_CATEGORIES, PRICING_UNITS } from "@/lib/catalog.functions";
 import { fmtCurrency } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/ferragens")({ component: FerragensPage });
