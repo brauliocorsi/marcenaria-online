@@ -307,8 +307,8 @@ export function calcularCorredicas(
   const { regras, brocas } = template;
   const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
   const W = config.dims.width;
-  const diam = regras.diam_parafuso;
-  const prof = regras.prof_cavilha;
+  const diam = 3;
+  const prof = 0.5;
   const out: Furo[] = [];
 
   for (const c of caixas) {
@@ -323,7 +323,7 @@ export function calcularCorredicas(
       for (const z of zs) {
         out.push(makeFuro({
           junta: `corredica_gaveta${c.idx + 1}_${lado}`,
-          tipo_furo: "parafuso",
+          tipo_furo: "marcacao",
           pos: [xFace, y, z],
           dir,
           diametro: diam,
@@ -339,3 +339,47 @@ export function calcularCorredicas(
 export function contarCorredicas(config: ModuleConfig): number {
   return dimensoesGavetas(config).caixas.length * 2;
 }
+
+// ───── Sistema 32 / Pino de prateleira ─────
+export function calcularSistema32(
+  config: ModuleConfig,
+  template: TemplateConfig,
+  bits?: DrillBitLike[],
+): Furo[] {
+  const s = config.sistema32;
+  if (!s || !s.ativo) return [];
+  const W = config.dims.width, H = config.dims.height, D = config.dims.depth;
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const recuoF = Math.max(0, s.recuoFrente ?? 37);
+  const recuoT = Math.max(0, s.recuoTras ?? 37);
+  const passo = Math.max(1, s.passoVertical ?? 32);
+  const inicioY = Math.max(0, s.inicioY ?? 100);
+  const fimY = Math.min(H, s.fimY ?? (H - 100));
+  if (fimY <= inicioY) return [];
+  const ys: number[] = [];
+  for (let y = inicioY; y <= fimY + 0.001; y += passo) ys.push(y);
+  const zs = [recuoF, D - recuoT];
+  const out: Furo[] = [];
+  const diam = 5;
+  const prof = 12;
+  const { brocas } = template;
+  for (const lado of ["esq", "dir"] as const) {
+    const xFace = lado === "esq" ? e.lateral : W - e.lateral;
+    const dir: Vec3 = lado === "esq" ? [-1, 0, 0] : [1, 0, 0];
+    for (const z of zs) {
+      for (const y of ys) {
+        out.push(makeFuro({
+          junta: `sistema32_${lado}_${z < D / 2 ? "frente" : "tras"}`,
+          tipo_furo: "pino",
+          pos: [xFace, y, z],
+          dir,
+          diametro: diam,
+          profundidade: prof,
+          peca: "lateral",
+        }, bits, brocas));
+      }
+    }
+  }
+  return out;
+}
+
