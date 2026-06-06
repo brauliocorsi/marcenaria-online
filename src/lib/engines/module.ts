@@ -181,7 +181,18 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   fundo: { modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0 },
   nPrateleiras: 1,
   portas: { nPortas: 0, modo: "sobreposta", ladoAbertura: "direita", espessura: null, folga: 2, folgaCentral: 3 },
+  gavetas: {
+    nGavetas: 0, modo: "sobreposta", folga: 3, espessuraFrente: 19,
+    corredica: { comprimento: 500, folgaLateral: 13 },
+    espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
+  },
 };
+
+// Backwards-compat: assegura que módulos antigos têm o bloco gavetas.
+export function normalizarConfig(c: ModuleConfig): ModuleConfig {
+  if (c.gavetas && typeof c.gavetas.nGavetas === "number") return c;
+  return { ...c, gavetas: DEFAULT_MODULE_CONFIG.gavetas };
+}
 
 // ─────────────────────────────────────────────────────────────
 // Geometria 3D — fonte única de verdade partilhada com calcularPecas.
