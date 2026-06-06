@@ -2,12 +2,32 @@ export type ParedeId = "fundo" | "frente" | "esquerda" | "direita";
 
 export type ParedesVisiveis = Record<ParedeId, boolean>;
 
+export type TipoAbertura = "janela" | "porta";
+
+export interface Abertura {
+  id: string;
+  paredeId: ParedeId;
+  tipo: TipoAbertura;
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
+}
+
+export interface AberturaCalculada extends Abertura {
+  u: number;
+  v: number;
+  valido: boolean;
+  motivo?: string;
+}
+
 export interface RoomConfig {
   largura: number;
   profundidade: number;
   altura: number;
   espessuraParede: number;
   paredesVisiveis: ParedesVisiveis;
+  aberturas: Abertura[];
 }
 
 export interface Parede {
@@ -22,6 +42,7 @@ export const DEFAULT_ROOM: RoomConfig = {
   altura: 2400,
   espessuraParede: 100,
   paredesVisiveis: { fundo: true, frente: false, esquerda: true, direita: true },
+  aberturas: [],
 };
 
 export function calcularParedes(room: RoomConfig): Parede[] {
@@ -34,10 +55,34 @@ export function calcularParedes(room: RoomConfig): Parede[] {
   ];
 }
 
+export function comprimentoParede(room: RoomConfig, paredeId: ParedeId): number {
+  return paredeId === "fundo" || paredeId === "frente" ? room.largura : room.profundidade;
+}
+
+export function validarAbertura(room: RoomConfig, ab: Abertura): { valido: boolean; motivo?: string } {
+  if (ab.largura <= 0 || ab.altura <= 0) return { valido: false, motivo: "Dimensões inválidas" };
+  if (ab.x < 0 || ab.y < 0) return { valido: false, motivo: "Posição negativa" };
+  const comp = comprimentoParede(room, ab.paredeId);
+  if (ab.x + ab.largura > comp) return { valido: false, motivo: `Excede comprimento da parede (${comp}mm)` };
+  if (ab.y + ab.altura > room.altura) return { valido: false, motivo: `Excede altura (${room.altura}mm)` };
+  if (ab.tipo === "porta" && ab.y !== 0) return { valido: false, motivo: "Porta deve ter y=0" };
+  return { valido: true };
+}
+
+export function calcularAberturasDaParede(room: RoomConfig, paredeId: ParedeId): AberturaCalculada[] {
+  return room.aberturas
+    .filter((a) => a.paredeId === paredeId)
+    .map((a) => {
+      const v = validarAbertura(room, a);
+      return { ...a, u: a.x, v: a.y, valido: v.valido, motivo: v.motivo };
+    });
+}
+
 export function normalizarRoom(input: Partial<RoomConfig> | undefined | null): RoomConfig {
   const base = { ...DEFAULT_ROOM, ...(input ?? {}) };
   return {
     ...base,
     paredesVisiveis: { ...DEFAULT_ROOM.paredesVisiveis, ...((input as any)?.paredesVisiveis ?? {}) },
+    aberturas: Array.isArray((input as any)?.aberturas) ? (input as any).aberturas : [],
   };
 }

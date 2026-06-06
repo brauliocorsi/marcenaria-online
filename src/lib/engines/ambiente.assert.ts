@@ -1,7 +1,7 @@
-import { calcularParedes, DEFAULT_ROOM } from "./ambiente";
+import { calcularParedes, calcularAberturasDaParede, validarAbertura, DEFAULT_ROOM, type Abertura } from "./ambiente";
 
 export function runAmbienteAsserts() {
-  const sala = { ...DEFAULT_ROOM, largura: 3000, profundidade: 2000, altura: 2400, espessuraParede: 100 };
+  const sala = { ...DEFAULT_ROOM, largura: 3000, profundidade: 2000, altura: 2400, espessuraParede: 100, aberturas: [] };
   const paredes = calcularParedes(sala);
   const fundo = paredes.find((p) => p.id === "fundo")!;
   const esq = paredes.find((p) => p.id === "esquerda")!;
@@ -13,4 +13,18 @@ export function runAmbienteAsserts() {
     esq.size[0] === 100 && esq.size[1] === 2400 && esq.size[2] === 2000,
     "[ambiente] parede esquerda size",
   );
+
+  // Abertura válida
+  const abValida: Abertura = { id: "a1", paredeId: "fundo", tipo: "janela", x: 1000, y: 900, largura: 1200, altura: 1000 };
+  const salaComJanela = { ...sala, aberturas: [abValida] };
+  const calc = calcularAberturasDaParede(salaComJanela, "fundo");
+  console.assert(
+    calc.length === 1 && calc[0].u === 1000 && calc[0].v === 900 && calc[0].largura === 1200 && calc[0].altura === 1000 && calc[0].valido,
+    "[ambiente] abertura válida no fundo",
+  );
+
+  // Abertura inválida
+  const abInv: Abertura = { id: "a2", paredeId: "fundo", tipo: "janela", x: 2500, y: 900, largura: 1200, altura: 1000 };
+  const vInv = validarAbertura(sala, abInv);
+  console.assert(!vInv.valido, "[ambiente] abertura inválida (excede comprimento)");
 }
