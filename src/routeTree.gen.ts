@@ -20,6 +20,7 @@ import { Route as AuthenticatedMateriaisRouteImport } from './routes/_authentica
 import { Route as AuthenticatedFerragensRouteImport } from './routes/_authenticated/ferragens'
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
 import { Route as AuthenticatedBrocasRouteImport } from './routes/_authenticated/brocas'
+import { Route as AuthenticatedAmbientesRouteImport } from './routes/_authenticated/ambientes'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -76,10 +77,16 @@ const AuthenticatedBrocasRoute = AuthenticatedBrocasRouteImport.update({
   path: '/brocas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAmbientesRoute = AuthenticatedAmbientesRouteImport.update({
+  id: '/ambientes',
+  path: '/ambientes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ambientes': typeof AuthenticatedAmbientesRoute
   '/brocas': typeof AuthenticatedBrocasRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/ferragens': typeof AuthenticatedFerragensRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ambientes': typeof AuthenticatedAmbientesRoute
   '/brocas': typeof AuthenticatedBrocasRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/ferragens': typeof AuthenticatedFerragensRoute
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/ambientes': typeof AuthenticatedAmbientesRoute
   '/_authenticated/brocas': typeof AuthenticatedBrocasRoute
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
   '/_authenticated/ferragens': typeof AuthenticatedFerragensRoute
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/ambientes'
     | '/brocas'
     | '/definicoes'
     | '/ferragens'
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/ambientes'
     | '/brocas'
     | '/definicoes'
     | '/ferragens'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/ambientes'
     | '/_authenticated/brocas'
     | '/_authenticated/definicoes'
     | '/_authenticated/ferragens'
@@ -240,10 +252,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBrocasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/ambientes': {
+      id: '/_authenticated/ambientes'
+      path: '/ambientes'
+      fullPath: '/ambientes'
+      preLoaderRoute: typeof AuthenticatedAmbientesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAmbientesRoute: typeof AuthenticatedAmbientesRoute
   AuthenticatedBrocasRoute: typeof AuthenticatedBrocasRoute
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
   AuthenticatedFerragensRoute: typeof AuthenticatedFerragensRoute
@@ -255,6 +275,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAmbientesRoute: AuthenticatedAmbientesRoute,
   AuthenticatedBrocasRoute: AuthenticatedBrocasRoute,
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
   AuthenticatedFerragensRoute: AuthenticatedFerragensRoute,

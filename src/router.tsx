@@ -9,6 +9,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/gavetas.assert").then((m) => m.runGavetasAsserts()).catch(() => {});
   import("./lib/engines/pes-tamponamento.assert").then((m) => m.runPesTamponamentoAsserts()).catch(() => {});
   import("./lib/engines/hardware-anim.assert").then((m) => m.runHardwareAnimAsserts()).catch(() => {});
+  import("./lib/engines/ambiente.assert").then((m) => m.runAmbienteAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {
