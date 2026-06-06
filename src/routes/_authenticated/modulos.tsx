@@ -33,6 +33,7 @@ function ModulosPage() {
   const fetchModules = useServerFn(listModules);
   const fetchMaterials = useServerFn(listMaterials);
   const fetchHardware = useServerFn(listHardware);
+  const fetchDrillBits = useServerFn(listDrillBits);
   const fetchDefaultTemplate = useServerFn(getDefaultTemplate);
   const save = useServerFn(upsertModule);
   const del = useServerFn(deleteModule);
@@ -40,6 +41,7 @@ function ModulosPage() {
   const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
   const { data: materials } = useQuery({ queryKey: ["materials"], queryFn: () => fetchMaterials() });
   const { data: hardware } = useQuery({ queryKey: ["hardware"], queryFn: () => fetchHardware() });
+  const { data: drillBits } = useQuery({ queryKey: ["drill_bits"], queryFn: () => fetchDrillBits() });
   const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
   const corredicas = useMemo(() => (hardware ?? []).filter((h: any) => h.category === "corredica"), [hardware]);
 
