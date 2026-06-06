@@ -418,7 +418,7 @@ function ModulosPage() {
               </div>
               {(() => {
                 const corrSel = corredicas.find((c: any) => c.id === config.gavetas.corredica.hardwareId);
-                const comprimentos: number[] = corrSel?.params?.comprimentosDisponiveis ?? [];
+                const comprimentos: number[] = (corrSel?.params as any)?.comprimentosDisponiveis ?? [];
                 const flEfetiva = config.gavetas.corredica.folgaLateralPorLado ?? 13;
                 const cxPreview = config.gavetas.nGavetas > 0 ? dimensoesGavetas(config).caixas[0] : null;
                 return (
