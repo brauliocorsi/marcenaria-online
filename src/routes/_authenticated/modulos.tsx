@@ -87,7 +87,7 @@ function ModulosPage() {
       ? { ...DEFAULT_MODULE_CONFIG, ...m.config,
           dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } }
       : { ...DEFAULT_MODULE_CONFIG, dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } };
-    setConfig(cfg as ModuleConfig);
+    setConfig(normalizarConfig(cfg as ModuleConfig));
   }
 
   function novoModulo() {
