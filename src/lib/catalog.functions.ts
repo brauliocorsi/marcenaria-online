@@ -7,7 +7,7 @@ const materialSchema = z.object({
   name: z.string().min(1, "Nome obrigatório").max(200),
   brand: z.string().max(120).default("Kronospan"),
   decor_code: z.string().max(60).nullable().optional(),
-  thickness_mm: z.number().int().refine((v) => [3, 4, 6, 8, 16, 19, 25].includes(v)),
+  thickness_mm: z.number().min(0.1).max(100),
   sheet_width_mm: z.number().int().min(100).max(10000),
   sheet_height_mm: z.number().int().min(100).max(10000),
   price_per_sheet: z.number().min(0).nullable().optional(),
