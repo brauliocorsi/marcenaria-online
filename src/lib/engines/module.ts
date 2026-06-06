@@ -2,7 +2,9 @@
 // Todas as medidas em mm. Cálculos internos podem ser decimais; resultados
 // arredondados a inteiro.
 
-export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo";
+export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | "porta";
+export type PortaModo = "sobreposta" | "embutida";
+export type LadoAbertura = "esquerda" | "direita";
 export type SistemaMontagem = "laterais_cobrem" | "tampo_base_cobrem";
 export type FundoModo = "sobreposto" | "ranhura";
 export type Veio = "comprimento" | "largura" | "sem";
