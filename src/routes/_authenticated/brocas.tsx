@@ -23,6 +23,7 @@ import {
   upsertDrillBit,
   deleteDrillBit,
   seedFerramentasPadrao,
+  consolidarFerramentas,
   DRILL_PURPOSES,
   TOOL_TYPES,
 } from "@/lib/catalog.functions";
