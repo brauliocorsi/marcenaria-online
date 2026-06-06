@@ -307,8 +307,62 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
     });
   }
 
+  // Gavetas — frentes + 4 peças da caixa por gaveta
+  const g = dimensoesGavetas(config);
+  for (const fr of g.frentes) {
+    out.push({ tipo: "gaveta_frente", descricao: fr.descricao, veio: "comprimento",
+      size: fr.size, center: fr.center });
+  }
+  for (const c of g.caixas) {
+    // 2 laterais
+    const xL = c.center[0] - c.boxWidth / 2 + c.espessuraCaixa / 2;
+    const xR = c.center[0] + c.boxWidth / 2 - c.espessuraCaixa / 2;
+    out.push({ tipo: "gaveta_lateral", descricao: `Lateral esq. caixa gaveta ${c.idx + 1}`, veio: "comprimento",
+      size: [c.espessuraCaixa, c.boxHeight, c.boxDepth], center: [xL, c.center[1], c.center[2]] });
+    out.push({ tipo: "gaveta_lateral", descricao: `Lateral dir. caixa gaveta ${c.idx + 1}`, veio: "comprimento",
+      size: [c.espessuraCaixa, c.boxHeight, c.boxDepth], center: [xR, c.center[1], c.center[2]] });
+    // frente + traseira
+    const zBack = c.center[2] - c.boxDepth / 2 + c.espessuraCaixa / 2;
+    const zFront = c.center[2] + c.boxDepth / 2 - c.espessuraCaixa / 2;
+    const innerW = c.boxWidth - 2 * c.espessuraCaixa;
+    out.push({ tipo: "gaveta_frenteCaixa", descricao: `Frente caixa gaveta ${c.idx + 1}`, veio: "comprimento",
+      size: [innerW, c.boxHeight, c.espessuraCaixa], center: [c.center[0], c.center[1], zFront] });
+    out.push({ tipo: "gaveta_frenteCaixa", descricao: `Traseira caixa gaveta ${c.idx + 1}`, veio: "comprimento",
+      size: [innerW, c.boxHeight, c.espessuraCaixa], center: [c.center[0], c.center[1], zBack] });
+    // fundo (assente em baixo)
+    const yFundo = c.center[1] - c.boxHeight / 2 + c.espessuraFundo / 2;
+    out.push({ tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`, veio: "largura",
+      size: [c.boxWidth, c.espessuraFundo, c.boxDepth], center: [c.center[0], yFundo, c.center[2]] });
+  }
+
   return out;
 }
+
+// ─────────────────────────────────────────────────────────────
+// Portas — dimensão + posição (partilhado por peças, geometria e dobradiças)
+// ─────────────────────────────────────────────────────────────
+
+export type LadoDobradicas = "esquerda" | "direita";
+
+export interface PortaDim {
+  idx: 0 | 1;            // 0 = única ou esquerda; 1 = direita
+  descricao: string;
+  largura: number;
+  altura: number;
+  espessura: number;
+  cx: number; cy: number; cz: number;   // centro
+  xMin: number; xMax: number;
+  yMin: number; yMax: number;
+  zBack: number; zFront: number;
+  ladoDobradicas: LadoDobradicas;       // lado da porta onde estão as dobradiças
+  xCharneira: number;                    // x da aresta da porta no lado das dobradiças
+}
+
+export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
+  const { dims, espessuraPadrao, espessuras, portas, gavetas } = config;
+  if (!portas || portas.nPortas === 0) return [];
+  // Regra: se houver gavetas, a frente é gavetas — portas ignoradas.
+  if (gavetas && gavetas.nGavetas > 0) return [];
 
 // ─────────────────────────────────────────────────────────────
 // Portas — dimensão + posição (partilhado por peças, geometria e dobradiças)
