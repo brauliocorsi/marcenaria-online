@@ -449,6 +449,12 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
       size: [c.boxWidth, c.espessuraFundo, c.boxDepth], center: [c.center[0], yFundo, c.center[2]] });
   }
 
+  // Tamponamentos
+  for (const t of dimensoesTamponamentos(config)) {
+    out.push({ tipo: "tamponamento", descricao: t.descricao, veio: t.veio,
+      size: t.size, center: t.center });
+  }
+
   return out;
 }
 
