@@ -54,6 +54,9 @@ function ModulosPage() {
   const [explode, setExplode] = useState(0);
   const [viewTab, setViewTab] = useState<"3d" | "pecas" | "furacao">("3d");
   const [showFuros, setShowFuros] = useState(true);
+  const [showHardware, setShowHardware] = useState(true);
+  const [doorAngleDeg, setDoorAngleDeg] = useState(0);
+  const [drawerPct, setDrawerPct] = useState(0);
 
 
   const pecas = useMemo(() => {
@@ -632,12 +635,30 @@ function ModulosPage() {
                     value={[Math.round(explode * 100)]}
                     min={0} max={100} step={1}
                     onValueChange={([v]) => setExplode(v / 100)}
-                    className="flex-1 min-w-[120px]"
+                    className="w-[120px]"
                   />
-                  <span className="text-xs tabular w-10 text-right text-muted-foreground">{Math.round(explode * 100)}%</span>
+                  <span className="text-xs tabular w-9 text-right text-muted-foreground">{Math.round(explode * 100)}%</span>
+
                   <div className="flex items-center gap-2 pl-3 border-l">
                     <Switch id="show-furos" checked={showFuros} onCheckedChange={setShowFuros} disabled={!templateConfig} />
-                    <Label htmlFor="show-furos" className="text-xs text-muted-foreground cursor-pointer">Mostrar furação</Label>
+                    <Label htmlFor="show-furos" className="text-xs text-muted-foreground cursor-pointer">Furação</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch id="show-hw" checked={showHardware} onCheckedChange={setShowHardware} />
+                    <Label htmlFor="show-hw" className="text-xs text-muted-foreground cursor-pointer">Ferragens</Label>
+                  </div>
+
+                  <div className="flex items-center gap-2 pl-3 border-l">
+                    <Label className="text-xs text-muted-foreground shrink-0">Abrir portas</Label>
+                    <Slider value={[doorAngleDeg]} min={0} max={110} step={1}
+                      onValueChange={([v]) => setDoorAngleDeg(v)} className="w-[100px]" />
+                    <span className="text-xs tabular w-9 text-right text-muted-foreground">{doorAngleDeg}°</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground shrink-0">Abrir gavetas</Label>
+                    <Slider value={[Math.round(drawerPct * 100)]} min={0} max={100} step={1}
+                      onValueChange={([v]) => setDrawerPct(v / 100)} className="w-[100px]" />
+                    <span className="text-xs tabular w-9 text-right text-muted-foreground">{Math.round(drawerPct * 100)}%</span>
                   </div>
                 </div>
                 {invalid && (
@@ -647,7 +668,14 @@ function ModulosPage() {
                   </div>
                 )}
                 <div className="h-[560px] w-full">
-                  <Module3D config={config} explode={explode} furos={showFuros ? furos : []} />
+                  <Module3D
+                    config={config}
+                    explode={explode}
+                    furos={showFuros ? furos : []}
+                    showHardware={showHardware}
+                    doorAngleDeg={doorAngleDeg}
+                    drawerPct={drawerPct}
+                  />
                 </div>
                 {showFuros && templateConfig && <FurosLegend />}
               </Card>

@@ -8,6 +8,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/portas.assert").then((m) => m.runPortasAsserts()).catch(() => {});
   import("./lib/engines/gavetas.assert").then((m) => m.runGavetasAsserts()).catch(() => {});
   import("./lib/engines/pes-tamponamento.assert").then((m) => m.runPesTamponamentoAsserts()).catch(() => {});
+  import("./lib/engines/hardware-anim.assert").then((m) => m.runHardwareAnimAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {
