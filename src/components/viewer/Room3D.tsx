@@ -71,12 +71,10 @@ function WallMesh({
       {aberturas.filter((a) => a.valido).map((ab) => (
         <AberturaDeco key={ab.id} ab={ab} esp={esp} />
       ))}
-      <_ParedeId id={paredeId} />
     </>
   );
 }
 
-function _ParedeId(_: { id: ParedeId }) { return null; }
 
 function AberturaDeco({ ab, esp }: { ab: AberturaCalculada; esp: number }) {
   const E = esp * MM;
