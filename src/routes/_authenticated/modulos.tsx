@@ -65,7 +65,11 @@ function ModulosPage() {
   const furos: Furo[] = useMemo(() => {
     if (!templateConfig || invalid) return [];
     try {
-      return [...calcularFuros(config, templateConfig), ...calcularDobradicas(config, templateConfig)];
+      return [
+        ...calcularFuros(config, templateConfig),
+        ...calcularDobradicas(config, templateConfig),
+        ...calcularCorredicas(config, templateConfig),
+      ];
     } catch { return []; }
   }, [config, templateConfig, invalid]);
 
