@@ -38,6 +38,17 @@ export interface PortasConfig {
   folgaCentral: number;
 }
 
+export interface GavetasConfig {
+  nGavetas: number;
+  modo: PortaModo;
+  folga: number;
+  espessuraFrente: number;
+  corredica: { comprimento: number; folgaLateral: number };
+  espessuraCaixa: number;
+  espessuraFundo: number;
+  alturaCaixaFolga: number;
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
@@ -50,6 +61,8 @@ export interface ModuleConfig {
   fundo: FundoConfig;
   nPrateleiras: number;
   portas: PortasConfig;
+  // REGRA: se nGavetas>0, a frente são gavetas (portas ignoradas).
+  gavetas: GavetasConfig;
 }
 
 export interface Peca {
