@@ -15,6 +15,8 @@ const COR_POR_TIPO: Record<string, string> = {
   cavilha:       "#16a34a",
   parafuso:      "#6b7280",
   dobradica:     "#1a1a1a",
+  marcacao:      "#d4d4d8",
+  pino:          "#8b5cf6",
 };
 
 interface Module3DProps {

@@ -92,7 +92,7 @@ export const deleteEdgeBand = createServerFn({ method: "POST" })
   });
 
 // ---------- FERRAGENS ----------
-const hardwareCategories = ["minifix","cavilha","parafuso","dobradica","corredica","pe","perfil_aluminio","led","outro"] as const;
+const hardwareCategories = ["minifix","cavilha","parafuso","dobradica","corredica","pe","pino_prateleira","perfil_aluminio","led","outro"] as const;
 const pricingUnits = ["unidade","metro"] as const;
 
 const hardwareSchema = z.object({

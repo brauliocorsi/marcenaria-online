@@ -20,7 +20,7 @@ import { listMaterials, listHardware, listDrillBits } from "@/lib/catalog.functi
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
 import { calcularPecas, dimensoesGavetas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo } from "@/lib/engines/module";
-import { calcularFuros, calcularDobradicas, calcularCorredicas, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
+import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
@@ -75,6 +75,7 @@ function ModulosPage() {
         ...calcularFuros(config, templateConfig, bits),
         ...calcularDobradicas(config, templateConfig, bits),
         ...calcularCorredicas(config, templateConfig, bits),
+        ...calcularSistema32(config, templateConfig, bits),
       ];
     } catch { return []; }
   }, [config, templateConfig, invalid, drillBits]);
@@ -138,6 +139,7 @@ function ModulosPage() {
   const updGavCorr = <K extends keyof ModuleConfig["gavetas"]["corredica"]>(k: K, v: ModuleConfig["gavetas"]["corredica"][K]) => setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, corredica: { ...c.gavetas.corredica, [k]: v } } }));
   const updPes = <K extends keyof ModuleConfig["pes"]>(k: K, v: ModuleConfig["pes"][K]) => setConfig((c) => ({ ...c, pes: { ...c.pes, [k]: v } }));
   const updTamp = <K extends keyof ModuleConfig["tamponamento"]>(k: K, v: ModuleConfig["tamponamento"][K]) => setConfig((c) => ({ ...c, tamponamento: { ...c.tamponamento, [k]: v } }));
+  const updS32 = <K extends keyof ModuleConfig["sistema32"]>(k: K, v: ModuleConfig["sistema32"][K]) => setConfig((c) => ({ ...c, sistema32: { ...c.sistema32, [k]: v } }));
   const updEsp = (k: keyof ModuleConfig["espessuras"], v: number | null) => setConfig((c) => ({ ...c, espessuras: { ...c.espessuras, [k]: v } }));
 
   return (
@@ -558,6 +560,54 @@ function ModulosPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Prateleiras reguláveis (Sistema 32)</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="s32-on" className="text-xs">Ativo</Label>
+                <Switch id="s32-on" checked={config.sistema32.ativo} onCheckedChange={(v) => updS32("ativo", v)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Recuo frente (Z)</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.sistema32.recuoFrente} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("recuoFrente", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Recuo trás (Z)</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.sistema32.recuoTras} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("recuoTras", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Passo vertical</Label>
+                  <Input type="number" min={8} step={1} className="tabular"
+                    value={config.sistema32.passoVertical} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("passoVertical", Math.max(8, Number(e.target.value) || 32))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Início Y</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.sistema32.inicioY} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("inicioY", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Fim Y</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.sistema32.fimY} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("fimY", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+              </div>
+              {config.sistema32.ativo && (() => {
+                const { passoVertical: p, inicioY: i, fimY: f } = config.sistema32;
+                const nFila = f > i ? Math.floor((f - i) / p) + 1 : 0;
+                return (
+                  <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground tabular">
+                    {nFila} furos/fila · 2 filas × 2 laterais = <span className="text-foreground font-medium">{nFila * 4}</span> furos Ø5
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </div>
 
         {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
@@ -687,6 +737,8 @@ const TIPO_LABEL: Record<TipoFuro, string> = {
   minifix_perno: "Minifix (perno)",
   parafuso: "Parafuso",
   dobradica: "Dobradiça (caneco)",
+  marcacao: "Marcação (corrediça)",
+  pino: "Pino de prateleira",
 };
 
 export const FURO_COR: Record<TipoFuro, string> = {
@@ -695,6 +747,8 @@ export const FURO_COR: Record<TipoFuro, string> = {
   cavilha:       "#16a34a",   // verde
   parafuso:      "#6b7280",   // cinzento
   dobradica:     "#1a1a1a",   // preto (caneco)
+  marcacao:      "#d4d4d8",   // branco / cinza-claro
+  pino:          "#8b5cf6",   // roxo
 };
 
 function FurosLegend() {
@@ -704,13 +758,15 @@ function FurosLegend() {
     ["cavilha", "Cavilha Ø8"],
     ["parafuso", "Parafuso"],
     ["dobradica", "Dobradiça Ø35"],
+    ["marcacao", "Marcação corrediça Ø3 (0,5 mm)"],
+    ["pino", "Pino prateleira Ø5"],
   ];
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t px-4 py-2 text-[11px] text-muted-foreground">
       <span className="font-medium text-foreground">Legenda:</span>
       {items.map(([t, label]) => (
         <span key={t} className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: FURO_COR[t] }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-full border border-black/10" style={{ background: FURO_COR[t] }} />
           {label}
         </span>
       ))}

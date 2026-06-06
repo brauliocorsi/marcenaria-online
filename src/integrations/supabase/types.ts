@@ -342,6 +342,7 @@ export type Database = {
         | "perfil_aluminio"
         | "led"
         | "outro"
+        | "pino_prateleira"
       pricing_unit: "unidade" | "metro"
       project_status: "rascunho" | "finalizado"
       project_type: "cozinha" | "roupeiro" | "movel"
@@ -483,6 +484,7 @@ export const Constants = {
         "perfil_aluminio",
         "led",
         "outro",
+        "pino_prateleira",
       ],
       pricing_unit: ["unidade", "metro"],
       project_status: ["rascunho", "finalizado"],

@@ -76,6 +76,15 @@ export interface TamponamentoConfig {
   espessura: number | null; // null = espessuraPadrao
 }
 
+export interface Sistema32Config {
+  ativo: boolean;
+  recuoFrente: number;
+  recuoTras: number;
+  passoVertical: number;
+  inicioY: number;
+  fimY: number;
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
@@ -92,6 +101,7 @@ export interface ModuleConfig {
   gavetas: GavetasConfig;
   pes: PesConfig;
   tamponamento: TamponamentoConfig;
+  sistema32: Sistema32Config;
 }
 
 export interface Peca {
@@ -259,6 +269,7 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   },
   pes: { ativo: false, altura: 100, quantidade: 4, recuo: 50 },
   tamponamento: { esquerda: false, direita: false, topo: false, espessura: null },
+  sistema32: { ativo: false, recuoFrente: 37, recuoTras: 37, passoVertical: 32, inicioY: 100, fimY: 620 },
 };
 
 // Backwards-compat: assegura que módulos antigos têm o bloco gavetas
@@ -282,6 +293,7 @@ export function normalizarConfig(c: ModuleConfig): ModuleConfig {
   }
   if (!out.pes) out.pes = { ...DEFAULT_MODULE_CONFIG.pes };
   if (!out.tamponamento) out.tamponamento = { ...DEFAULT_MODULE_CONFIG.tamponamento };
+  if (!out.sistema32) out.sistema32 = { ...DEFAULT_MODULE_CONFIG.sistema32, fimY: Math.max(200, out.dims.height - 100) };
   return out;
 }
 

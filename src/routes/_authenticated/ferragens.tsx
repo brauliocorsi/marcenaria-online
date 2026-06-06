@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/ferragens")({ component: F
 
 const CATEGORY_LABELS: Record<string, string> = {
   minifix: "Minifix", cavilha: "Cavilha", parafuso: "Parafuso",
-  dobradica: "Dobradiça", corredica: "Corrediça", pe: "Pé",
+  dobradica: "Dobradiça", corredica: "Corrediça", pe: "Pé", pino_prateleira: "Pino de prateleira",
   perfil_aluminio: "Perfil de alumínio", led: "LED", outro: "Outro",
 };
 const UNIT_LABELS: Record<string, string> = { unidade: "Unidade", metro: "Metro" };
@@ -247,6 +247,13 @@ function CategoryParams({ category, params, setParam }: { category: string; para
             <Label className="cursor-pointer text-xs">Regulável</Label>
             <Switch checked={!!params.regulavel} onCheckedChange={(c) => setParam("regulavel", c)} />
           </div>
+        </div>
+      );
+    case "pino_prateleira":
+      return (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Ø do pino (mm)</Label><NumInput value={params.diametro_mm ?? 5} onChange={(v) => setParam("diametro_mm", v)} placeholder="5" /></div>
+          <div className="space-y-1.5"><Label>Material</Label><Input value={params.material ?? ""} onChange={(e) => setParam("material", e.target.value)} placeholder="Niquelado, latão…" /></div>
         </div>
       );
     case "perfil_aluminio":

@@ -4,7 +4,7 @@
 import { resolverEspessuras, dimensoesPortas, posicoesDobradicasY, type ModuleConfig, type PieceType, type Vec3 } from "./module";
 import type { TemplateConfig } from "@/lib/drilling.functions";
 
-export type TipoFuro = "cavilha" | "minifix_corpo" | "minifix_perno" | "parafuso" | "dobradica";
+export type TipoFuro = "cavilha" | "minifix_corpo" | "minifix_perno" | "parafuso" | "dobradica" | "marcacao" | "pino";
 
 export interface DrillBitLike {
   id: string;
@@ -54,6 +54,8 @@ function diametroPara(t: TipoFuro, regras: TemplateConfig["regras"]): number {
     case "minifix_perno": return 8;
     case "parafuso": return regras.diam_parafuso;
     case "dobradica": return 35;
+    case "marcacao": return 3;
+    case "pino": return 5;
   }
 }
 function profundidadePara(t: TipoFuro, regras: TemplateConfig["regras"]): number {
@@ -63,6 +65,8 @@ function profundidadePara(t: TipoFuro, regras: TemplateConfig["regras"]): number
     case "minifix_perno": return regras.prof_cavilha;
     case "minifix_corpo": return regras.prof_minifix;
     case "dobradica": return regras.prof_minifix;
+    case "marcacao": return 0.5;
+    case "pino": return 12;
   }
 }
 
@@ -99,13 +103,14 @@ function resolverFerramenta(
     const purposeOnly = bits.find(b => b.purpose === purpose);
     if (purposeOnly) return { id: purposeOnly.id, nome: purposeOnly.name, tool_type: purposeOnly.tool_type ?? "broca" };
   }
-  // 4) fallback ao template
-  const tplKey: keyof TemplateConfig["brocas"] =
+  // 4) fallback ao template (apenas para tipos com slot no template)
+  const tplKey: keyof TemplateConfig["brocas"] | null =
     t === "cavilha" ? "cavilha" :
     t === "minifix_corpo" ? "minifix_corpo" :
     t === "minifix_perno" ? "minifix_perno" :
-    t === "parafuso" ? "parafuso" : "dobradica";
-  const tplId = templateBrocas?.[tplKey] ?? null;
+    t === "parafuso" ? "parafuso" :
+    t === "dobradica" ? "dobradica" : null;
+  const tplId = tplKey ? (templateBrocas?.[tplKey] ?? null) : null;
   if (tplId && bits) {
     const tb = bits.find(b => b.id === tplId);
     if (tb) return { id: tb.id, nome: tb.name, tool_type: tb.tool_type ?? "broca" };
@@ -116,7 +121,9 @@ function resolverFerramenta(
     t === "minifix_corpo" ? `Broca minifix corpo Ø${diametro}` :
     t === "minifix_perno" ? `Broca minifix perno Ø${diametro}` :
     t === "parafuso" ? `Broca pré-furo Ø${diametro}` :
-    `Broca dobradiça Ø${diametro}`;
+    t === "dobradica" ? `Broca dobradiça Ø${diametro}` :
+    t === "marcacao" ? `Broca ${diametro} mm` :
+    `Broca ${diametro} mm`;
   return { id: tplId ?? null, nome, tool_type: "broca" };
 }
 
@@ -300,8 +307,8 @@ export function calcularCorredicas(
   const { regras, brocas } = template;
   const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
   const W = config.dims.width;
-  const diam = regras.diam_parafuso;
-  const prof = regras.prof_cavilha;
+  const diam = 3;
+  const prof = 0.5;
   const out: Furo[] = [];
 
   for (const c of caixas) {
@@ -316,7 +323,7 @@ export function calcularCorredicas(
       for (const z of zs) {
         out.push(makeFuro({
           junta: `corredica_gaveta${c.idx + 1}_${lado}`,
-          tipo_furo: "parafuso",
+          tipo_furo: "marcacao",
           pos: [xFace, y, z],
           dir,
           diametro: diam,
@@ -332,3 +339,47 @@ export function calcularCorredicas(
 export function contarCorredicas(config: ModuleConfig): number {
   return dimensoesGavetas(config).caixas.length * 2;
 }
+
+// ───── Sistema 32 / Pino de prateleira ─────
+export function calcularSistema32(
+  config: ModuleConfig,
+  template: TemplateConfig,
+  bits?: DrillBitLike[],
+): Furo[] {
+  const s = config.sistema32;
+  if (!s || !s.ativo) return [];
+  const W = config.dims.width, H = config.dims.height, D = config.dims.depth;
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const recuoF = Math.max(0, s.recuoFrente ?? 37);
+  const recuoT = Math.max(0, s.recuoTras ?? 37);
+  const passo = Math.max(1, s.passoVertical ?? 32);
+  const inicioY = Math.max(0, s.inicioY ?? 100);
+  const fimY = Math.min(H, s.fimY ?? (H - 100));
+  if (fimY <= inicioY) return [];
+  const ys: number[] = [];
+  for (let y = inicioY; y <= fimY + 0.001; y += passo) ys.push(y);
+  const zs = [recuoF, D - recuoT];
+  const out: Furo[] = [];
+  const diam = 5;
+  const prof = 12;
+  const { brocas } = template;
+  for (const lado of ["esq", "dir"] as const) {
+    const xFace = lado === "esq" ? e.lateral : W - e.lateral;
+    const dir: Vec3 = lado === "esq" ? [-1, 0, 0] : [1, 0, 0];
+    for (const z of zs) {
+      for (const y of ys) {
+        out.push(makeFuro({
+          junta: `sistema32_${lado}_${z < D / 2 ? "frente" : "tras"}`,
+          tipo_furo: "pino",
+          pos: [xFace, y, z],
+          dir,
+          diametro: diam,
+          profundidade: prof,
+          peca: "lateral",
+        }, bits, brocas));
+      }
+    }
+  }
+  return out;
+}
+
