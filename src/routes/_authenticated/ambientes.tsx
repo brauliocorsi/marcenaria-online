@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Save, Plus, Trash2, Home } from "lucide-react";
+import { Save, Plus, Trash2, Home, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
 import { Room3D } from "@/components/viewer/Room3D";
 import { listAmbientes, upsertAmbiente, deleteAmbiente } from "@/lib/ambientes.functions";
-import { DEFAULT_ROOM, normalizarRoom, type RoomConfig, type ParedeId } from "@/lib/engines/ambiente";
+import {
+  DEFAULT_ROOM, normalizarRoom, validarAbertura, comprimentoParede,
+  type RoomConfig, type ParedeId, type Abertura, type TipoAbertura,
+} from "@/lib/engines/ambiente";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/_authenticated/ambientes")({ component: AmbientesPage });
 
