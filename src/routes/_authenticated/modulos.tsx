@@ -560,6 +560,54 @@ function ModulosPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Prateleiras reguláveis (Sistema 32)</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="s32-on" className="text-xs">Ativo</Label>
+                <Switch id="s32-on" checked={config.sistema32.ativo} onCheckedChange={(v) => updS32("ativo", v)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Recuo frente (Z)</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.sistema32.recuoFrente} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("recuoFrente", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Recuo trás (Z)</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.sistema32.recuoTras} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("recuoTras", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Passo vertical</Label>
+                  <Input type="number" min={8} step={1} className="tabular"
+                    value={config.sistema32.passoVertical} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("passoVertical", Math.max(8, Number(e.target.value) || 32))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Início Y</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.sistema32.inicioY} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("inicioY", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Fim Y</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.sistema32.fimY} disabled={!config.sistema32.ativo}
+                    onChange={(e) => updS32("fimY", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+              </div>
+              {config.sistema32.ativo && (() => {
+                const { passoVertical: p, inicioY: i, fimY: f } = config.sistema32;
+                const nFila = f > i ? Math.floor((f - i) / p) + 1 : 0;
+                return (
+                  <div className="rounded-md border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground tabular">
+                    {nFila} furos/fila · 2 filas × 2 laterais = <span className="text-foreground font-medium">{nFila * 4}</span> furos Ø5
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </div>
 
         {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
