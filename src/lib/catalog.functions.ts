@@ -138,6 +138,49 @@ export const deleteHardware = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- SEED: Corrediças padrão (idempotente por nome) ----------
+const CORREDICAS_PADRAO = [
+  {
+    name: "Corrediça telescópica 45mm",
+    reference: null,
+    pricing_unit: "unidade" as const,
+    price: null,
+    params: { tipo: "telescopica", folgaLateralPorLado: 13, comprimentosDisponiveis: [250,300,350,400,450,500,550,600], extensao: "total", rebaixoFundo: false },
+  },
+  {
+    name: "Corrediça oculta (undermount)",
+    reference: null,
+    pricing_unit: "unidade" as const,
+    price: null,
+    params: { tipo: "oculta", folgaLateralPorLado: 21, comprimentosDisponiveis: [270,300,350,400,450,500], extensao: "total", rebaixoFundo: true },
+  },
+  {
+    name: "Corrediça de roldanas",
+    reference: null,
+    pricing_unit: "unidade" as const,
+    price: null,
+    params: { tipo: "roldanas", folgaLateralPorLado: 12.5, comprimentosDisponiveis: [250,300,350,400,450,500], extensao: "parcial", rebaixoFundo: false },
+  },
+];
+
+export const seedCorredicasPadrao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: existing, error: e1 } = await supabase
+      .from("hardware").select("name").eq("user_id", userId).eq("category", "corredica");
+    if (e1) throw new Error(e1.message);
+    const have = new Set((existing ?? []).map((r: any) => r.name));
+    const toInsert = CORREDICAS_PADRAO
+      .filter((c) => !have.has(c.name))
+      .map((c) => ({ ...c, category: "corredica" as const, user_id: userId }));
+    if (toInsert.length === 0) return { inserted: 0, skipped: CORREDICAS_PADRAO.length };
+    const { error: e2 } = await supabase.from("hardware").insert(toInsert);
+    if (e2) throw new Error(e2.message);
+    return { inserted: toInsert.length, skipped: CORREDICAS_PADRAO.length - toInsert.length };
+  });
+
+
 // ---------- BROCAS ----------
 const drillPurposes = ["parafuso","cavilha","minifix","geral"] as const;
 const drillSchema = z.object({
