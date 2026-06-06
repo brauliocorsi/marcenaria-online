@@ -38,12 +38,25 @@ export interface PortasConfig {
   folgaCentral: number;
 }
 
+export type CorredicaTipo = "telescopica" | "oculta" | "roldanas";
+
+export interface CorredicaConfig {
+  hardwareId: string | null;
+  comprimento: number;
+  // Params hidratados pela UI a partir da ferragem escolhida (category='corredica').
+  folgaLateralPorLado?: number;  // mm por lado; aceita decimais (ex. 12.5)
+  tipo?: CorredicaTipo;
+  rebaixoFundo?: boolean;
+  // Backwards-compat (config antigo)
+  folgaLateral?: number;
+}
+
 export interface GavetasConfig {
   nGavetas: number;
   modo: PortaModo;
   folga: number;
   espessuraFrente: number;
-  corredica: { comprimento: number; folgaLateral: number };
+  corredica: CorredicaConfig;
   espessuraCaixa: number;
   espessuraFundo: number;
   alturaCaixaFolga: number;
