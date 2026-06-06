@@ -631,6 +631,14 @@ function ModulosPage() {
                     ))}
                   </TableBody>
                 </Table>
+                {config.pes.ativo && (
+                  <div className="border-t px-4 py-3 text-xs">
+                    <div className="font-medium text-foreground mb-1">Acessórios</div>
+                    <div className="text-muted-foreground tabular">
+                      Pés de plástico: {config.pes.quantidade} un · altura {config.pes.altura} mm
+                    </div>
+                  </div>
+                )}
               </Card>
             </TabsContent>
 
