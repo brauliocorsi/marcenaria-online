@@ -4,6 +4,7 @@ import { routeTree } from "./routeTree.gen";
 
 if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/module.assert").then((m) => m.runModuleAsserts()).catch(() => {});
+  import("./lib/engines/drilling.assert").then((m) => m.runDrillingAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {
