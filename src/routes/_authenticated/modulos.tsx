@@ -41,6 +41,9 @@ function ModulosPage() {
   const [config, setConfig] = useState<ModuleConfig>(DEFAULT_MODULE_CONFIG);
   const [showOverrides, setShowOverrides] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
+  const [explode, setExplode] = useState(0);
+  const [viewTab, setViewTab] = useState<"3d" | "pecas">("3d");
+
 
   const pecas = useMemo(() => {
     try { return calcularPecas(config); } catch { return []; }
