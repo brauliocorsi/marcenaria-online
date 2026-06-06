@@ -49,7 +49,7 @@ function OrlasPage() {
   }, [data, search]);
 
   const form = useForm<FormVals>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: { name: "", color: "", thickness_mm: 0.8, width_mm: 22 as any, price_per_meter: "" as any },
   });
 

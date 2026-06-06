@@ -57,7 +57,7 @@ function MateriaisPage() {
   }, [data, search]);
 
   const form = useForm<FormVals>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: { name: "", brand: "Kronospan", decor_code: "", thickness_mm: 19, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: "" as any, has_grain: false },
   });
 

@@ -60,7 +60,7 @@ function FerragensPage() {
   }, [data, search]);
 
   const form = useForm<FormVals>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: { name: "", category: "minifix", reference: "", pricing_unit: "unidade", price: "" as any, params: {} },
   });
   const category = form.watch("category");

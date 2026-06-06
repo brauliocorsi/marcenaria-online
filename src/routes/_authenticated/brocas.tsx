@@ -52,7 +52,7 @@ function BrocasPage() {
   }, [data, search]);
 
   const form = useForm<FormVals>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: { name: "", diameter_mm: 5, purpose: "geral", max_depth_mm: "" as any },
   });
 
