@@ -60,6 +60,7 @@ function diametroPara(t: TipoFuro, regras: TemplateConfig["regras"]): number {
     case "minifix_corpo": return 15;
     case "minifix_perno": return 8;
     case "parafuso": return regras.diam_parafuso;
+    case "dobradica": return 35;
   }
 }
 
@@ -71,6 +72,8 @@ function profundidadePara(t: TipoFuro, regras: TemplateConfig["regras"]): number
       return regras.prof_cavilha;
     case "minifix_corpo":
       return regras.prof_minifix;
+    case "dobradica":
+      return regras.prof_minifix; // padrão 13mm
   }
 }
 
