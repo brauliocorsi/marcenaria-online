@@ -27,6 +27,7 @@ const brocasSchema = z.object({
 const regrasSchema = z.object({
   recuo_extremidade: z.number().min(0).max(500),
   espacamento_sistema: z.number().min(1).max(500),
+  espacamento_cavilha_minifix: z.number().min(1).max(500).default(32),
   recuo_frontal: z.number().min(0).max(500),
   conectores_min: z.number().int().min(1).max(20),
   conectores_por_mm: z.number().int().min(50).max(2000),
@@ -56,6 +57,7 @@ export const DEFAULT_TEMPLATE_CONFIG: TemplateConfig = {
   regras: {
     recuo_extremidade: 37,
     espacamento_sistema: 32,
+    espacamento_cavilha_minifix: 32,
     recuo_frontal: 37,
     conectores_min: 2,
     conectores_por_mm: 250,

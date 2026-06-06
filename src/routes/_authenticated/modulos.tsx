@@ -16,11 +16,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
 import { Module3D } from "@/components/viewer/Module3D";
 import { Switch } from "@/components/ui/switch";
-import { listMaterials, listHardware } from "@/lib/catalog.functions";
+import { listMaterials, listHardware, listDrillBits } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
 import { calcularPecas, dimensoesGavetas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo } from "@/lib/engines/module";
-import { calcularFuros, calcularDobradicas, calcularCorredicas, type Furo, type TipoFuro } from "@/lib/engines/drilling";
+import { calcularFuros, calcularDobradicas, calcularCorredicas, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
@@ -33,6 +33,7 @@ function ModulosPage() {
   const fetchModules = useServerFn(listModules);
   const fetchMaterials = useServerFn(listMaterials);
   const fetchHardware = useServerFn(listHardware);
+  const fetchDrillBits = useServerFn(listDrillBits);
   const fetchDefaultTemplate = useServerFn(getDefaultTemplate);
   const save = useServerFn(upsertModule);
   const del = useServerFn(deleteModule);
@@ -40,6 +41,7 @@ function ModulosPage() {
   const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
   const { data: materials } = useQuery({ queryKey: ["materials"], queryFn: () => fetchMaterials() });
   const { data: hardware } = useQuery({ queryKey: ["hardware"], queryFn: () => fetchHardware() });
+  const { data: drillBits } = useQuery({ queryKey: ["drill_bits"], queryFn: () => fetchDrillBits() });
   const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
   const corredicas = useMemo(() => (hardware ?? []).filter((h: any) => h.category === "corredica"), [hardware]);
 
@@ -67,14 +69,15 @@ function ModulosPage() {
 
   const furos: Furo[] = useMemo(() => {
     if (!templateConfig || invalid) return [];
+    const bits = (drillBits ?? []) as DrillBitLike[];
     try {
       return [
-        ...calcularFuros(config, templateConfig),
-        ...calcularDobradicas(config, templateConfig),
-        ...calcularCorredicas(config, templateConfig),
+        ...calcularFuros(config, templateConfig, bits),
+        ...calcularDobradicas(config, templateConfig, bits),
+        ...calcularCorredicas(config, templateConfig, bits),
       ];
     } catch { return []; }
-  }, [config, templateConfig, invalid]);
+  }, [config, templateConfig, invalid, drillBits]);
 
   const totals = useMemo(() => {
     const qtd = pecas.reduce((a, p) => a + p.qtd, 0);
@@ -596,6 +599,7 @@ function ModulosPage() {
                 <div className="h-[560px] w-full">
                   <Module3D config={config} explode={explode} furos={showFuros ? furos : []} />
                 </div>
+                {showFuros && templateConfig && <FurosLegend />}
               </Card>
             </TabsContent>
 
@@ -685,6 +689,36 @@ const TIPO_LABEL: Record<TipoFuro, string> = {
   dobradica: "Dobradiça (caneco)",
 };
 
+export const FURO_COR: Record<TipoFuro, string> = {
+  minifix_corpo: "#e08a2a",   // âmbar / laranja
+  minifix_perno: "#3b82f6",   // azul
+  cavilha:       "#16a34a",   // verde
+  parafuso:      "#6b7280",   // cinzento
+  dobradica:     "#1a1a1a",   // preto (caneco)
+};
+
+function FurosLegend() {
+  const items: Array<[TipoFuro, string]> = [
+    ["minifix_corpo", "Minifix corpo Ø15"],
+    ["minifix_perno", "Minifix perno Ø8"],
+    ["cavilha", "Cavilha Ø8"],
+    ["parafuso", "Parafuso"],
+    ["dobradica", "Dobradiça Ø35"],
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t px-4 py-2 text-[11px] text-muted-foreground">
+      <span className="font-medium text-foreground">Legenda:</span>
+      {items.map(([t, label]) => (
+        <span key={t} className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: FURO_COR[t] }} />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+
 function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: boolean }) {
   if (!hasTemplate) {
     return (
@@ -702,13 +736,14 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
     );
   }
 
-  // agrupar por peca + tipo_furo + diametro
-  const grupos = new Map<string, { peca: string; tipo: TipoFuro; diametro: number; profundidade: number; n: number }>();
+  // agrupar por peca + tipo_furo + diametro + ferramenta
+  const grupos = new Map<string, { peca: string; tipo: TipoFuro; diametro: number; profundidade: number; ferramenta: string; n: number }>();
   for (const f of furos) {
-    const k = `${f.peca}|${f.tipo_furo}|${f.diametro}|${f.profundidade}`;
+    const ferramenta = f.ferramentaNome ?? "—";
+    const k = `${f.peca}|${f.tipo_furo}|${f.diametro}|${f.profundidade}|${ferramenta}`;
     const g = grupos.get(k);
     if (g) g.n += 1;
-    else grupos.set(k, { peca: f.peca, tipo: f.tipo_furo, diametro: f.diametro, profundidade: f.profundidade, n: 1 });
+    else grupos.set(k, { peca: f.peca, tipo: f.tipo_furo, diametro: f.diametro, profundidade: f.profundidade, ferramenta, n: 1 });
   }
   const rows = Array.from(grupos.values()).sort((a, b) => a.peca.localeCompare(b.peca) || a.tipo.localeCompare(b.tipo));
 
@@ -722,6 +757,7 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
           <TableRow>
             <TableHead>Peça</TableHead>
             <TableHead>Tipo</TableHead>
+            <TableHead>Ferramenta</TableHead>
             <TableHead className="text-right">Ø (mm)</TableHead>
             <TableHead className="text-right">Prof. (mm)</TableHead>
             <TableHead className="text-right">Qtd</TableHead>
@@ -731,7 +767,13 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
           {rows.map((r, i) => (
             <TableRow key={i}>
               <TableCell className="font-medium capitalize">{r.peca}</TableCell>
-              <TableCell>{TIPO_LABEL[r.tipo]}</TableCell>
+              <TableCell>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: FURO_COR[r.tipo] }} />
+                  {TIPO_LABEL[r.tipo]}
+                </span>
+              </TableCell>
+              <TableCell className="text-muted-foreground">{r.ferramenta}</TableCell>
               <TableCell className="text-right tabular">{r.diametro}</TableCell>
               <TableCell className="text-right tabular">{r.profundidade}</TableCell>
               <TableCell className="text-right tabular">{r.n}</TableCell>

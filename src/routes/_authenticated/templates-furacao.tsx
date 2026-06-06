@@ -38,6 +38,7 @@ const schema = z.object({
   broca_dobradica: z.string().optional(),
   recuo_extremidade: z.coerce.number().min(0),
   espacamento_sistema: z.coerce.number().min(1),
+  espacamento_cavilha_minifix: z.coerce.number().min(1),
   recuo_frontal: z.coerce.number().min(0),
   conectores_min: z.coerce.number().int().min(1),
   conectores_por_mm: z.coerce.number().int().min(50),
@@ -125,6 +126,7 @@ function TemplatesPage() {
           regras: {
             recuo_extremidade: Number(v.recuo_extremidade),
             espacamento_sistema: Number(v.espacamento_sistema),
+            espacamento_cavilha_minifix: Number(v.espacamento_cavilha_minifix),
             recuo_frontal: Number(v.recuo_frontal),
             conectores_min: Number(v.conectores_min),
             conectores_por_mm: Number(v.conectores_por_mm),
@@ -280,6 +282,7 @@ function TemplatesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label>Recuo extremidade</Label><Input type="number" className="tabular" {...form.register("recuo_extremidade")} /></div>
                 <div className="space-y-1.5"><Label>Espaçamento sistema 32</Label><Input type="number" className="tabular" {...form.register("espacamento_sistema")} /></div>
+                <div className="space-y-1.5"><Label>Cavilha ↔ Minifix (mm)</Label><Input type="number" className="tabular" {...form.register("espacamento_cavilha_minifix")} /></div>
                 <div className="space-y-1.5"><Label>Recuo frontal</Label><Input type="number" className="tabular" {...form.register("recuo_frontal")} /></div>
                 <div className="space-y-1.5"><Label>Nº mín. conectores/junta</Label><Input type="number" className="tabular" {...form.register("conectores_min")} /></div>
                 <div className="space-y-1.5"><Label>1 conector a cada (mm)</Label><Input type="number" className="tabular" {...form.register("conectores_por_mm")} /></div>

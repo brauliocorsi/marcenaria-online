@@ -9,21 +9,20 @@ export function runDrillingAsserts() {
   const cav = byType["cavilha"] ?? 0;
   const mc = byType["minifix_corpo"] ?? 0;
   const mp = byType["minifix_perno"] ?? 0;
+  const todosComFerramenta = furos.every(f => !!f.ferramentaNome);
 
   const tests: Array<[string, boolean]> = [
-    ["Total = 36 furos", total === 36],
-    ["24 cavilha", cav === 24],
-    ["6 minifix_corpo", mc === 6],
-    ["6 minifix_perno", mp === 6],
-    ["Cavilha Ø8", furos.filter(f => f.tipo_furo === "cavilha").every(f => f.diametro === 8)],
-    ["minifix_corpo Ø15", furos.filter(f => f.tipo_furo === "minifix_corpo").every(f => f.diametro === 15)],
-    ["minifix_perno Ø8", furos.filter(f => f.tipo_furo === "minifix_perno").every(f => f.diametro === 8)],
+    ["Total = 72 furos", total === 72],
+    ["18 minifix_corpo (Ø15)", mc === 18 && furos.filter(f => f.tipo_furo === "minifix_corpo").every(f => f.diametro === 15)],
+    ["18 minifix_perno (Ø8)", mp === 18 && furos.filter(f => f.tipo_furo === "minifix_perno").every(f => f.diametro === 8)],
+    ["36 cavilha (Ø8)", cav === 36 && furos.filter(f => f.tipo_furo === "cavilha").every(f => f.diametro === 8)],
+    ["Ferramenta resolvida em todos os furos", todosComFerramenta],
   ];
   let ok = true;
   for (const [label, pass] of tests) {
     console.assert(pass, `[drilling.assert] FALHOU: ${label}`);
     if (!pass) ok = false;
   }
-  if (ok) console.info(`[drilling.assert] ✓ 36 furos (24 cav + 6 mfx_corpo + 6 mfx_perno) — OK.`);
+  if (ok) console.info(`[drilling.assert] ✓ 72 furos (18 mfx_corpo + 18 mfx_perno + 36 cavilha) · ferramentas resolvidas — OK.`);
   return ok;
 }
