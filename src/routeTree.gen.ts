@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTemplatesFuracaoRouteImport } from './routes/_authenticated/templates-furacao'
 import { Route as AuthenticatedProjetosRouteImport } from './routes/_authenticated/projetos'
+import { Route as AuthenticatedOrlasRouteImport } from './routes/_authenticated/orlas'
 import { Route as AuthenticatedMateriaisRouteImport } from './routes/_authenticated/materiais'
 import { Route as AuthenticatedFerragensRouteImport } from './routes/_authenticated/ferragens'
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
@@ -44,6 +45,11 @@ const AuthenticatedProjetosRoute = AuthenticatedProjetosRouteImport.update({
   path: '/projetos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedOrlasRoute = AuthenticatedOrlasRouteImport.update({
+  id: '/orlas',
+  path: '/orlas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMateriaisRoute = AuthenticatedMateriaisRouteImport.update({
   id: '/materiais',
   path: '/materiais',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/ferragens': typeof AuthenticatedFerragensRoute
   '/materiais': typeof AuthenticatedMateriaisRoute
+  '/orlas': typeof AuthenticatedOrlasRoute
   '/projetos': typeof AuthenticatedProjetosRoute
   '/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
 }
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/ferragens': typeof AuthenticatedFerragensRoute
   '/materiais': typeof AuthenticatedMateriaisRoute
+  '/orlas': typeof AuthenticatedOrlasRoute
   '/projetos': typeof AuthenticatedProjetosRoute
   '/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
 }
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
   '/_authenticated/ferragens': typeof AuthenticatedFerragensRoute
   '/_authenticated/materiais': typeof AuthenticatedMateriaisRoute
+  '/_authenticated/orlas': typeof AuthenticatedOrlasRoute
   '/_authenticated/projetos': typeof AuthenticatedProjetosRoute
   '/_authenticated/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
 }
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/definicoes'
     | '/ferragens'
     | '/materiais'
+    | '/orlas'
     | '/projetos'
     | '/templates-furacao'
   fileRoutesByTo: FileRoutesByTo
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/definicoes'
     | '/ferragens'
     | '/materiais'
+    | '/orlas'
     | '/projetos'
     | '/templates-furacao'
   id:
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/_authenticated/definicoes'
     | '/_authenticated/ferragens'
     | '/_authenticated/materiais'
+    | '/_authenticated/orlas'
     | '/_authenticated/projetos'
     | '/_authenticated/templates-furacao'
   fileRoutesById: FileRoutesById
@@ -174,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjetosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/orlas': {
+      id: '/_authenticated/orlas'
+      path: '/orlas'
+      fullPath: '/orlas'
+      preLoaderRoute: typeof AuthenticatedOrlasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/materiais': {
       id: '/_authenticated/materiais'
       path: '/materiais'
@@ -210,6 +229,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
   AuthenticatedFerragensRoute: typeof AuthenticatedFerragensRoute
   AuthenticatedMateriaisRoute: typeof AuthenticatedMateriaisRoute
+  AuthenticatedOrlasRoute: typeof AuthenticatedOrlasRoute
   AuthenticatedProjetosRoute: typeof AuthenticatedProjetosRoute
   AuthenticatedTemplatesFuracaoRoute: typeof AuthenticatedTemplatesFuracaoRoute
 }
@@ -219,6 +239,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
   AuthenticatedFerragensRoute: AuthenticatedFerragensRoute,
   AuthenticatedMateriaisRoute: AuthenticatedMateriaisRoute,
+  AuthenticatedOrlasRoute: AuthenticatedOrlasRoute,
   AuthenticatedProjetosRoute: AuthenticatedProjetosRoute,
   AuthenticatedTemplatesFuracaoRoute: AuthenticatedTemplatesFuracaoRoute,
 }
