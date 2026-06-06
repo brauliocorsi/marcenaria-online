@@ -66,10 +66,11 @@ function FuroMesh({ f }: { f: Furo }) {
     return { pos: [cx, cy, cz] as [number, number, number], dir: d, q, len, r };
   }, [f]);
   void dir;
+  const color = COR_POR_TIPO[f.tipo_furo] ?? "#1a1a1a";
   return (
     <mesh position={pos} quaternion={q}>
       <cylinderGeometry args={[r, r, len, 16]} />
-      <meshStandardMaterial color={COR_FURO} roughness={0.4} metalness={0.6} />
+      <meshStandardMaterial color={color} roughness={0.4} metalness={0.6} />
     </mesh>
   );
 }
