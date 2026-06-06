@@ -54,6 +54,9 @@ function ModulosPage() {
   const [explode, setExplode] = useState(0);
   const [viewTab, setViewTab] = useState<"3d" | "pecas" | "furacao">("3d");
   const [showFuros, setShowFuros] = useState(true);
+  const [showHardware, setShowHardware] = useState(true);
+  const [doorAngleDeg, setDoorAngleDeg] = useState(0);
+  const [drawerPct, setDrawerPct] = useState(0);
 
 
   const pecas = useMemo(() => {
