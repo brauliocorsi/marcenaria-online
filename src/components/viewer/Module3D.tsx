@@ -115,6 +115,18 @@ export function Module3D({ config, explode = 0, furos = [] }: Module3DProps) {
         );
       })}
 
+      {pes.posicoes.map((p, i) => {
+        const pos: [number, number, number] = [p[0] * MM_TO_M, p[1] * MM_TO_M, p[2] * MM_TO_M];
+        return (
+          <mesh key={`pe-${i}`} position={pos} castShadow>
+            <cylinderGeometry args={[0.015, 0.015, pes.altura * MM_TO_M, 16]} />
+            <meshStandardMaterial color="#2a2a2a" roughness={0.55} metalness={0.2} />
+          </mesh>
+        );
+      })}
+
+
+
 
       <Grid
         position={[target[0], 0, target[2]]}
