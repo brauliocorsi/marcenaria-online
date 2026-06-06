@@ -223,15 +223,31 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   portas: { nPortas: 0, modo: "sobreposta", ladoAbertura: "direita", espessura: null, folga: 2, folgaCentral: 3 },
   gavetas: {
     nGavetas: 0, modo: "sobreposta", folga: 3, espessuraFrente: 19,
-    corredica: { comprimento: 500, folgaLateral: 13 },
+    corredica: { hardwareId: null, comprimento: 500, folgaLateralPorLado: 13 },
     espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
   },
 };
 
-// Backwards-compat: assegura que módulos antigos têm o bloco gavetas.
+// Backwards-compat: assegura que módulos antigos têm o bloco gavetas
+// e migra corredica antiga {comprimento, folgaLateral} → novo formato.
 export function normalizarConfig(c: ModuleConfig): ModuleConfig {
-  if (c.gavetas && typeof c.gavetas.nGavetas === "number") return c;
-  return { ...c, gavetas: DEFAULT_MODULE_CONFIG.gavetas };
+  const out: ModuleConfig = c.gavetas && typeof c.gavetas.nGavetas === "number"
+    ? c
+    : { ...c, gavetas: DEFAULT_MODULE_CONFIG.gavetas };
+  const corr = out.gavetas.corredica as CorredicaConfig & { folgaLateral?: number };
+  if (corr && corr.folgaLateralPorLado == null && typeof corr.folgaLateral === "number") {
+    out.gavetas = {
+      ...out.gavetas,
+      corredica: {
+        hardwareId: corr.hardwareId ?? null,
+        comprimento: corr.comprimento ?? 500,
+        folgaLateralPorLado: corr.folgaLateral,
+      },
+    };
+  } else if (corr && corr.hardwareId === undefined) {
+    out.gavetas = { ...out.gavetas, corredica: { ...corr, hardwareId: corr.hardwareId ?? null } };
+  }
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────
