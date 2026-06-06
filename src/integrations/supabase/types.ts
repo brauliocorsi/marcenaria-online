@@ -182,6 +182,48 @@ export type Database = {
         }
         Relationships: []
       }
+      modules: {
+        Row: {
+          config: Json
+          created_at: string
+          depth_mm: number
+          height_mm: number
+          id: string
+          material_id: string | null
+          name: string
+          pieces: Json
+          updated_at: string
+          user_id: string
+          width_mm: number
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          depth_mm?: number
+          height_mm?: number
+          id?: string
+          material_id?: string | null
+          name: string
+          pieces?: Json
+          updated_at?: string
+          user_id: string
+          width_mm?: number
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          depth_mm?: number
+          height_mm?: number
+          id?: string
+          material_id?: string | null
+          name?: string
+          pieces?: Json
+          updated_at?: string
+          user_id?: string
+          width_mm?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           company_name: string | null
