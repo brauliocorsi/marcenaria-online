@@ -282,6 +282,7 @@ function TemplatesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label>Recuo extremidade</Label><Input type="number" className="tabular" {...form.register("recuo_extremidade")} /></div>
                 <div className="space-y-1.5"><Label>Espaçamento sistema 32</Label><Input type="number" className="tabular" {...form.register("espacamento_sistema")} /></div>
+                <div className="space-y-1.5"><Label>Cavilha ↔ Minifix (mm)</Label><Input type="number" className="tabular" {...form.register("espacamento_cavilha_minifix")} /></div>
                 <div className="space-y-1.5"><Label>Recuo frontal</Label><Input type="number" className="tabular" {...form.register("recuo_frontal")} /></div>
                 <div className="space-y-1.5"><Label>Nº mín. conectores/junta</Label><Input type="number" className="tabular" {...form.register("conectores_min")} /></div>
                 <div className="space-y-1.5"><Label>1 conector a cada (mm)</Label><Input type="number" className="tabular" {...form.register("conectores_por_mm")} /></div>
