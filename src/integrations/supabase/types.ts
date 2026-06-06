@@ -21,7 +21,9 @@ export type Database = {
           id: string
           max_depth_mm: number | null
           name: string
+          passante: boolean
           purpose: Database["public"]["Enums"]["drill_purpose"]
+          tool_type: string
           user_id: string
         }
         Insert: {
@@ -30,7 +32,9 @@ export type Database = {
           id?: string
           max_depth_mm?: number | null
           name: string
+          passante?: boolean
           purpose?: Database["public"]["Enums"]["drill_purpose"]
+          tool_type?: string
           user_id: string
         }
         Update: {
@@ -39,7 +43,9 @@ export type Database = {
           id?: string
           max_depth_mm?: number | null
           name?: string
+          passante?: boolean
           purpose?: Database["public"]["Enums"]["drill_purpose"]
+          tool_type?: string
           user_id?: string
         }
         Relationships: []

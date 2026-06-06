@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
-import { listMaterials, upsertMaterial, deleteMaterial } from "@/lib/catalog.functions";
+import { listMaterials, upsertMaterial, deleteMaterial, seedFundosPadrao } from "@/lib/catalog.functions";
 import { ALLOWED_THICKNESSES_MM } from "@/lib/constants";
 import { fmtCurrency } from "@/lib/format";
 
@@ -95,9 +95,25 @@ function MateriaisPage() {
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
 
+  const seedFundos = useServerFn(seedFundosPadrao);
+  const seedMut = useMutation({
+    mutationFn: async () => seedFundos(),
+    onSuccess: (r: any) => {
+      toast.success(r.inserted > 0 ? `Adicionados ${r.inserted} fundos padrão` : "Fundos padrão já existiam");
+      qc.invalidateQueries({ queryKey: ["materials"] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
   return (
     <>
+      <div className="mb-3 flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
+          <Sparkles className="mr-2 h-3.5 w-3.5" /> Adicionar fundos padrão
+        </Button>
+      </div>
       <CatalogShell
+
         title="Materiais"
         subtitle="Chapas e melaminas usadas nos projetos."
         search={search} onSearch={setSearch} onAdd={openNew}
