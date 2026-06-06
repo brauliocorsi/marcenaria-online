@@ -2,6 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const aberturaSchema = z.object({
+  id: z.string().min(1).max(64),
+  paredeId: z.enum(["fundo", "frente", "esquerda", "direita"]),
+  tipo: z.enum(["janela", "porta"]),
+  x: z.number().int().min(0).max(20000),
+  y: z.number().int().min(0).max(5000),
+  largura: z.number().int().min(50).max(8000),
+  altura: z.number().int().min(50).max(3500),
+});
+
 const roomConfigSchema = z.object({
   largura: z.number().int().min(500).max(8000),
   profundidade: z.number().int().min(500).max(8000),
@@ -13,6 +23,7 @@ const roomConfigSchema = z.object({
     esquerda: z.boolean(),
     direita: z.boolean(),
   }),
+  aberturas: z.array(aberturaSchema).max(50).default([]),
 });
 
 const upsertSchema = z.object({
