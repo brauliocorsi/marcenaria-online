@@ -196,9 +196,10 @@ function AmbientesPage() {
                   key={ab.id}
                   ab={ab}
                   room={room}
-                  onChange={(p) => updAbertura(ab.id, p)}
+                  onChange={(p: Partial<Abertura>) => updAbertura(ab.id, p)}
                   onRemove={() => removeAbertura(ab.id)}
                 />
+
               ))}
             </CardContent>
           </Card>
