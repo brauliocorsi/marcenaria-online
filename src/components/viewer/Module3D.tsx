@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment } from "@react-three/drei";
 import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo } from "@/lib/engines/module";
-import { calcularGeometria, dimensoesPortas } from "@/lib/engines/module";
+import { calcularGeometria, calcularPes, dimensoesPortas } from "@/lib/engines/module";
 import type { Furo } from "@/lib/engines/drilling";
 
 const MM_TO_M = 0.001;
@@ -21,6 +21,7 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
   const isPorta = p.tipo === "porta";
   const isGavFrente = p.tipo === "gaveta_frente";
   const isCaixa = p.tipo === "gaveta_lateral" || p.tipo === "gaveta_frenteCaixa" || p.tipo === "gaveta_fundo";
+  const isTamp = p.tipo === "tamponamento";
   const dx = (p.center[0] - center3D[0]) * explode * 0.8;
   const dy = (p.center[1] - center3D[1]) * explode * 0.8;
   const dz = (p.center[2] - center3D[2]) * explode * 0.8;
@@ -34,7 +35,7 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
     Math.max(p.size[1], 1) * MM_TO_M,
     Math.max(p.size[2], 1) * MM_TO_M,
   ];
-  const color = isPorta || isGavFrente ? "#D8D1C0" : isCaixa ? "#B8AE96" : COR_MELAMINA;
+  const color = isPorta || isGavFrente ? "#D8D1C0" : isCaixa ? "#B8AE96" : isTamp ? "#DCD5C4" : COR_MELAMINA;
   const opacity = isPorta || isGavFrente ? 0.85 : isCaixa ? 0.78 : 0.92;
   return (
     <mesh position={pos} castShadow receiveShadow>
@@ -69,6 +70,7 @@ function FuroMesh({ f }: { f: Furo }) {
 
 export function Module3D({ config, explode = 0, furos = [] }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
+  const pes = useMemo(() => calcularPes(config), [config]);
   const { W, H, D } = useMemo(
     () => ({ W: config.dims.width, H: config.dims.height, D: config.dims.depth }),
     [config.dims.width, config.dims.height, config.dims.depth],
@@ -112,6 +114,18 @@ export function Module3D({ config, explode = 0, furos = [] }: Module3DProps) {
           </mesh>
         );
       })}
+
+      {pes.posicoes.map((p, i) => {
+        const pos: [number, number, number] = [p[0] * MM_TO_M, p[1] * MM_TO_M, p[2] * MM_TO_M];
+        return (
+          <mesh key={`pe-${i}`} position={pos} castShadow>
+            <cylinderGeometry args={[0.015, 0.015, pes.altura * MM_TO_M, 16]} />
+            <meshStandardMaterial color="#2a2a2a" roughness={0.55} metalness={0.2} />
+          </mesh>
+        );
+      })}
+
+
 
 
       <Grid

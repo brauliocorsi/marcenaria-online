@@ -2,7 +2,7 @@
 // Todas as medidas em mm. Cálculos internos podem ser decimais; resultados
 // arredondados a inteiro.
 
-export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | "porta" | "gaveta_frente" | "gaveta_lateral" | "gaveta_frenteCaixa" | "gaveta_fundo";
+export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | "porta" | "gaveta_frente" | "gaveta_lateral" | "gaveta_frenteCaixa" | "gaveta_fundo" | "tamponamento";
 export type PortaModo = "sobreposta" | "embutida";
 export type LadoAbertura = "esquerda" | "direita";
 export type SistemaMontagem = "laterais_cobrem" | "tampo_base_cobrem";
@@ -62,6 +62,20 @@ export interface GavetasConfig {
   alturaCaixaFolga: number;
 }
 
+export interface PesConfig {
+  ativo: boolean;
+  altura: number;       // mm
+  quantidade: 4 | 6;
+  recuo: number;        // mm (do canto)
+}
+
+export interface TamponamentoConfig {
+  esquerda: boolean;
+  direita: boolean;
+  topo: boolean;
+  espessura: number | null; // null = espessuraPadrao
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
@@ -76,6 +90,8 @@ export interface ModuleConfig {
   portas: PortasConfig;
   // REGRA: se nGavetas>0, a frente são gavetas (portas ignoradas).
   gavetas: GavetasConfig;
+  pes: PesConfig;
+  tamponamento: TamponamentoConfig;
 }
 
 export interface Peca {
@@ -209,6 +225,21 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
+  // Tamponamento como peças de corte
+  for (const t of dimensoesTamponamentos(config)) {
+    // size = [largura(X), altura(Y), prof(Z)]
+    // Para esquerda/direita: comprimento = H, largura = D, espessura = X(e)
+    // Para topo: comprimento = W, largura = D, espessura = Y(e)
+    const isVertical = t.lado !== "topo";
+    pecas.push({
+      tipo: "tamponamento", descricao: t.descricao, qtd: 1,
+      comprimento_mm: r(isVertical ? t.size[1] : t.size[0]),
+      largura_mm: r(t.size[2]),
+      espessura_mm: r(isVertical ? t.size[0] : t.size[1]),
+      veio: "comprimento",
+    });
+  }
+
   return pecas;
 }
 
@@ -226,6 +257,8 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
     corredica: { hardwareId: null, comprimento: 500, folgaLateralPorLado: 13 },
     espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
   },
+  pes: { ativo: false, altura: 100, quantidade: 4, recuo: 50 },
+  tamponamento: { esquerda: false, direita: false, topo: false, espessura: null },
 };
 
 // Backwards-compat: assegura que módulos antigos têm o bloco gavetas
@@ -247,6 +280,58 @@ export function normalizarConfig(c: ModuleConfig): ModuleConfig {
   } else if (corr && corr.hardwareId === undefined) {
     out.gavetas = { ...out.gavetas, corredica: { ...corr, hardwareId: corr.hardwareId ?? null } };
   }
+  if (!out.pes) out.pes = { ...DEFAULT_MODULE_CONFIG.pes };
+  if (!out.tamponamento) out.tamponamento = { ...DEFAULT_MODULE_CONFIG.tamponamento };
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Pés (acessório — não é peça de corte)
+// ─────────────────────────────────────────────────────────────
+export interface PesResult {
+  posicoes: Vec3[]; // (x, yCentro, z) — yCentro = -altura/2
+  quantidade: number;
+  altura: number;
+}
+
+export function calcularPes(config: ModuleConfig): PesResult {
+  const p = config.pes;
+  if (!p || !p.ativo) return { posicoes: [], quantidade: 0, altura: 0 };
+  const W = config.dims.width, D = config.dims.depth;
+  const r = Math.max(0, p.recuo);
+  const yC = -p.altura / 2;
+  const corners: Vec3[] = [
+    [r, yC, r], [W - r, yC, r], [r, yC, D - r], [W - r, yC, D - r],
+  ];
+  const pos: Vec3[] = p.quantidade === 6
+    ? [...corners, [W / 2, yC, r], [W / 2, yC, D - r]]
+    : corners;
+  return { posicoes: pos, quantidade: pos.length, altura: p.altura };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tamponamento (painéis de acabamento — peças de corte)
+// ─────────────────────────────────────────────────────────────
+export interface TamponamentoPeca {
+  lado: "esquerda" | "direita" | "topo";
+  descricao: string;
+  size: Vec3;
+  center: Vec3;
+  veio: Veio;
+}
+
+export function dimensoesTamponamentos(config: ModuleConfig): TamponamentoPeca[] {
+  const t = config.tamponamento;
+  if (!t) return [];
+  const W = config.dims.width, H = config.dims.height, D = config.dims.depth;
+  const e = t.espessura && t.espessura > 0 ? t.espessura : config.espessuraPadrao;
+  const out: TamponamentoPeca[] = [];
+  if (t.esquerda) out.push({ lado: "esquerda", descricao: "Tamponamento esquerda",
+    size: [e, H, D], center: [-e / 2, H / 2, D / 2], veio: "comprimento" });
+  if (t.direita) out.push({ lado: "direita", descricao: "Tamponamento direita",
+    size: [e, H, D], center: [W + e / 2, H / 2, D / 2], veio: "comprimento" });
+  if (t.topo) out.push({ lado: "topo", descricao: "Tamponamento topo",
+    size: [W, e, D], center: [W / 2, H + e / 2, D / 2], veio: "comprimento" });
   return out;
 }
 
@@ -362,6 +447,12 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
     const yFundo = c.center[1] - c.boxHeight / 2 + c.espessuraFundo / 2;
     out.push({ tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`, veio: "largura",
       size: [c.boxWidth, c.espessuraFundo, c.boxDepth], center: [c.center[0], yFundo, c.center[2]] });
+  }
+
+  // Tamponamentos
+  for (const t of dimensoesTamponamentos(config)) {
+    out.push({ tipo: "tamponamento", descricao: t.descricao, veio: t.veio,
+      size: t.size, center: t.center });
   }
 
   return out;

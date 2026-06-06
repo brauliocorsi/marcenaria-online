@@ -7,6 +7,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/drilling.assert").then((m) => m.runDrillingAsserts()).catch(() => {});
   import("./lib/engines/portas.assert").then((m) => m.runPortasAsserts()).catch(() => {});
   import("./lib/engines/gavetas.assert").then((m) => m.runGavetasAsserts()).catch(() => {});
+  import("./lib/engines/pes-tamponamento.assert").then((m) => m.runPesTamponamentoAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {
