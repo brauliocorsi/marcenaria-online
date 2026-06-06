@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
-import { listMaterials, upsertMaterial, deleteMaterial } from "@/lib/catalog.functions";
+import { listMaterials, upsertMaterial, deleteMaterial, seedFundosPadrao } from "@/lib/catalog.functions";
 import { ALLOWED_THICKNESSES_MM } from "@/lib/constants";
 import { fmtCurrency } from "@/lib/format";
 
