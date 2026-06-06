@@ -23,6 +23,7 @@ import {
   upsertDrillBit,
   deleteDrillBit,
   seedFerramentasPadrao,
+  consolidarFerramentas,
   DRILL_PURPOSES,
   TOOL_TYPES,
 } from "@/lib/catalog.functions";
@@ -125,12 +126,30 @@ function BrocasPage() {
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
 
+  const consolidar = useServerFn(consolidarFerramentas);
+  const consolidarMut = useMutation({
+    mutationFn: async () => consolidar(),
+    onSuccess: (r: any) => {
+      toast.success(
+        r.removed > 0
+          ? `Consolidado: ${r.before} → ${r.after} ferramentas (${r.removed} duplicadas removidas, ${r.templatesUpdated} template(s) re-apontados)`
+          : `Sem duplicados (${r.after} ferramentas)`,
+      );
+      qc.invalidateQueries({ queryKey: ["drill_bits"] });
+      qc.invalidateQueries({ queryKey: ["drilling_templates"] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
   const toolType = form.watch("tool_type");
   const isDisco = toolType === "disco_corte";
 
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => consolidarMut.mutate()} disabled={consolidarMut.isPending}>
+          Consolidar ferramentas
+        </Button>
         <Button variant="outline" size="sm" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
           <Sparkles className="mr-2 h-3.5 w-3.5" /> Adicionar ferramentas padrão
         </Button>

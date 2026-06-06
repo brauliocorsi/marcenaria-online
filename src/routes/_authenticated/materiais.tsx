@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
 } from "@/components/ui/sheet";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
@@ -29,7 +29,7 @@ const schema = z.object({
   name: z.string().min(1, "Obrigatório"),
   brand: z.string().min(1),
   decor_code: z.string().optional(),
-  thickness_mm: z.coerce.number().int(),
+  thickness_mm: z.coerce.number().min(0.1).max(100),
   sheet_width_mm: z.coerce.number().int().min(100),
   sheet_height_mm: z.coerce.number().int().min(100),
   price_per_sheet: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
@@ -168,13 +168,28 @@ function MateriaisPage() {
               <div className="space-y-1.5"><Label>Código decor</Label><Input {...form.register("decor_code")} placeholder="K001 PE" /></div>
             </div>
             <div className="space-y-1.5">
-              <Label>Espessura</Label>
-              <Select value={String(form.watch("thickness_mm"))} onValueChange={(v) => form.setValue("thickness_mm", Number(v))}>
-                <SelectTrigger className="tabular"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ALLOWED_THICKNESSES_MM.map((t) => <SelectItem key={t} value={String(t)}>{t} mm</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>Espessura (mm)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0.1"
+                className="tabular"
+                {...form.register("thickness_mm")}
+              />
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {ALLOWED_THICKNESSES_MM.map((t) => (
+                  <Button
+                    key={t}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs tabular"
+                    onClick={() => form.setValue("thickness_mm", t, { shouldDirty: true })}
+                  >
+                    {t} mm
+                  </Button>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Largura chapa (mm)</Label><Input type="number" className="tabular" {...form.register("sheet_width_mm")} /></div>
