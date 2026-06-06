@@ -238,22 +238,7 @@ function CategoryParams({ category, params, setParam }: { category: string; para
         </div>
       );
     case "corredica":
-      return (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5"><Label>Comprimento (mm)</Label><NumInput value={params.comprimento_mm} onChange={(v) => setParam("comprimento_mm", v)} placeholder="350, 450…" /></div>
-          <div className="space-y-1.5">
-            <Label>Tipo</Label>
-            <Select value={params.tipo ?? ""} onValueChange={(v) => setParam("tipo", v)}>
-              <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rolamento">Rolamento</SelectItem>
-                <SelectItem value="oculta">Oculta</SelectItem>
-                <SelectItem value="total">Extração total</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      );
+      return <CorredicaParams params={params} setParam={setParam} />;
     case "pe":
       return (
         <div className="grid grid-cols-2 gap-3 items-end">
