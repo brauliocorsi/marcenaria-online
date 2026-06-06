@@ -499,6 +499,62 @@ function ModulosPage() {
               })()}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Pés</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="pes-on" className="text-xs">Ativos</Label>
+                <Switch id="pes-on" checked={config.pes.ativo} onCheckedChange={(v) => updPes("ativo", v)} />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Altura</Label>
+                  <Input type="number" min={10} step={1} className="tabular"
+                    value={config.pes.altura} disabled={!config.pes.ativo}
+                    onChange={(e) => updPes("altura", Math.max(10, Number(e.target.value) || 10))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Quantidade</Label>
+                  <Select value={String(config.pes.quantidade)} disabled={!config.pes.ativo}
+                    onValueChange={(v) => updPes("quantidade", Number(v) as 4 | 6)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="4">4 pés</SelectItem>
+                      <SelectItem value="6">6 pés</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Recuo</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.pes.recuo} disabled={!config.pes.ativo}
+                    onChange={(e) => updPes("recuo", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+              </div>
+              {config.pes.ativo && config.dims.width > 1200 && config.pes.quantidade === 4 && (
+                <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
+                  Sugerido: 6 pés para esta largura ({config.dims.width} mm).
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Acabamentos · Tamponamento</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                {(["esquerda", "direita", "topo"] as const).map((k) => (
+                  <div key={k} className="flex items-center justify-between rounded-md border px-3 py-2">
+                    <Label htmlFor={`tamp-${k}`} className="text-xs capitalize">{k}</Label>
+                    <Switch id={`tamp-${k}`} checked={config.tamponamento[k]} onCheckedChange={(v) => updTamp(k, v)} />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Espessura</Label>
+                <Input type="number" min={1} step={0.5} placeholder={`${config.espessuraPadrao}`} className="tabular"
+                  value={config.tamponamento.espessura ?? ""}
+                  onChange={(e) => updTamp("espessura", e.target.value === "" ? null : Math.max(1, Number(e.target.value) || 1))} />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
