@@ -599,6 +599,7 @@ function ModulosPage() {
                 <div className="h-[560px] w-full">
                   <Module3D config={config} explode={explode} furos={showFuros ? furos : []} />
                 </div>
+                {showFuros && templateConfig && <FurosLegend />}
               </Card>
             </TabsContent>
 
