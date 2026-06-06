@@ -421,6 +421,7 @@ const TIPO_LABEL: Record<TipoFuro, string> = {
   minifix_corpo: "Minifix (corpo)",
   minifix_perno: "Minifix (perno)",
   parafuso: "Parafuso",
+  dobradica: "Dobradiça (caneco)",
 };
 
 function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: boolean }) {
