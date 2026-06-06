@@ -181,13 +181,16 @@ export const seedCorredicasPadrao = createServerFn({ method: "POST" })
   });
 
 
-// ---------- BROCAS ----------
+// ---------- BROCAS / FERRAMENTAS ----------
 const drillPurposes = ["parafuso","cavilha","minifix","geral"] as const;
+const toolTypes = ["broca","fresa","disco_corte"] as const;
 const drillSchema = z.object({
   name: z.string().min(1).max(200),
   diameter_mm: z.number().min(0.1).max(100),
   purpose: z.enum(drillPurposes),
-  max_depth_mm: z.number().int().min(1).max(500).nullable().optional(),
+  max_depth_mm: z.number().int().min(0).max(500).nullable().optional(),
+  tool_type: z.enum(toolTypes).default("broca"),
+  passante: z.boolean().default(false),
 });
 
 export const listDrillBits = createServerFn({ method: "GET" })
@@ -204,7 +207,7 @@ export const upsertDrillBit = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid().optional(), values: drillSchema }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const payload = { ...data.values, user_id: userId };
+    const payload = { ...data.values, user_id: userId } as any;
     if (data.id) {
       const { error } = await supabase.from("drill_bits").update(payload).eq("id", data.id).eq("user_id", userId);
       if (error) throw new Error(error.message);
@@ -224,6 +227,63 @@ export const deleteDrillBit = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- SEED: Ferramentas padrão (idempotente por nome) ----------
+const FERRAMENTAS_PADRAO = [
+  { name: "Broca 3 mm", tool_type: "broca", diameter_mm: 3, purpose: "geral", passante: false, max_depth_mm: 30 },
+  { name: "Broca 5 mm (parafuso)", tool_type: "broca", diameter_mm: 5, purpose: "parafuso", passante: false, max_depth_mm: 40 },
+  { name: "Broca 5 mm passante", tool_type: "broca", diameter_mm: 5, purpose: "parafuso", passante: true, max_depth_mm: 0 },
+  { name: "Broca 8 mm (cavilha)", tool_type: "broca", diameter_mm: 8, purpose: "cavilha", passante: false, max_depth_mm: 30 },
+  { name: "Broca 8 mm (perno minifix)", tool_type: "broca", diameter_mm: 8, purpose: "minifix", passante: false, max_depth_mm: 34 },
+  { name: "Broca 15 mm (corpo minifix)", tool_type: "broca", diameter_mm: 15, purpose: "minifix", passante: false, max_depth_mm: 13 },
+  { name: "Broca 35 mm (dobradiça)", tool_type: "broca", diameter_mm: 35, purpose: "geral", passante: false, max_depth_mm: 13 },
+  { name: "Fresa 6 mm", tool_type: "fresa", diameter_mm: 6, purpose: "geral", passante: false, max_depth_mm: null },
+  { name: "Fresa 8 mm", tool_type: "fresa", diameter_mm: 8, purpose: "geral", passante: false, max_depth_mm: null },
+  { name: "Disco de corte 3,5 mm (rasgo de fundo)", tool_type: "disco_corte", diameter_mm: 3.5, purpose: "geral", passante: false, max_depth_mm: null },
+] as const;
+
+export const seedFerramentasPadrao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: existing, error: e1 } = await supabase
+      .from("drill_bits").select("name").eq("user_id", userId);
+    if (e1) throw new Error(e1.message);
+    const have = new Set((existing ?? []).map((r: any) => r.name));
+    const toInsert = FERRAMENTAS_PADRAO
+      .filter((f) => !have.has(f.name))
+      .map((f) => ({ ...f, user_id: userId })) as any[];
+    if (toInsert.length === 0) return { inserted: 0, skipped: FERRAMENTAS_PADRAO.length };
+    const { error: e2 } = await supabase.from("drill_bits").insert(toInsert);
+    if (e2) throw new Error(e2.message);
+    return { inserted: toInsert.length, skipped: FERRAMENTAS_PADRAO.length - toInsert.length };
+  });
+
+// ---------- SEED: Fundos padrão (platex/HDF) ----------
+const FUNDOS_PADRAO = [
+  { name: "Platex/HDF 3,5 mm (fundo)", brand: "Genérico", thickness_mm: 3, decor_code: null, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: null, has_grain: false },
+  { name: "Platex/HDF 6 mm (fundo)", brand: "Genérico", thickness_mm: 6, decor_code: null, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: null, has_grain: false },
+  { name: "Platex/HDF 8 mm (fundo)", brand: "Genérico", thickness_mm: 8, decor_code: null, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: null, has_grain: false },
+];
+
+export const seedFundosPadrao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: existing, error: e1 } = await supabase
+      .from("materials").select("name").eq("user_id", userId);
+    if (e1) throw new Error(e1.message);
+    const have = new Set((existing ?? []).map((r: any) => r.name));
+    const toInsert = FUNDOS_PADRAO
+      .filter((m) => !have.has(m.name))
+      .map((m) => ({ ...m, user_id: userId })) as any[];
+    if (toInsert.length === 0) return { inserted: 0, skipped: FUNDOS_PADRAO.length };
+    const { error: e2 } = await supabase.from("materials").insert(toInsert);
+    if (e2) throw new Error(e2.message);
+    return { inserted: toInsert.length, skipped: FUNDOS_PADRAO.length - toInsert.length };
+  });
+
 export const HARDWARE_CATEGORIES = hardwareCategories;
 export const PRICING_UNITS = pricingUnits;
 export const DRILL_PURPOSES = drillPurposes;
+export const TOOL_TYPES = toolTypes;
+
