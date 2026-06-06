@@ -1,0 +1,1 @@
+ALTER TYPE public.hardware_category ADD VALUE IF NOT EXISTS 'pino_prateleira';
