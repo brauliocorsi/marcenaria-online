@@ -5,7 +5,7 @@
 // Suporta sistema de montagem 'laterais_cobrem'. Para 'tampo_base_cobrem'
 // devolve [] (TODO em fase futura).
 
-import { resolverEspessuras, type ModuleConfig, type PieceType, type Vec3 } from "./module";
+import { resolverEspessuras, dimensoesPortas, posicoesDobradicasY, type ModuleConfig, type PieceType, type Vec3 } from "./module";
 import type { TemplateConfig } from "@/lib/drilling.functions";
 
 export type TipoFuro = "cavilha" | "minifix_corpo" | "minifix_perno" | "parafuso";
