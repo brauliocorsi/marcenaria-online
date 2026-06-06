@@ -11,12 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
+import { Module3D } from "@/components/viewer/Module3D";
 import { listMaterials } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { calcularPecas, DEFAULT_MODULE_CONFIG, type ModuleConfig, type Veio } from "@/lib/engines/module";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/_authenticated/modulos")({ component: ModulosPage });
 
