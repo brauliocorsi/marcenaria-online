@@ -133,6 +133,8 @@ function ModulosPage() {
   const updPorta = <K extends keyof ModuleConfig["portas"]>(k: K, v: ModuleConfig["portas"][K]) => setConfig((c) => ({ ...c, portas: { ...c.portas, [k]: v } }));
   const updGav = <K extends keyof ModuleConfig["gavetas"]>(k: K, v: ModuleConfig["gavetas"][K]) => setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, [k]: v } }));
   const updGavCorr = <K extends keyof ModuleConfig["gavetas"]["corredica"]>(k: K, v: ModuleConfig["gavetas"]["corredica"][K]) => setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, corredica: { ...c.gavetas.corredica, [k]: v } } }));
+  const updPes = <K extends keyof ModuleConfig["pes"]>(k: K, v: ModuleConfig["pes"][K]) => setConfig((c) => ({ ...c, pes: { ...c.pes, [k]: v } }));
+  const updTamp = <K extends keyof ModuleConfig["tamponamento"]>(k: K, v: ModuleConfig["tamponamento"][K]) => setConfig((c) => ({ ...c, tamponamento: { ...c.tamponamento, [k]: v } }));
   const updEsp = (k: keyof ModuleConfig["espessuras"], v: number | null) => setConfig((c) => ({ ...c, espessuras: { ...c.espessuras, [k]: v } }));
 
   return (
