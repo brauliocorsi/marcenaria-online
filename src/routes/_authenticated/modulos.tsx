@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
 import { Module3D } from "@/components/viewer/Module3D";
 import { Switch } from "@/components/ui/switch";
-import { listMaterials } from "@/lib/catalog.functions";
+import { listMaterials, listHardware } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
 import { calcularPecas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio } from "@/lib/engines/module";
