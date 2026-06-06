@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   FolderKanban,
   Layers,
+  Minus,
   Wrench,
   Drill,
   Grid3x3,
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 const items = [
   { to: "/projetos", label: "Projetos", icon: FolderKanban },
   { to: "/materiais", label: "Materiais", icon: Layers },
+  { to: "/orlas", label: "Orlas", icon: Minus },
   { to: "/ferragens", label: "Ferragens", icon: Wrench },
   { to: "/brocas", label: "Brocas", icon: Drill },
   { to: "/templates-furacao", label: "Templates de Furação", icon: Grid3x3 },
