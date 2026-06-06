@@ -14,7 +14,267 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      drill_bits: {
+        Row: {
+          created_at: string
+          diameter_mm: number
+          id: string
+          max_depth_mm: number | null
+          name: string
+          purpose: Database["public"]["Enums"]["drill_purpose"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          diameter_mm: number
+          id?: string
+          max_depth_mm?: number | null
+          name: string
+          purpose?: Database["public"]["Enums"]["drill_purpose"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          diameter_mm?: number
+          id?: string
+          max_depth_mm?: number | null
+          name?: string
+          purpose?: Database["public"]["Enums"]["drill_purpose"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      drilling_templates: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      edge_bands: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          price_per_meter: number | null
+          thickness_mm: number
+          user_id: string
+          width_mm: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          price_per_meter?: number | null
+          thickness_mm: number
+          user_id: string
+          width_mm?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          price_per_meter?: number | null
+          thickness_mm?: number
+          user_id?: string
+          width_mm?: number | null
+        }
+        Relationships: []
+      }
+      hardware: {
+        Row: {
+          category: Database["public"]["Enums"]["hardware_category"]
+          created_at: string
+          id: string
+          name: string
+          params: Json
+          price: number | null
+          pricing_unit: Database["public"]["Enums"]["pricing_unit"]
+          reference: string | null
+          user_id: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["hardware_category"]
+          created_at?: string
+          id?: string
+          name: string
+          params?: Json
+          price?: number | null
+          pricing_unit?: Database["public"]["Enums"]["pricing_unit"]
+          reference?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["hardware_category"]
+          created_at?: string
+          id?: string
+          name?: string
+          params?: Json
+          price?: number | null
+          pricing_unit?: Database["public"]["Enums"]["pricing_unit"]
+          reference?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      materials: {
+        Row: {
+          brand: string
+          created_at: string
+          decor_code: string | null
+          has_grain: boolean
+          id: string
+          name: string
+          price_per_sheet: number | null
+          sheet_height_mm: number
+          sheet_width_mm: number
+          thickness_mm: number
+          user_id: string
+        }
+        Insert: {
+          brand?: string
+          created_at?: string
+          decor_code?: string | null
+          has_grain?: boolean
+          id?: string
+          name: string
+          price_per_sheet?: number | null
+          sheet_height_mm?: number
+          sheet_width_mm?: number
+          thickness_mm: number
+          user_id: string
+        }
+        Update: {
+          brand?: string
+          created_at?: string
+          decor_code?: string | null
+          has_grain?: boolean
+          id?: string
+          name?: string
+          price_per_sheet?: number | null
+          sheet_height_mm?: number
+          sheet_width_mm?: number
+          thickness_mm?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          nif: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          nif?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          nif?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["project_status"]
+          type: Database["public"]["Enums"]["project_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          name: string
+          status?: Database["public"]["Enums"]["project_status"]
+          type?: Database["public"]["Enums"]["project_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["project_status"]
+          type?: Database["public"]["Enums"]["project_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string
+          currency: string
+          default_thickness_mm: number
+          id: string
+          iva_percent: number
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          default_thickness_mm?: number
+          id?: string
+          iva_percent?: number
+          unit?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          default_thickness_mm?: number
+          id?: string
+          iva_percent?: number
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +283,20 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      drill_purpose: "parafuso" | "cavilha" | "minifix" | "geral"
+      hardware_category:
+        | "minifix"
+        | "cavilha"
+        | "parafuso"
+        | "dobradica"
+        | "corredica"
+        | "pe"
+        | "perfil_aluminio"
+        | "led"
+        | "outro"
+      pricing_unit: "unidade" | "metro"
+      project_status: "rascunho" | "finalizado"
+      project_type: "cozinha" | "roupeiro" | "movel"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +423,22 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      drill_purpose: ["parafuso", "cavilha", "minifix", "geral"],
+      hardware_category: [
+        "minifix",
+        "cavilha",
+        "parafuso",
+        "dobradica",
+        "corredica",
+        "pe",
+        "perfil_aluminio",
+        "led",
+        "outro",
+      ],
+      pricing_unit: ["unidade", "metro"],
+      project_status: ["rascunho", "finalizado"],
+      project_type: ["cozinha", "roupeiro", "movel"],
+    },
   },
 } as const
