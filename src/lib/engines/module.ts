@@ -160,12 +160,39 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
-  // Portas como peças reais
+  // Portas como peças reais (apenas se não houver gavetas)
   for (const pp of dimensoesPortas(config)) {
     pecas.push({
       tipo: "porta", descricao: pp.descricao,
       qtd: 1, comprimento_mm: r(pp.altura), largura_mm: r(pp.largura), espessura_mm: r(pp.espessura),
       veio: "comprimento",
+    });
+  }
+
+  // Gavetas — frentes + caixas
+  const g = dimensoesGavetas(config);
+  for (const fr of g.frentes) {
+    pecas.push({
+      tipo: "gaveta_frente", descricao: fr.descricao,
+      qtd: 1, comprimento_mm: r(fr.size[1]), largura_mm: r(fr.size[0]), espessura_mm: r(fr.size[2]),
+      veio: "comprimento",
+    });
+  }
+  for (const c of g.caixas) {
+    pecas.push({
+      tipo: "gaveta_lateral", descricao: `Lateral caixa gaveta ${c.idx + 1}`,
+      qtd: 2, comprimento_mm: r(c.boxDepth), largura_mm: r(c.boxHeight), espessura_mm: r(c.espessuraCaixa),
+      veio: "comprimento",
+    });
+    pecas.push({
+      tipo: "gaveta_frenteCaixa", descricao: `Frente/traseira caixa gaveta ${c.idx + 1}`,
+      qtd: 2, comprimento_mm: r(c.boxWidth - 2 * c.espessuraCaixa), largura_mm: r(c.boxHeight), espessura_mm: r(c.espessuraCaixa),
+      veio: "comprimento",
+    });
+    pecas.push({
+      tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`,
+      qtd: 1, comprimento_mm: r(c.boxWidth), largura_mm: r(c.boxDepth), espessura_mm: r(c.espessuraFundo),
+      veio: "largura",
     });
   }
 
