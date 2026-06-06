@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
 } from "@/components/ui/sheet";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
