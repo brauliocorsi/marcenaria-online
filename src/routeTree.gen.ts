@@ -21,6 +21,7 @@ import { Route as AuthenticatedFerragensRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
 import { Route as AuthenticatedBrocasRouteImport } from './routes/_authenticated/brocas'
 import { Route as AuthenticatedAmbientesRouteImport } from './routes/_authenticated/ambientes'
+import { Route as AuthenticatedAmbientesRouteImport } from './routes/_authenticated/ambientes'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
