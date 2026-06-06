@@ -57,6 +57,7 @@ export const DEFAULT_TEMPLATE_CONFIG: TemplateConfig = {
   regras: {
     recuo_extremidade: 37,
     espacamento_sistema: 32,
+    espacamento_cavilha_minifix: 32,
     recuo_frontal: 37,
     conectores_min: 2,
     conectores_por_mm: 250,
