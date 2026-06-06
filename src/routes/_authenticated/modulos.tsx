@@ -20,7 +20,7 @@ import { listMaterials, listHardware, listDrillBits } from "@/lib/catalog.functi
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
 import { calcularPecas, dimensoesGavetas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo } from "@/lib/engines/module";
-import { calcularFuros, calcularDobradicas, calcularCorredicas, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
+import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
