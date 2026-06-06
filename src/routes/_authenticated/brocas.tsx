@@ -146,7 +146,10 @@ function BrocasPage() {
 
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => consolidarMut.mutate()} disabled={consolidarMut.isPending}>
+          Consolidar ferramentas
+        </Button>
         <Button variant="outline" size="sm" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
           <Sparkles className="mr-2 h-3.5 w-3.5" /> Adicionar ferramentas padrão
         </Button>
