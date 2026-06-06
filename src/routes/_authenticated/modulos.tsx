@@ -687,6 +687,8 @@ const TIPO_LABEL: Record<TipoFuro, string> = {
   minifix_perno: "Minifix (perno)",
   parafuso: "Parafuso",
   dobradica: "Dobradiça (caneco)",
+  marcacao: "Marcação (corrediça)",
+  pino: "Pino de prateleira",
 };
 
 export const FURO_COR: Record<TipoFuro, string> = {
@@ -695,6 +697,8 @@ export const FURO_COR: Record<TipoFuro, string> = {
   cavilha:       "#16a34a",   // verde
   parafuso:      "#6b7280",   // cinzento
   dobradica:     "#1a1a1a",   // preto (caneco)
+  marcacao:      "#d4d4d8",   // branco / cinza-claro
+  pino:          "#8b5cf6",   // roxo
 };
 
 function FurosLegend() {
@@ -704,13 +708,15 @@ function FurosLegend() {
     ["cavilha", "Cavilha Ø8"],
     ["parafuso", "Parafuso"],
     ["dobradica", "Dobradiça Ø35"],
+    ["marcacao", "Marcação corrediça Ø3 (0,5 mm)"],
+    ["pino", "Pino prateleira Ø5"],
   ];
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t px-4 py-2 text-[11px] text-muted-foreground">
       <span className="font-medium text-foreground">Legenda:</span>
       {items.map(([t, label]) => (
         <span key={t} className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: FURO_COR[t] }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-full border border-black/10" style={{ background: FURO_COR[t] }} />
           {label}
         </span>
       ))}
