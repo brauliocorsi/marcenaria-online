@@ -233,3 +233,49 @@ export function calcularDobradicas(config: ModuleConfig, template: TemplateConfi
   return out;
 }
 
+
+// ─────────────────────────────────────────────────────────────
+// Corrediças — furação dos pontos de fixação na lateral da carcaça.
+// 3 parafusos por lateral por gaveta (frente / meio / trás).
+// ─────────────────────────────────────────────────────────────
+
+import { dimensoesGavetas } from "./module";
+
+export function calcularCorredicas(config: ModuleConfig, template: TemplateConfig): Furo[] {
+  const { caixas } = dimensoesGavetas(config);
+  if (caixas.length === 0) return [];
+  const { regras } = template;
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const W = config.dims.width;
+  const diam = regras.diam_parafuso;
+  const prof = regras.prof_cavilha;
+  const out: Furo[] = [];
+
+  for (const c of caixas) {
+    const zF = c.zFront - regras.recuo_frontal;
+    const zB = c.zBack + regras.recuo_frontal;
+    const zM = (c.zBack + c.zFront) / 2;
+    const zs = [zB, zM, zF];
+    const y = c.center[1];
+    for (const lado of ["esq", "dir"] as const) {
+      const xFace = lado === "esq" ? e.lateral : W - e.lateral;
+      const dir: Vec3 = lado === "esq" ? [-1, 0, 0] : [1, 0, 0];
+      for (const z of zs) {
+        out.push({
+          junta: `corredica_gaveta${c.idx + 1}_${lado}`,
+          tipo_furo: "parafuso",
+          pos: [xFace, y, z],
+          dir,
+          diametro: diam,
+          profundidade: prof,
+          peca: "lateral",
+        });
+      }
+    }
+  }
+  return out;
+}
+
+export function contarCorredicas(config: ModuleConfig): number {
+  return dimensoesGavetas(config).caixas.length * 2;
+}

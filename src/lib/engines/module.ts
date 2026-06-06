@@ -2,7 +2,7 @@
 // Todas as medidas em mm. Cálculos internos podem ser decimais; resultados
 // arredondados a inteiro.
 
-export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | "porta";
+export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | "porta" | "gaveta_frente" | "gaveta_lateral" | "gaveta_frenteCaixa" | "gaveta_fundo";
 export type PortaModo = "sobreposta" | "embutida";
 export type LadoAbertura = "esquerda" | "direita";
 export type SistemaMontagem = "laterais_cobrem" | "tampo_base_cobrem";
@@ -38,6 +38,17 @@ export interface PortasConfig {
   folgaCentral: number;
 }
 
+export interface GavetasConfig {
+  nGavetas: number;
+  modo: PortaModo;
+  folga: number;
+  espessuraFrente: number;
+  corredica: { comprimento: number; folgaLateral: number };
+  espessuraCaixa: number;
+  espessuraFundo: number;
+  alturaCaixaFolga: number;
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
@@ -50,6 +61,8 @@ export interface ModuleConfig {
   fundo: FundoConfig;
   nPrateleiras: number;
   portas: PortasConfig;
+  // REGRA: se nGavetas>0, a frente são gavetas (portas ignoradas).
+  gavetas: GavetasConfig;
 }
 
 export interface Peca {
@@ -147,12 +160,39 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
-  // Portas como peças reais
+  // Portas como peças reais (apenas se não houver gavetas)
   for (const pp of dimensoesPortas(config)) {
     pecas.push({
       tipo: "porta", descricao: pp.descricao,
       qtd: 1, comprimento_mm: r(pp.altura), largura_mm: r(pp.largura), espessura_mm: r(pp.espessura),
       veio: "comprimento",
+    });
+  }
+
+  // Gavetas — frentes + caixas
+  const g = dimensoesGavetas(config);
+  for (const fr of g.frentes) {
+    pecas.push({
+      tipo: "gaveta_frente", descricao: fr.descricao,
+      qtd: 1, comprimento_mm: r(fr.size[1]), largura_mm: r(fr.size[0]), espessura_mm: r(fr.size[2]),
+      veio: "comprimento",
+    });
+  }
+  for (const c of g.caixas) {
+    pecas.push({
+      tipo: "gaveta_lateral", descricao: `Lateral caixa gaveta ${c.idx + 1}`,
+      qtd: 2, comprimento_mm: r(c.boxDepth), largura_mm: r(c.boxHeight), espessura_mm: r(c.espessuraCaixa),
+      veio: "comprimento",
+    });
+    pecas.push({
+      tipo: "gaveta_frenteCaixa", descricao: `Frente/traseira caixa gaveta ${c.idx + 1}`,
+      qtd: 2, comprimento_mm: r(c.boxWidth - 2 * c.espessuraCaixa), largura_mm: r(c.boxHeight), espessura_mm: r(c.espessuraCaixa),
+      veio: "comprimento",
+    });
+    pecas.push({
+      tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`,
+      qtd: 1, comprimento_mm: r(c.boxWidth), largura_mm: r(c.boxDepth), espessura_mm: r(c.espessuraFundo),
+      veio: "largura",
     });
   }
 
@@ -168,7 +208,18 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   fundo: { modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0 },
   nPrateleiras: 1,
   portas: { nPortas: 0, modo: "sobreposta", ladoAbertura: "direita", espessura: null, folga: 2, folgaCentral: 3 },
+  gavetas: {
+    nGavetas: 0, modo: "sobreposta", folga: 3, espessuraFrente: 19,
+    corredica: { comprimento: 500, folgaLateral: 13 },
+    espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
+  },
 };
+
+// Backwards-compat: assegura que módulos antigos têm o bloco gavetas.
+export function normalizarConfig(c: ModuleConfig): ModuleConfig {
+  if (c.gavetas && typeof c.gavetas.nGavetas === "number") return c;
+  return { ...c, gavetas: DEFAULT_MODULE_CONFIG.gavetas };
+}
 
 // ─────────────────────────────────────────────────────────────
 // Geometria 3D — fonte única de verdade partilhada com calcularPecas.
@@ -256,6 +307,34 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
     });
   }
 
+  // Gavetas — frentes + 4 peças da caixa por gaveta
+  const g = dimensoesGavetas(config);
+  for (const fr of g.frentes) {
+    out.push({ tipo: "gaveta_frente", descricao: fr.descricao, veio: "comprimento",
+      size: fr.size, center: fr.center });
+  }
+  for (const c of g.caixas) {
+    // 2 laterais
+    const xL = c.center[0] - c.boxWidth / 2 + c.espessuraCaixa / 2;
+    const xR = c.center[0] + c.boxWidth / 2 - c.espessuraCaixa / 2;
+    out.push({ tipo: "gaveta_lateral", descricao: `Lateral esq. caixa gaveta ${c.idx + 1}`, veio: "comprimento",
+      size: [c.espessuraCaixa, c.boxHeight, c.boxDepth], center: [xL, c.center[1], c.center[2]] });
+    out.push({ tipo: "gaveta_lateral", descricao: `Lateral dir. caixa gaveta ${c.idx + 1}`, veio: "comprimento",
+      size: [c.espessuraCaixa, c.boxHeight, c.boxDepth], center: [xR, c.center[1], c.center[2]] });
+    // frente + traseira
+    const zBack = c.center[2] - c.boxDepth / 2 + c.espessuraCaixa / 2;
+    const zFront = c.center[2] + c.boxDepth / 2 - c.espessuraCaixa / 2;
+    const innerW = c.boxWidth - 2 * c.espessuraCaixa;
+    out.push({ tipo: "gaveta_frenteCaixa", descricao: `Frente caixa gaveta ${c.idx + 1}`, veio: "comprimento",
+      size: [innerW, c.boxHeight, c.espessuraCaixa], center: [c.center[0], c.center[1], zFront] });
+    out.push({ tipo: "gaveta_frenteCaixa", descricao: `Traseira caixa gaveta ${c.idx + 1}`, veio: "comprimento",
+      size: [innerW, c.boxHeight, c.espessuraCaixa], center: [c.center[0], c.center[1], zBack] });
+    // fundo (assente em baixo)
+    const yFundo = c.center[1] - c.boxHeight / 2 + c.espessuraFundo / 2;
+    out.push({ tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`, veio: "largura",
+      size: [c.boxWidth, c.espessuraFundo, c.boxDepth], center: [c.center[0], yFundo, c.center[2]] });
+  }
+
   return out;
 }
 
@@ -280,8 +359,10 @@ export interface PortaDim {
 }
 
 export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
-  const { dims, espessuraPadrao, espessuras, portas } = config;
+  const { dims, espessuraPadrao, espessuras, portas, gavetas } = config;
   if (!portas || portas.nPortas === 0) return [];
+  // Regra: se houver gavetas, a frente é gavetas — portas ignoradas.
+  if (gavetas && gavetas.nGavetas > 0) return [];
   const W = dims.width, H = dims.height, D = dims.depth;
   const e = resolverEspessuras(espessuraPadrao, espessuras);
   const eP = portas.espessura && portas.espessura > 0 ? portas.espessura : espessuraPadrao;
@@ -362,3 +443,90 @@ export function posicoesDobradicasY(p: PortaDim): number[] {
 }
 
 
+
+// ─────────────────────────────────────────────────────────────
+// Gavetas — frentes + caixas (partilhado por peças, geometria, corrediças)
+// ─────────────────────────────────────────────────────────────
+
+export interface GavetaFrente {
+  idx: number;
+  descricao: string;
+  size: Vec3;
+  center: Vec3;
+}
+
+export interface GavetaCaixa {
+  idx: number;
+  center: Vec3;          // centro 3D da caixa (X=W/2; Y=cyFrente; Z meio)
+  boxWidth: number;
+  boxHeight: number;
+  boxDepth: number;
+  espessuraCaixa: number;
+  espessuraFundo: number;
+  zBack: number;
+  zFront: number;
+}
+
+export interface GavetasResult {
+  frentes: GavetaFrente[];
+  caixas: GavetaCaixa[];
+}
+
+export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
+  const g = config.gavetas;
+  if (!g || g.nGavetas <= 0) return { frentes: [], caixas: [] };
+  const { dims, espessuraPadrao, espessuras } = config;
+  const W = dims.width, H = dims.height, D = dims.depth;
+  const e = resolverEspessuras(espessuraPadrao, espessuras);
+  const n = g.nGavetas;
+  const f = g.folga;
+  const eF = g.espessuraFrente && g.espessuraFrente > 0 ? g.espessuraFrente : espessuraPadrao;
+
+  // Limites em X/Y consoante o modo
+  let xMin: number, xMax: number, yMin: number, yMax: number, zBack: number, zFront: number, cz: number;
+  if (g.modo === "sobreposta") {
+    xMin = f; xMax = W - f;
+    yMin = f; yMax = H - f;
+    zBack = D; zFront = D + eF; cz = D + eF / 2;
+  } else {
+    xMin = e.lateral + f; xMax = W - e.lateral - f;
+    yMin = e.base + f; yMax = H - e.tampo - f;
+    zBack = D - eF; zFront = D; cz = D - eF / 2;
+  }
+  const larguraFrente = xMax - xMin;
+  const cx = (xMin + xMax) / 2;
+  const espacoY = yMax - yMin;
+  const alturaFrente = Math.round((espacoY - (n - 1) * f) / n);
+
+  // Geometria da caixa (igual para todas as gavetas)
+  const boxWidth = W - 2 * e.lateral - 2 * g.corredica.folgaLateral;
+  const boxDepth = Math.min(g.corredica.comprimento, D - 10);
+  const boxHeight = Math.max(60, alturaFrente - g.alturaCaixaFolga);
+  // Caixa recuada da frente: zStart = e.lateral (proxy de folga interior); cz_caixa = zStart + boxDepth/2
+  const zStartCaixa = e.lateral;
+  const cz_caixa = zStartCaixa + boxDepth / 2;
+
+  const frentes: GavetaFrente[] = [];
+  const caixas: GavetaCaixa[] = [];
+
+  for (let j = 0; j < n; j++) {
+    const cyFrente = yMin + j * (alturaFrente + f) + alturaFrente / 2;
+    frentes.push({
+      idx: j,
+      descricao: `Frente gaveta ${j + 1}`,
+      size: [larguraFrente, alturaFrente, eF],
+      center: [cx, cyFrente, cz],
+    });
+    caixas.push({
+      idx: j,
+      center: [W / 2, cyFrente, cz_caixa],
+      boxWidth, boxHeight, boxDepth,
+      espessuraCaixa: g.espessuraCaixa,
+      espessuraFundo: g.espessuraFundo,
+      zBack: zStartCaixa,
+      zFront: zStartCaixa + boxDepth,
+    });
+  }
+
+  return { frentes, caixas };
+}

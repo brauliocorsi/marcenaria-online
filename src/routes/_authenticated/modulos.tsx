@@ -19,8 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { listMaterials } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
-import { calcularPecas, DEFAULT_MODULE_CONFIG, type ModuleConfig, type Veio } from "@/lib/engines/module";
-import { calcularFuros, calcularDobradicas, type Furo, type TipoFuro } from "@/lib/engines/drilling";
+import { calcularPecas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio } from "@/lib/engines/module";
+import { calcularFuros, calcularDobradicas, calcularCorredicas, type Furo, type TipoFuro } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
@@ -65,7 +65,11 @@ function ModulosPage() {
   const furos: Furo[] = useMemo(() => {
     if (!templateConfig || invalid) return [];
     try {
-      return [...calcularFuros(config, templateConfig), ...calcularDobradicas(config, templateConfig)];
+      return [
+        ...calcularFuros(config, templateConfig),
+        ...calcularDobradicas(config, templateConfig),
+        ...calcularCorredicas(config, templateConfig),
+      ];
     } catch { return []; }
   }, [config, templateConfig, invalid]);
 
@@ -83,7 +87,7 @@ function ModulosPage() {
       ? { ...DEFAULT_MODULE_CONFIG, ...m.config,
           dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } }
       : { ...DEFAULT_MODULE_CONFIG, dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } };
-    setConfig(cfg as ModuleConfig);
+    setConfig(normalizarConfig(cfg as ModuleConfig));
   }
 
   function novoModulo() {
@@ -124,6 +128,8 @@ function ModulosPage() {
   const updFolga = (k: keyof ModuleConfig["folgas"], v: number) => setConfig((c) => ({ ...c, folgas: { ...c.folgas, [k]: v } }));
   const updFundo = <K extends keyof ModuleConfig["fundo"]>(k: K, v: ModuleConfig["fundo"][K]) => setConfig((c) => ({ ...c, fundo: { ...c.fundo, [k]: v } }));
   const updPorta = <K extends keyof ModuleConfig["portas"]>(k: K, v: ModuleConfig["portas"][K]) => setConfig((c) => ({ ...c, portas: { ...c.portas, [k]: v } }));
+  const updGav = <K extends keyof ModuleConfig["gavetas"]>(k: K, v: ModuleConfig["gavetas"][K]) => setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, [k]: v } }));
+  const updGavCorr = <K extends keyof ModuleConfig["gavetas"]["corredica"]>(k: K, v: ModuleConfig["gavetas"]["corredica"][K]) => setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, corredica: { ...c.gavetas.corredica, [k]: v } } }));
   const updEsp = (k: keyof ModuleConfig["espessuras"], v: number | null) => setConfig((c) => ({ ...c, espessuras: { ...c.espessuras, [k]: v } }));
 
   return (
@@ -359,6 +365,69 @@ function ModulosPage() {
                     value={config.portas.folgaCentral}
                     disabled={config.portas.nPortas !== 2}
                     onChange={(e) => updPorta("folgaCentral", Number(e.target.value) || 0)} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Gavetas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {config.gavetas.nGavetas > 0 && config.portas.nPortas > 0 && (
+                <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
+                  Regra: módulo é portas <em>OU</em> gavetas. Como há gavetas, as portas são ignoradas.
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Nº de gavetas</Label>
+                  <Input type="number" min={0} max={10} step={1} className="tabular"
+                    value={config.gavetas.nGavetas}
+                    onChange={(e) => updGav("nGavetas", Math.max(0, Math.min(10, Number(e.target.value) || 0)))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Modo</Label>
+                  <Select value={config.gavetas.modo} onValueChange={(v) => updGav("modo", v as any)} disabled={config.gavetas.nGavetas === 0}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sobreposta">Sobreposta</SelectItem>
+                      <SelectItem value="embutida">Embutida</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Folga</Label>
+                  <Input type="number" min={0} step={0.5} className="tabular"
+                    value={config.gavetas.folga} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGav("folga", Number(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Esp. frente</Label>
+                  <Input type="number" min={1} step={0.5} className="tabular"
+                    value={config.gavetas.espessuraFrente} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGav("espessuraFrente", Math.max(1, Number(e.target.value) || 1))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Esp. caixa</Label>
+                  <Input type="number" min={1} step={0.5} className="tabular"
+                    value={config.gavetas.espessuraCaixa} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGav("espessuraCaixa", Math.max(1, Number(e.target.value) || 1))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Corrediça (mm)</Label>
+                  <Input type="number" min={100} max={1000} step={50} className="tabular"
+                    value={config.gavetas.corredica.comprimento} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGavCorr("comprimento", Math.max(100, Number(e.target.value) || 100))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Folga lateral</Label>
+                  <Input type="number" min={0} step={0.5} className="tabular"
+                    value={config.gavetas.corredica.folgaLateral} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGavCorr("folgaLateral", Number(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Folga caixa</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.gavetas.alturaCaixaFolga} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGav("alturaCaixaFolga", Number(e.target.value) || 0)} />
                 </div>
               </div>
             </CardContent>
