@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
 import { listDrillBits, upsertDrillBit, deleteDrillBit, DRILL_PURPOSES } from "@/lib/catalog.functions";
+import { seedBrocasPadrao } from "@/lib/drilling.functions";
 
 export const Route = createFileRoute("/_authenticated/brocas")({ component: BrocasPage });
 
@@ -85,8 +86,23 @@ function BrocasPage() {
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
 
+  const seed = useServerFn(seedBrocasPadrao);
+  const seedMut = useMutation({
+    mutationFn: async () => seed(),
+    onSuccess: (r: any) => {
+      toast.success(r.inserted > 0 ? `Adicionadas ${r.inserted} brocas padrão` : "Brocas padrão já existiam");
+      qc.invalidateQueries({ queryKey: ["drill_bits"] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
   return (
     <>
+      <div className="mb-3 flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
+          <Sparkles className="mr-2 h-3.5 w-3.5" /> Adicionar brocas padrão
+        </Button>
+      </div>
       <CatalogShell
         title="Brocas"
         subtitle="Diâmetros, finalidades e profundidades para furação."
