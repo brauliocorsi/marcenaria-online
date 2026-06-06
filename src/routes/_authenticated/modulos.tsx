@@ -288,51 +288,80 @@ function ModulosPage() {
           </Card>
         </div>
 
-        {/* ─────────── RIGHT: Pieces table ─────────── */}
+        {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
         <div className="space-y-3">
-          <Card className="overflow-hidden">
-            <CardHeader className="border-b py-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold">Peças calculadas</CardTitle>
-                <div className="text-xs text-muted-foreground tabular">
-                  {totals.qtd} peças · {totals.areaM2.toFixed(3)} m²
-                </div>
+          <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as "3d" | "pecas")}>
+            <div className="flex items-center justify-between gap-3">
+              <TabsList>
+                <TabsTrigger value="3d">Vista 3D</TabsTrigger>
+                <TabsTrigger value="pecas">Peças</TabsTrigger>
+              </TabsList>
+              <div className="text-xs text-muted-foreground tabular">
+                {totals.qtd} peças · {totals.areaM2.toFixed(3)} m²
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {invalid && (
-                <div className="flex items-start gap-2 border-b bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>Dimensões inválidas — algumas peças têm tamanho ≤ 0. Aumente as dimensões externas ou reduza as espessuras/folgas.</span>
+            </div>
+
+            <TabsContent value="3d" className="mt-3">
+              <Card className="overflow-hidden">
+                <div className="flex items-center gap-3 border-b px-4 py-2.5">
+                  <Label className="text-xs text-muted-foreground shrink-0">Vista explodida</Label>
+                  <Slider
+                    value={[Math.round(explode * 100)]}
+                    min={0} max={100} step={1}
+                    onValueChange={([v]) => setExplode(v / 100)}
+                    className="flex-1"
+                  />
+                  <span className="text-xs tabular w-10 text-right text-muted-foreground">{Math.round(explode * 100)}%</span>
                 </div>
-              )}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Peça</TableHead>
-                    <TableHead className="text-right">Qtd</TableHead>
-                    <TableHead className="text-right">Comprimento</TableHead>
-                    <TableHead className="text-right">Largura</TableHead>
-                    <TableHead className="text-right">Espessura</TableHead>
-                    <TableHead>Veio</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pecas.map((p, i) => (
-                    <TableRow key={i} className={cn((p.comprimento_mm <= 0 || p.largura_mm <= 0) && "bg-destructive/5")}>
-                      <TableCell className="font-medium">{p.descricao}</TableCell>
-                      <TableCell className="text-right tabular">{p.qtd}</TableCell>
-                      <TableCell className="text-right tabular">{p.comprimento_mm} mm</TableCell>
-                      <TableCell className="text-right tabular">{p.largura_mm} mm</TableCell>
-                      <TableCell className="text-right tabular">{p.espessura_mm} mm</TableCell>
-                      <TableCell className="text-muted-foreground">{VEIO_LABEL[p.veio]}</TableCell>
+                {invalid && (
+                  <div className="flex items-start gap-2 border-b bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>Dimensões inválidas — algumas peças têm tamanho ≤ 0.</span>
+                  </div>
+                )}
+                <div className="h-[560px] w-full">
+                  <Module3D config={config} explode={explode} />
+                </div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="pecas" className="mt-3">
+              <Card className="overflow-hidden">
+                {invalid && (
+                  <div className="flex items-start gap-2 border-b bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>Dimensões inválidas — algumas peças têm tamanho ≤ 0. Aumente as dimensões externas ou reduza as espessuras/folgas.</span>
+                  </div>
+                )}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Peça</TableHead>
+                      <TableHead className="text-right">Qtd</TableHead>
+                      <TableHead className="text-right">Comprimento</TableHead>
+                      <TableHead className="text-right">Largura</TableHead>
+                      <TableHead className="text-right">Espessura</TableHead>
+                      <TableHead>Veio</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {pecas.map((p, i) => (
+                      <TableRow key={i} className={cn((p.comprimento_mm <= 0 || p.largura_mm <= 0) && "bg-destructive/5")}>
+                        <TableCell className="font-medium">{p.descricao}</TableCell>
+                        <TableCell className="text-right tabular">{p.qtd}</TableCell>
+                        <TableCell className="text-right tabular">{p.comprimento_mm} mm</TableCell>
+                        <TableCell className="text-right tabular">{p.largura_mm} mm</TableCell>
+                        <TableCell className="text-right tabular">{p.espessura_mm} mm</TableCell>
+                        <TableCell className="text-muted-foreground">{VEIO_LABEL[p.veio]}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
+
       </div>
 
       <ConfirmDelete open={!!delId} onOpenChange={(o) => !o && setDelId(null)} onConfirm={() => delId && delMut.mutate(delId)} />
