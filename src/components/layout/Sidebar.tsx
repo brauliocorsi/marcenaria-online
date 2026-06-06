@@ -7,6 +7,7 @@ import {
   Drill,
   Grid3x3,
   Box,
+  Home,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/projetos", label: "Projetos", icon: FolderKanban },
+  { to: "/ambientes", label: "Ambientes", icon: Home },
   { to: "/modulos", label: "Módulos", icon: Box },
   { to: "/materiais", label: "Materiais", icon: Layers },
   { to: "/orlas", label: "Orlas", icon: Minus },
