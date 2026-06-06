@@ -306,28 +306,33 @@ function ModulosPage() {
 
         {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
         <div className="space-y-3">
-          <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as "3d" | "pecas")}>
+          <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as "3d" | "pecas" | "furacao")}>
             <div className="flex items-center justify-between gap-3">
               <TabsList>
                 <TabsTrigger value="3d">Vista 3D</TabsTrigger>
                 <TabsTrigger value="pecas">Peças</TabsTrigger>
+                <TabsTrigger value="furacao">Furação</TabsTrigger>
               </TabsList>
               <div className="text-xs text-muted-foreground tabular">
-                {totals.qtd} peças · {totals.areaM2.toFixed(3)} m²
+                {totals.qtd} peças · {totals.areaM2.toFixed(3)} m² {templateConfig ? `· ${furos.length} furos` : ""}
               </div>
             </div>
 
             <TabsContent value="3d" className="mt-3">
               <Card className="overflow-hidden">
-                <div className="flex items-center gap-3 border-b px-4 py-2.5">
+                <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2.5">
                   <Label className="text-xs text-muted-foreground shrink-0">Vista explodida</Label>
                   <Slider
                     value={[Math.round(explode * 100)]}
                     min={0} max={100} step={1}
                     onValueChange={([v]) => setExplode(v / 100)}
-                    className="flex-1"
+                    className="flex-1 min-w-[120px]"
                   />
                   <span className="text-xs tabular w-10 text-right text-muted-foreground">{Math.round(explode * 100)}%</span>
+                  <div className="flex items-center gap-2 pl-3 border-l">
+                    <Switch id="show-furos" checked={showFuros} onCheckedChange={setShowFuros} disabled={!templateConfig} />
+                    <Label htmlFor="show-furos" className="text-xs text-muted-foreground cursor-pointer">Mostrar furação</Label>
+                  </div>
                 </div>
                 {invalid && (
                   <div className="flex items-start gap-2 border-b bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
@@ -336,7 +341,7 @@ function ModulosPage() {
                   </div>
                 )}
                 <div className="h-[560px] w-full">
-                  <Module3D config={config} explode={explode} />
+                  <Module3D config={config} explode={explode} furos={showFuros ? furos : []} />
                 </div>
               </Card>
             </TabsContent>
@@ -375,8 +380,13 @@ function ModulosPage() {
                 </Table>
               </Card>
             </TabsContent>
+
+            <TabsContent value="furacao" className="mt-3">
+              <FuracaoPanel furos={furos} hasTemplate={!!templateConfig} />
+            </TabsContent>
           </Tabs>
         </div>
+
 
       </div>
 
