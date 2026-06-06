@@ -245,6 +245,8 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
       ],
       center: [W / 2, H / 2, fundo.espessura / 2],
     });
+  }
+
   // Portas
   for (const pp of dimensoesPortas(config)) {
     out.push({
