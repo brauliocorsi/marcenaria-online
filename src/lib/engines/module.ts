@@ -528,7 +528,9 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
   const alturaFrente = Math.round((espacoY - (n - 1) * f) / n);
 
   // Geometria da caixa (igual para todas as gavetas)
-  const boxWidth = W - 2 * e.lateral - 2 * g.corredica.folgaLateral;
+  // folgaLateralPorLado vem da ferragem escolhida (category='corredica'); fallback 13mm.
+  const fl = g.corredica.folgaLateralPorLado ?? g.corredica.folgaLateral ?? 13;
+  const boxWidth = W - 2 * e.lateral - 2 * fl;
   const boxDepth = Math.min(g.corredica.comprimento, D - 10);
   const boxHeight = Math.max(60, alturaFrente - g.alturaCaixaFolga);
   // Caixa recuada da frente: zStart = e.lateral (proxy de folga interior); cz_caixa = zStart + boxDepth/2
