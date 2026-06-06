@@ -239,3 +239,86 @@ function SliderField({
     </div>
   );
 }
+
+function AddAberturaButton({ onAdd }: { onAdd: (p: ParedeId, t: TipoAbertura) => void }) {
+  const [parede, setParede] = useState<ParedeId>("fundo");
+  const [tipo, setTipo] = useState<TipoAbertura>("janela");
+  return (
+    <div className="flex items-center gap-1">
+      <Select value={parede} onValueChange={(v) => setParede(v as ParedeId)}>
+        <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {PAREDES.map((p) => <SelectItem key={p.id} value={p.id} className="text-xs">{p.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Select value={tipo} onValueChange={(v) => setTipo(v as TipoAbertura)}>
+        <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="janela" className="text-xs">Janela</SelectItem>
+          <SelectItem value="porta" className="text-xs">Porta</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => onAdd(parede, tipo)}>
+        <Plus className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
+function AberturaRow({
+  ab, room, onChange, onRemove,
+}: { ab: Abertura; room: RoomConfig; onChange: (p: Partial<Abertura>) => void; onRemove: () => void }) {
+  const validacao = useMemo(() => validarAbertura(room, ab), [room, ab]);
+  const comp = comprimentoParede(room, ab.paredeId);
+  return (
+    <div className={cn("rounded-md border p-2 space-y-2", !validacao.valido && "border-destructive")}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <Select value={ab.paredeId} onValueChange={(v) => onChange({ paredeId: v as ParedeId })}>
+            <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PAREDES.map((p) => <SelectItem key={p.id} value={p.id} className="text-xs">{p.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={ab.tipo} onValueChange={(v) => onChange({ tipo: v as TipoAbertura, y: v === "porta" ? 0 : ab.y })}>
+            <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="janela" className="text-xs">Janela</SelectItem>
+              <SelectItem value="porta" className="text-xs">Porta</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRemove}>
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <NumField label={`x (0..${comp})`} value={ab.x} onChange={(v) => onChange({ x: v })} />
+        <NumField label="y" value={ab.y} onChange={(v) => onChange({ y: v })} disabled={ab.tipo === "porta"} />
+        <NumField label="largura" value={ab.largura} onChange={(v) => onChange({ largura: v })} />
+        <NumField label="altura" value={ab.altura} onChange={(v) => onChange({ altura: v })} />
+      </div>
+      {!validacao.valido && (
+        <div className="flex items-center gap-1 text-xs text-destructive">
+          <AlertTriangle className="h-3 w-3" /> {validacao.motivo}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NumField({ label, value, onChange, disabled }: { label: string; value: number; onChange: (v: number) => void; disabled?: boolean }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[10px] text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        className="h-7 text-xs"
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+      />
+    </div>
+  );
+}
+
