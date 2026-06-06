@@ -242,6 +242,8 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
     corredica: { hardwareId: null, comprimento: 500, folgaLateralPorLado: 13 },
     espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
   },
+  pes: { ativo: false, altura: 100, quantidade: 4, recuo: 50 },
+  tamponamento: { esquerda: false, direita: false, topo: false, espessura: null },
 };
 
 // Backwards-compat: assegura que módulos antigos têm o bloco gavetas
