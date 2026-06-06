@@ -6,6 +6,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/module.assert").then((m) => m.runModuleAsserts()).catch(() => {});
   import("./lib/engines/drilling.assert").then((m) => m.runDrillingAsserts()).catch(() => {});
   import("./lib/engines/portas.assert").then((m) => m.runPortasAsserts()).catch(() => {});
+  import("./lib/engines/gavetas.assert").then((m) => m.runGavetasAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {
