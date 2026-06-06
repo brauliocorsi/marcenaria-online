@@ -689,6 +689,36 @@ const TIPO_LABEL: Record<TipoFuro, string> = {
   dobradica: "Dobradiça (caneco)",
 };
 
+export const FURO_COR: Record<TipoFuro, string> = {
+  minifix_corpo: "#e08a2a",   // âmbar / laranja
+  minifix_perno: "#3b82f6",   // azul
+  cavilha:       "#16a34a",   // verde
+  parafuso:      "#6b7280",   // cinzento
+  dobradica:     "#1a1a1a",   // preto (caneco)
+};
+
+function FurosLegend() {
+  const items: Array<[TipoFuro, string]> = [
+    ["minifix_corpo", "Minifix corpo Ø15"],
+    ["minifix_perno", "Minifix perno Ø8"],
+    ["cavilha", "Cavilha Ø8"],
+    ["parafuso", "Parafuso"],
+    ["dobradica", "Dobradiça Ø35"],
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t px-4 py-2 text-[11px] text-muted-foreground">
+      <span className="font-medium text-foreground">Legenda:</span>
+      {items.map(([t, label]) => (
+        <span key={t} className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: FURO_COR[t] }} />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+
 function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: boolean }) {
   if (!hasTemplate) {
     return (
