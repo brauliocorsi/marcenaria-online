@@ -181,7 +181,29 @@ function AmbientesPage() {
               ))}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Janelas e vãos</CardTitle>
+              <AddAberturaButton onAdd={addAbertura} />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {room.aberturas.length === 0 && (
+                <p className="text-xs text-muted-foreground">Sem aberturas. Usa "Adicionar".</p>
+              )}
+              {room.aberturas.map((ab) => (
+                <AberturaRow
+                  key={ab.id}
+                  ab={ab}
+                  room={room}
+                  onChange={(p) => updAbertura(ab.id, p)}
+                  onRemove={() => removeAbertura(ab.id)}
+                />
+              ))}
+            </CardContent>
+          </Card>
         </div>
+
 
         <Card className="overflow-hidden">
           <div className="h-[640px] w-full bg-muted">
