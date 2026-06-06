@@ -32,13 +32,16 @@ function ModulosPage() {
   const qc = useQueryClient();
   const fetchModules = useServerFn(listModules);
   const fetchMaterials = useServerFn(listMaterials);
+  const fetchHardware = useServerFn(listHardware);
   const fetchDefaultTemplate = useServerFn(getDefaultTemplate);
   const save = useServerFn(upsertModule);
   const del = useServerFn(deleteModule);
 
   const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
   const { data: materials } = useQuery({ queryKey: ["materials"], queryFn: () => fetchMaterials() });
+  const { data: hardware } = useQuery({ queryKey: ["hardware"], queryFn: () => fetchHardware() });
   const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
+  const corredicas = useMemo(() => (hardware ?? []).filter((h: any) => h.category === "corredica"), [hardware]);
 
   const [name, setName] = useState("Módulo sem nome");
   const [editingId, setEditingId] = useState<string | null>(null);
