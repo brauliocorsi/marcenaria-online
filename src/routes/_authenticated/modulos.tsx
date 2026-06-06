@@ -15,9 +15,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
 import { Module3D } from "@/components/viewer/Module3D";
+import { Switch } from "@/components/ui/switch";
 import { listMaterials } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
+import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
 import { calcularPecas, DEFAULT_MODULE_CONFIG, type ModuleConfig, type Veio } from "@/lib/engines/module";
+import { calcularFuros, type Furo, type TipoFuro } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
@@ -29,11 +32,13 @@ function ModulosPage() {
   const qc = useQueryClient();
   const fetchModules = useServerFn(listModules);
   const fetchMaterials = useServerFn(listMaterials);
+  const fetchDefaultTemplate = useServerFn(getDefaultTemplate);
   const save = useServerFn(upsertModule);
   const del = useServerFn(deleteModule);
 
   const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
   const { data: materials } = useQuery({ queryKey: ["materials"], queryFn: () => fetchMaterials() });
+  const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
 
   const [name, setName] = useState("Módulo sem nome");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,7 +47,8 @@ function ModulosPage() {
   const [showOverrides, setShowOverrides] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
-  const [viewTab, setViewTab] = useState<"3d" | "pecas">("3d");
+  const [viewTab, setViewTab] = useState<"3d" | "pecas" | "furacao">("3d");
+  const [showFuros, setShowFuros] = useState(true);
 
 
   const pecas = useMemo(() => {
@@ -50,6 +56,16 @@ function ModulosPage() {
   }, [config]);
 
   const invalid = useMemo(() => pecas.some((p) => p.comprimento_mm <= 0 || p.largura_mm <= 0), [pecas]);
+
+  const templateConfig: TemplateConfig | null = useMemo(() => {
+    if (!defaultTpl) return null;
+    return { ...DEFAULT_TEMPLATE_CONFIG, ...(defaultTpl.config as any) };
+  }, [defaultTpl]);
+
+  const furos: Furo[] = useMemo(() => {
+    if (!templateConfig || invalid) return [];
+    try { return calcularFuros(config, templateConfig); } catch { return []; }
+  }, [config, templateConfig, invalid]);
 
   const totals = useMemo(() => {
     const qtd = pecas.reduce((a, p) => a + p.qtd, 0);
