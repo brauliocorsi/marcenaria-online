@@ -305,6 +305,64 @@ function ModulosPage() {
               )}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Portas</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Nº de portas</Label>
+                  <Select value={String(config.portas.nPortas)} onValueChange={(v) => updPorta("nPortas", Number(v) as 0 | 1 | 2)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Sem portas</SelectItem>
+                      <SelectItem value="1">1 porta</SelectItem>
+                      <SelectItem value="2">2 portas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Modo</Label>
+                  <Select value={config.portas.modo} onValueChange={(v) => updPorta("modo", v as any)} disabled={config.portas.nPortas === 0}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sobreposta">Sobreposta</SelectItem>
+                      <SelectItem value="embutida">Embutida</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {config.portas.nPortas === 1 && (
+                <div className="space-y-1"><Label className="text-xs">Lado de abertura (puxador)</Label>
+                  <Select value={config.portas.ladoAbertura} onValueChange={(v) => updPorta("ladoAbertura", v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="esquerda">Esquerda (dobradiças à direita)</SelectItem>
+                      <SelectItem value="direita">Direita (dobradiças à esquerda)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Espessura</Label>
+                  <Input type="number" min={0} step={1} placeholder={`${config.espessuraPadrao}`} className="tabular"
+                    value={config.portas.espessura ?? ""}
+                    disabled={config.portas.nPortas === 0}
+                    onChange={(e) => updPorta("espessura", e.target.value === "" ? null : Math.max(1, Number(e.target.value) || 1))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Folga</Label>
+                  <Input type="number" min={0} step={0.5} className="tabular"
+                    value={config.portas.folga}
+                    disabled={config.portas.nPortas === 0}
+                    onChange={(e) => updPorta("folga", Number(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Folga central</Label>
+                  <Input type="number" min={0} step={0.5} className="tabular"
+                    value={config.portas.folgaCentral}
+                    disabled={config.portas.nPortas !== 2}
+                    onChange={(e) => updPorta("folgaCentral", Number(e.target.value) || 0)} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
