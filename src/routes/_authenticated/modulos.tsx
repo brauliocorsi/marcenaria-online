@@ -69,14 +69,15 @@ function ModulosPage() {
 
   const furos: Furo[] = useMemo(() => {
     if (!templateConfig || invalid) return [];
+    const bits = (drillBits ?? []) as DrillBitLike[];
     try {
       return [
-        ...calcularFuros(config, templateConfig),
-        ...calcularDobradicas(config, templateConfig),
-        ...calcularCorredicas(config, templateConfig),
+        ...calcularFuros(config, templateConfig, bits),
+        ...calcularDobradicas(config, templateConfig, bits),
+        ...calcularCorredicas(config, templateConfig, bits),
       ];
     } catch { return []; }
-  }, [config, templateConfig, invalid]);
+  }, [config, templateConfig, invalid, drillBits]);
 
   const totals = useMemo(() => {
     const qtd = pecas.reduce((a, p) => a + p.qtd, 0);
