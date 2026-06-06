@@ -36,7 +36,7 @@ const schema = z.object({
   reference: z.string().optional(),
   pricing_unit: z.enum(PRICING_UNITS as any),
   price: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  params: z.record(z.string(), z.any()).default({}),
+  params: z.record(z.string(), z.any()),
 });
 type FormVals = z.infer<typeof schema>;
 

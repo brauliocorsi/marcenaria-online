@@ -27,13 +27,13 @@ export const Route = createFileRoute("/_authenticated/materiais")({ component: M
 
 const schema = z.object({
   name: z.string().min(1, "Obrigatório"),
-  brand: z.string().min(1).default("Kronospan"),
+  brand: z.string().min(1),
   decor_code: z.string().optional(),
   thickness_mm: z.coerce.number().int(),
   sheet_width_mm: z.coerce.number().int().min(100),
   sheet_height_mm: z.coerce.number().int().min(100),
   price_per_sheet: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  has_grain: z.boolean().default(false),
+  has_grain: z.boolean(),
 });
 type FormVals = z.infer<typeof schema>;
 
