@@ -70,6 +70,7 @@ function FuroMesh({ f }: { f: Furo }) {
 
 export function Module3D({ config, explode = 0, furos = [] }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
+  const pes = useMemo(() => calcularPes(config), [config]);
   const { W, H, D } = useMemo(
     () => ({ W: config.dims.width, H: config.dims.height, D: config.dims.depth }),
     [config.dims.width, config.dims.height, config.dims.depth],
