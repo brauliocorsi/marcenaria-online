@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/ferragens")({ component: F
 
 const CATEGORY_LABELS: Record<string, string> = {
   minifix: "Minifix", cavilha: "Cavilha", parafuso: "Parafuso",
-  dobradica: "Dobradiça", corredica: "Corrediça", pe: "Pé",
+  dobradica: "Dobradiça", corredica: "Corrediça", pe: "Pé", pino_prateleira: "Pino de prateleira",
   perfil_aluminio: "Perfil de alumínio", led: "LED", outro: "Outro",
 };
 const UNIT_LABELS: Record<string, string> = { unidade: "Unidade", metro: "Metro" };
