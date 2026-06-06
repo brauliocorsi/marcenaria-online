@@ -494,6 +494,9 @@ export interface GavetaCaixa {
   espessuraFundo: number;
   zBack: number;
   zFront: number;
+  folgaLateralPorLado: number; // efetiva, vinda da corrediça
+  tipoCorredica?: CorredicaTipo;
+  requerRasgoTraseira: boolean; // TODO: para corrediça oculta com rebaixoFundo
 }
 
 export interface GavetasResult {
