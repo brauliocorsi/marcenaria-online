@@ -103,13 +103,14 @@ function resolverFerramenta(
     const purposeOnly = bits.find(b => b.purpose === purpose);
     if (purposeOnly) return { id: purposeOnly.id, nome: purposeOnly.name, tool_type: purposeOnly.tool_type ?? "broca" };
   }
-  // 4) fallback ao template
-  const tplKey: keyof TemplateConfig["brocas"] =
+  // 4) fallback ao template (apenas para tipos com slot no template)
+  const tplKey: keyof TemplateConfig["brocas"] | null =
     t === "cavilha" ? "cavilha" :
     t === "minifix_corpo" ? "minifix_corpo" :
     t === "minifix_perno" ? "minifix_perno" :
-    t === "parafuso" ? "parafuso" : "dobradica";
-  const tplId = templateBrocas?.[tplKey] ?? null;
+    t === "parafuso" ? "parafuso" :
+    t === "dobradica" ? "dobradica" : null;
+  const tplId = tplKey ? (templateBrocas?.[tplKey] ?? null) : null;
   if (tplId && bits) {
     const tb = bits.find(b => b.id === tplId);
     if (tb) return { id: tb.id, nome: tb.name, tool_type: tb.tool_type ?? "broca" };
@@ -120,7 +121,9 @@ function resolverFerramenta(
     t === "minifix_corpo" ? `Broca minifix corpo Ø${diametro}` :
     t === "minifix_perno" ? `Broca minifix perno Ø${diametro}` :
     t === "parafuso" ? `Broca pré-furo Ø${diametro}` :
-    `Broca dobradiça Ø${diametro}`;
+    t === "dobradica" ? `Broca dobradiça Ø${diametro}` :
+    t === "marcacao" ? `Broca ${diametro} mm` :
+    `Broca ${diametro} mm`;
   return { id: tplId ?? null, nome, tool_type: "broca" };
 }
 
