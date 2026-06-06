@@ -5,10 +5,10 @@
 // Suporta sistema de montagem 'laterais_cobrem'. Para 'tampo_base_cobrem'
 // devolve [] (TODO em fase futura).
 
-import { resolverEspessuras, type ModuleConfig, type PieceType, type Vec3 } from "./module";
+import { resolverEspessuras, dimensoesPortas, posicoesDobradicasY, type ModuleConfig, type PieceType, type Vec3 } from "./module";
 import type { TemplateConfig } from "@/lib/drilling.functions";
 
-export type TipoFuro = "cavilha" | "minifix_corpo" | "minifix_perno" | "parafuso";
+export type TipoFuro = "cavilha" | "minifix_corpo" | "minifix_perno" | "parafuso" | "dobradica";
 
 export interface Furo {
   junta: string;
@@ -60,6 +60,7 @@ function diametroPara(t: TipoFuro, regras: TemplateConfig["regras"]): number {
     case "minifix_corpo": return 15;
     case "minifix_perno": return 8;
     case "parafuso": return regras.diam_parafuso;
+    case "dobradica": return 35;
   }
 }
 
@@ -71,6 +72,8 @@ function profundidadePara(t: TipoFuro, regras: TemplateConfig["regras"]): number
       return regras.prof_cavilha;
     case "minifix_corpo":
       return regras.prof_minifix;
+    case "dobradica":
+      return regras.prof_minifix; // padrão 13mm
   }
 }
 
@@ -166,3 +169,67 @@ export function calcularFuros(config: ModuleConfig, template: TemplateConfig): F
 
   return furos;
 }
+
+// ─────────────────────────────────────────────────────────────
+// Dobradiças — canecos Ø35 na porta + chapas (2 parafusos) na lateral.
+// ─────────────────────────────────────────────────────────────
+
+const RECUO_CANECO = 22;      // mm da aresta da porta ao centro do caneco
+const RECUO_FRENTE_CHAPA = 37; // mm da frente (Z=D) ao centro dos furos da chapa
+const SEP_CHAPA_Y = 32;        // separação vertical entre os 2 parafusos da chapa
+
+export function calcularDobradicas(config: ModuleConfig, template: TemplateConfig): Furo[] {
+  const portas = dimensoesPortas(config);
+  if (portas.length === 0) return [];
+  const { regras } = template;
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const W = config.dims.width;
+  const diamParafuso = regras.diam_parafuso;
+  const profParafuso = regras.prof_cavilha;
+  const diamCaneco = 35;
+  const profCaneco = regras.prof_minifix;
+  const out: Furo[] = [];
+
+  for (const p of portas) {
+    const ys = posicoesDobradicasY(p);
+    // x do caneco (distância recuo_caneco do lado das dobradiças, para dentro da porta)
+    const xCaneco = p.ladoDobradicas === "esquerda"
+      ? p.xCharneira + RECUO_CANECO
+      : p.xCharneira - RECUO_CANECO;
+    // x face interna da lateral correspondente + direção (para dentro do material)
+    const xFaceLateral = p.ladoDobradicas === "esquerda" ? e.lateral : W - e.lateral;
+    const dirLateral: Vec3 = p.ladoDobradicas === "esquerda" ? [-1, 0, 0] : [1, 0, 0];
+    // direção do caneco: entra na porta a partir da face traseira (zBack), em direção a zFront
+    const dirCaneco: Vec3 = [0, 0, 1]; // sempre +Z (zBack < zFront em ambos os modos)
+
+    const zChapa = config.dims.depth - RECUO_FRENTE_CHAPA;
+
+    for (const y of ys) {
+      // Caneco na porta
+      out.push({
+        junta: `dobradica_${p.descricao}`,
+        tipo_furo: "dobradica",
+        pos: [xCaneco, y, p.zBack],
+        dir: dirCaneco,
+        diametro: diamCaneco,
+        profundidade: profCaneco,
+        peca: "porta",
+      });
+      // Chapa: 2 parafusos na face interna da lateral
+      for (const dy of [-SEP_CHAPA_Y / 2, SEP_CHAPA_Y / 2]) {
+        out.push({
+          junta: `dobradica_chapa_${p.descricao}`,
+          tipo_furo: "parafuso",
+          pos: [xFaceLateral, y + dy, zChapa],
+          dir: dirLateral,
+          diametro: diamParafuso,
+          profundidade: profParafuso,
+          peca: "lateral",
+        });
+      }
+    }
+  }
+
+  return out;
+}
+

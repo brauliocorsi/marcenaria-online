@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment } from "@react-three/drei";
 import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo } from "@/lib/engines/module";
-import { calcularGeometria } from "@/lib/engines/module";
+import { calcularGeometria, dimensoesPortas } from "@/lib/engines/module";
 import type { Furo } from "@/lib/engines/drilling";
 
 const MM_TO_M = 0.001;
@@ -18,6 +18,7 @@ interface Module3DProps {
 }
 
 function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; center3D: [number, number, number] }) {
+  const isPorta = p.tipo === "porta";
   const dx = (p.center[0] - center3D[0]) * explode * 0.8;
   const dy = (p.center[1] - center3D[1]) * explode * 0.8;
   const dz = (p.center[2] - center3D[2]) * explode * 0.8;
@@ -34,7 +35,7 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
   return (
     <mesh position={pos} castShadow receiveShadow>
       <boxGeometry args={size} />
-      <meshStandardMaterial color={COR_MELAMINA} roughness={0.75} metalness={0.02} transparent opacity={0.92} />
+      <meshStandardMaterial color={isPorta ? "#D8D1C0" : COR_MELAMINA} roughness={0.7} metalness={0.02} transparent opacity={isPorta ? 0.85 : 0.92} />
       <Edges threshold={15} color={COR_ARESTA} />
     </mesh>
   );
@@ -95,6 +96,19 @@ export function Module3D({ config, explode = 0, furos = [] }: Module3DProps) {
       ))}
 
       {furos.map((f, i) => <FuroMesh key={i} f={f} />)}
+
+      {dimensoesPortas(config).map((p, i) => {
+        // marcador esférico no lado oposto às dobradiças (lado do puxador), a meia altura
+        const xPux = p.ladoDobradicas === "esquerda" ? p.xMax : p.xMin;
+        const pos: [number, number, number] = [xPux * MM_TO_M, p.cy * MM_TO_M, p.zFront * MM_TO_M + 0.005];
+        return (
+          <mesh key={`pux-${i}`} position={pos}>
+            <sphereGeometry args={[0.008, 16, 16]} />
+            <meshStandardMaterial color="#d94a4a" roughness={0.4} metalness={0.3} />
+          </mesh>
+        );
+      })}
+
 
       <Grid
         position={[target[0], 0, target[2]]}
