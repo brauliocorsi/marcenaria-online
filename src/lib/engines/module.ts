@@ -265,6 +265,58 @@ export function normalizarConfig(c: ModuleConfig): ModuleConfig {
   } else if (corr && corr.hardwareId === undefined) {
     out.gavetas = { ...out.gavetas, corredica: { ...corr, hardwareId: corr.hardwareId ?? null } };
   }
+  if (!out.pes) out.pes = { ...DEFAULT_MODULE_CONFIG.pes };
+  if (!out.tamponamento) out.tamponamento = { ...DEFAULT_MODULE_CONFIG.tamponamento };
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Pés (acessório — não é peça de corte)
+// ─────────────────────────────────────────────────────────────
+export interface PesResult {
+  posicoes: Vec3[]; // (x, yCentro, z) — yCentro = -altura/2
+  quantidade: number;
+  altura: number;
+}
+
+export function calcularPes(config: ModuleConfig): PesResult {
+  const p = config.pes;
+  if (!p || !p.ativo) return { posicoes: [], quantidade: 0, altura: 0 };
+  const W = config.dims.width, D = config.dims.depth;
+  const r = Math.max(0, p.recuo);
+  const yC = -p.altura / 2;
+  const corners: Vec3[] = [
+    [r, yC, r], [W - r, yC, r], [r, yC, D - r], [W - r, yC, D - r],
+  ];
+  const pos: Vec3[] = p.quantidade === 6
+    ? [...corners, [W / 2, yC, r], [W / 2, yC, D - r]]
+    : corners;
+  return { posicoes: pos, quantidade: pos.length, altura: p.altura };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tamponamento (painéis de acabamento — peças de corte)
+// ─────────────────────────────────────────────────────────────
+export interface TamponamentoPeca {
+  lado: "esquerda" | "direita" | "topo";
+  descricao: string;
+  size: Vec3;
+  center: Vec3;
+  veio: Veio;
+}
+
+export function dimensoesTamponamentos(config: ModuleConfig): TamponamentoPeca[] {
+  const t = config.tamponamento;
+  if (!t) return [];
+  const W = config.dims.width, H = config.dims.height, D = config.dims.depth;
+  const e = t.espessura && t.espessura > 0 ? t.espessura : config.espessuraPadrao;
+  const out: TamponamentoPeca[] = [];
+  if (t.esquerda) out.push({ lado: "esquerda", descricao: "Tamponamento esquerda",
+    size: [e, H, D], center: [-e / 2, H / 2, D / 2], veio: "comprimento" });
+  if (t.direita) out.push({ lado: "direita", descricao: "Tamponamento direita",
+    size: [e, H, D], center: [W + e / 2, H / 2, D / 2], veio: "comprimento" });
+  if (t.topo) out.push({ lado: "topo", descricao: "Tamponamento topo",
+    size: [W, e, D], center: [W / 2, H + e / 2, D / 2], veio: "comprimento" });
   return out;
 }
 
