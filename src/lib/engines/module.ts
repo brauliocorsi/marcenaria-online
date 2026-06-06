@@ -443,3 +443,90 @@ export function posicoesDobradicasY(p: PortaDim): number[] {
 }
 
 
+
+// ─────────────────────────────────────────────────────────────
+// Gavetas — frentes + caixas (partilhado por peças, geometria, corrediças)
+// ─────────────────────────────────────────────────────────────
+
+export interface GavetaFrente {
+  idx: number;
+  descricao: string;
+  size: Vec3;
+  center: Vec3;
+}
+
+export interface GavetaCaixa {
+  idx: number;
+  center: Vec3;          // centro 3D da caixa (X=W/2; Y=cyFrente; Z meio)
+  boxWidth: number;
+  boxHeight: number;
+  boxDepth: number;
+  espessuraCaixa: number;
+  espessuraFundo: number;
+  zBack: number;
+  zFront: number;
+}
+
+export interface GavetasResult {
+  frentes: GavetaFrente[];
+  caixas: GavetaCaixa[];
+}
+
+export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
+  const g = config.gavetas;
+  if (!g || g.nGavetas <= 0) return { frentes: [], caixas: [] };
+  const { dims, espessuraPadrao, espessuras } = config;
+  const W = dims.width, H = dims.height, D = dims.depth;
+  const e = resolverEspessuras(espessuraPadrao, espessuras);
+  const n = g.nGavetas;
+  const f = g.folga;
+  const eF = g.espessuraFrente && g.espessuraFrente > 0 ? g.espessuraFrente : espessuraPadrao;
+
+  // Limites em X/Y consoante o modo
+  let xMin: number, xMax: number, yMin: number, yMax: number, zBack: number, zFront: number, cz: number;
+  if (g.modo === "sobreposta") {
+    xMin = f; xMax = W - f;
+    yMin = f; yMax = H - f;
+    zBack = D; zFront = D + eF; cz = D + eF / 2;
+  } else {
+    xMin = e.lateral + f; xMax = W - e.lateral - f;
+    yMin = e.base + f; yMax = H - e.tampo - f;
+    zBack = D - eF; zFront = D; cz = D - eF / 2;
+  }
+  const larguraFrente = xMax - xMin;
+  const cx = (xMin + xMax) / 2;
+  const espacoY = yMax - yMin;
+  const alturaFrente = Math.round((espacoY - (n - 1) * f) / n);
+
+  // Geometria da caixa (igual para todas as gavetas)
+  const boxWidth = W - 2 * e.lateral - 2 * g.corredica.folgaLateral;
+  const boxDepth = Math.min(g.corredica.comprimento, D - 10);
+  const boxHeight = Math.max(60, alturaFrente - g.alturaCaixaFolga);
+  // Caixa recuada da frente: zStart = e.lateral (proxy de folga interior); cz_caixa = zStart + boxDepth/2
+  const zStartCaixa = e.lateral;
+  const cz_caixa = zStartCaixa + boxDepth / 2;
+
+  const frentes: GavetaFrente[] = [];
+  const caixas: GavetaCaixa[] = [];
+
+  for (let j = 0; j < n; j++) {
+    const cyFrente = yMin + j * (alturaFrente + f) + alturaFrente / 2;
+    frentes.push({
+      idx: j,
+      descricao: `Frente gaveta ${j + 1}`,
+      size: [larguraFrente, alturaFrente, eF],
+      center: [cx, cyFrente, cz],
+    });
+    caixas.push({
+      idx: j,
+      center: [W / 2, cyFrente, cz_caixa],
+      boxWidth, boxHeight, boxDepth,
+      espessuraCaixa: g.espessuraCaixa,
+      espessuraFundo: g.espessuraFundo,
+      zBack: zStartCaixa,
+      zFront: zStartCaixa + boxDepth,
+    });
+  }
+
+  return { frentes, caixas };
+}
