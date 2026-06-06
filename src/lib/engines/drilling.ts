@@ -54,6 +54,8 @@ function diametroPara(t: TipoFuro, regras: TemplateConfig["regras"]): number {
     case "minifix_perno": return 8;
     case "parafuso": return regras.diam_parafuso;
     case "dobradica": return 35;
+    case "marcacao": return 3;
+    case "pino": return 5;
   }
 }
 function profundidadePara(t: TipoFuro, regras: TemplateConfig["regras"]): number {
@@ -63,6 +65,8 @@ function profundidadePara(t: TipoFuro, regras: TemplateConfig["regras"]): number
     case "minifix_perno": return regras.prof_cavilha;
     case "minifix_corpo": return regras.prof_minifix;
     case "dobradica": return regras.prof_minifix;
+    case "marcacao": return 0.5;
+    case "pino": return 12;
   }
 }
 
