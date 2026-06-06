@@ -75,6 +75,7 @@ function ModulosPage() {
         ...calcularFuros(config, templateConfig, bits),
         ...calcularDobradicas(config, templateConfig, bits),
         ...calcularCorredicas(config, templateConfig, bits),
+        ...calcularSistema32(config, templateConfig, bits),
       ];
     } catch { return []; }
   }, [config, templateConfig, invalid, drillBits]);
