@@ -83,6 +83,29 @@ function AmbientesPage() {
   const updParede = (id: ParedeId, v: boolean) =>
     setRoom((r) => ({ ...r, paredesVisiveis: { ...r.paredesVisiveis, [id]: v } }));
 
+  function addAbertura(paredeId: ParedeId, tipo: TipoAbertura) {
+    const nova: Abertura = {
+      id: crypto.randomUUID(),
+      paredeId, tipo,
+      x: 100, y: tipo === "porta" ? 0 : 900,
+      largura: tipo === "porta" ? 800 : 1200,
+      altura: tipo === "porta" ? 2100 : 1000,
+    };
+    setRoom((r) => ({ ...r, aberturas: [...r.aberturas, nova] }));
+  }
+
+  function updAbertura(id: string, patch: Partial<Abertura>) {
+    setRoom((r) => ({
+      ...r,
+      aberturas: r.aberturas.map((a) => a.id === id ? { ...a, ...patch, y: patch.tipo === "porta" ? 0 : (patch.y ?? a.y) } : a),
+    }));
+  }
+
+  function removeAbertura(id: string) {
+    setRoom((r) => ({ ...r, aberturas: r.aberturas.filter((a) => a.id !== id) }));
+  }
+
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
