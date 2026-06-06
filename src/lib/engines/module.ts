@@ -363,30 +363,6 @@ export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
   if (!portas || portas.nPortas === 0) return [];
   // Regra: se houver gavetas, a frente é gavetas — portas ignoradas.
   if (gavetas && gavetas.nGavetas > 0) return [];
-
-// ─────────────────────────────────────────────────────────────
-// Portas — dimensão + posição (partilhado por peças, geometria e dobradiças)
-// ─────────────────────────────────────────────────────────────
-
-export type LadoDobradicas = "esquerda" | "direita";
-
-export interface PortaDim {
-  idx: 0 | 1;            // 0 = única ou esquerda; 1 = direita
-  descricao: string;
-  largura: number;
-  altura: number;
-  espessura: number;
-  cx: number; cy: number; cz: number;   // centro
-  xMin: number; xMax: number;
-  yMin: number; yMax: number;
-  zBack: number; zFront: number;
-  ladoDobradicas: LadoDobradicas;       // lado da porta onde estão as dobradiças
-  xCharneira: number;                    // x da aresta da porta no lado das dobradiças
-}
-
-export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
-  const { dims, espessuraPadrao, espessuras, portas } = config;
-  if (!portas || portas.nPortas === 0) return [];
   const W = dims.width, H = dims.height, D = dims.depth;
   const e = resolverEspessuras(espessuraPadrao, espessuras);
   const eP = portas.espessura && portas.espessura > 0 ? portas.espessura : espessuraPadrao;
