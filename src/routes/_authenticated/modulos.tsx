@@ -123,6 +123,7 @@ function ModulosPage() {
   const updDim = (k: keyof ModuleConfig["dims"], v: number) => setConfig((c) => ({ ...c, dims: { ...c.dims, [k]: Math.round(v) } }));
   const updFolga = (k: keyof ModuleConfig["folgas"], v: number) => setConfig((c) => ({ ...c, folgas: { ...c.folgas, [k]: v } }));
   const updFundo = <K extends keyof ModuleConfig["fundo"]>(k: K, v: ModuleConfig["fundo"][K]) => setConfig((c) => ({ ...c, fundo: { ...c.fundo, [k]: v } }));
+  const updPorta = <K extends keyof ModuleConfig["portas"]>(k: K, v: ModuleConfig["portas"][K]) => setConfig((c) => ({ ...c, portas: { ...c.portas, [k]: v } }));
   const updEsp = (k: keyof ModuleConfig["espessuras"], v: number | null) => setConfig((c) => ({ ...c, espessuras: { ...c.espessuras, [k]: v } }));
 
   return (
