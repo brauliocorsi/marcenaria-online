@@ -38,6 +38,7 @@ const schema = z.object({
   broca_dobradica: z.string().optional(),
   recuo_extremidade: z.coerce.number().min(0),
   espacamento_sistema: z.coerce.number().min(1),
+  espacamento_cavilha_minifix: z.coerce.number().min(1),
   recuo_frontal: z.coerce.number().min(0),
   conectores_min: z.coerce.number().int().min(1),
   conectores_por_mm: z.coerce.number().int().min(50),
