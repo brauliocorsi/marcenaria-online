@@ -76,6 +76,15 @@ export interface TamponamentoConfig {
   espessura: number | null; // null = espessuraPadrao
 }
 
+export interface Sistema32Config {
+  ativo: boolean;
+  recuoFrente: number;
+  recuoTras: number;
+  passoVertical: number;
+  inicioY: number;
+  fimY: number;
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
@@ -92,6 +101,7 @@ export interface ModuleConfig {
   gavetas: GavetasConfig;
   pes: PesConfig;
   tamponamento: TamponamentoConfig;
+  sistema32: Sistema32Config;
 }
 
 export interface Peca {
