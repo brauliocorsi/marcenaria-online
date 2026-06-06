@@ -369,6 +369,69 @@ function ModulosPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Gavetas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {config.gavetas.nGavetas > 0 && config.portas.nPortas > 0 && (
+                <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
+                  Regra: módulo é portas <em>OU</em> gavetas. Como há gavetas, as portas são ignoradas.
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Nº de gavetas</Label>
+                  <Input type="number" min={0} max={10} step={1} className="tabular"
+                    value={config.gavetas.nGavetas}
+                    onChange={(e) => updGav("nGavetas", Math.max(0, Math.min(10, Number(e.target.value) || 0)))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Modo</Label>
+                  <Select value={config.gavetas.modo} onValueChange={(v) => updGav("modo", v as any)} disabled={config.gavetas.nGavetas === 0}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sobreposta">Sobreposta</SelectItem>
+                      <SelectItem value="embutida">Embutida</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Folga</Label>
+                  <Input type="number" min={0} step={0.5} className="tabular"
+                    value={config.gavetas.folga} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGav("folga", Number(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Esp. frente</Label>
+                  <Input type="number" min={1} step={0.5} className="tabular"
+                    value={config.gavetas.espessuraFrente} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGav("espessuraFrente", Math.max(1, Number(e.target.value) || 1))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Esp. caixa</Label>
+                  <Input type="number" min={1} step={0.5} className="tabular"
+                    value={config.gavetas.espessuraCaixa} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGav("espessuraCaixa", Math.max(1, Number(e.target.value) || 1))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Corrediça (mm)</Label>
+                  <Input type="number" min={100} max={1000} step={50} className="tabular"
+                    value={config.gavetas.corredica.comprimento} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGavCorr("comprimento", Math.max(100, Number(e.target.value) || 100))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Folga lateral</Label>
+                  <Input type="number" min={0} step={0.5} className="tabular"
+                    value={config.gavetas.corredica.folgaLateral} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGavCorr("folgaLateral", Number(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Folga caixa</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.gavetas.alturaCaixaFolga} disabled={config.gavetas.nGavetas === 0}
+                    onChange={(e) => updGav("alturaCaixaFolga", Number(e.target.value) || 0)} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
