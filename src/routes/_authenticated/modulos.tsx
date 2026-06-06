@@ -1,0 +1,356 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Box, Save, Trash2, Plus, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
+import { listMaterials } from "@/lib/catalog.functions";
+import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
+import { calcularPecas, DEFAULT_MODULE_CONFIG, type ModuleConfig, type Veio } from "@/lib/engines/module";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/_authenticated/modulos")({ component: ModulosPage });
+
+const VEIO_LABEL: Record<Veio, string> = { comprimento: "Comprimento", largura: "Largura", sem: "Sem veio" };
+
+function ModulosPage() {
+  const qc = useQueryClient();
+  const fetchModules = useServerFn(listModules);
+  const fetchMaterials = useServerFn(listMaterials);
+  const save = useServerFn(upsertModule);
+  const del = useServerFn(deleteModule);
+
+  const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
+  const { data: materials } = useQuery({ queryKey: ["materials"], queryFn: () => fetchMaterials() });
+
+  const [name, setName] = useState("Módulo sem nome");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [materialId, setMaterialId] = useState<string | null>(null);
+  const [config, setConfig] = useState<ModuleConfig>(DEFAULT_MODULE_CONFIG);
+  const [showOverrides, setShowOverrides] = useState(false);
+  const [delId, setDelId] = useState<string | null>(null);
+
+  const pecas = useMemo(() => {
+    try { return calcularPecas(config); } catch { return []; }
+  }, [config]);
+
+  const invalid = useMemo(() => pecas.some((p) => p.comprimento_mm <= 0 || p.largura_mm <= 0), [pecas]);
+
+  const totals = useMemo(() => {
+    const qtd = pecas.reduce((a, p) => a + p.qtd, 0);
+    const areaM2 = pecas.reduce((a, p) => a + (p.qtd * p.comprimento_mm * p.largura_mm) / 1_000_000, 0);
+    return { qtd, areaM2 };
+  }, [pecas]);
+
+  function loadModule(m: any) {
+    setEditingId(m.id);
+    setName(m.name);
+    setMaterialId(m.material_id ?? null);
+    const cfg = (m.config && Object.keys(m.config).length > 0)
+      ? { ...DEFAULT_MODULE_CONFIG, ...m.config,
+          dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } }
+      : { ...DEFAULT_MODULE_CONFIG, dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } };
+    setConfig(cfg as ModuleConfig);
+  }
+
+  function novoModulo() {
+    setEditingId(null);
+    setName("Módulo sem nome");
+    setMaterialId(null);
+    setConfig(DEFAULT_MODULE_CONFIG);
+  }
+
+  const saveMut = useMutation({
+    mutationFn: async () => save({ data: {
+      id: editingId ?? undefined,
+      name, width_mm: config.dims.width, height_mm: config.dims.height, depth_mm: config.dims.depth,
+      config: config as any, pieces: pecas as any, material_id: materialId,
+    } }),
+    onSuccess: (row: any) => {
+      toast.success(editingId ? "Módulo atualizado" : "Módulo guardado");
+      setEditingId(row.id);
+      qc.invalidateQueries({ queryKey: ["modules"] });
+    },
+    onError: (e: Error) => toast.error("Erro ao guardar", { description: e.message }),
+  });
+
+  const delMut = useMutation({
+    mutationFn: async (id: string) => del({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Módulo apagado");
+      if (editingId === delId) novoModulo();
+      setDelId(null);
+      qc.invalidateQueries({ queryKey: ["modules"] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
+  // updater helpers
+  const upd = <K extends keyof ModuleConfig>(k: K, v: ModuleConfig[K]) => setConfig((c) => ({ ...c, [k]: v }));
+  const updDim = (k: keyof ModuleConfig["dims"], v: number) => setConfig((c) => ({ ...c, dims: { ...c.dims, [k]: Math.round(v) } }));
+  const updFolga = (k: keyof ModuleConfig["folgas"], v: number) => setConfig((c) => ({ ...c, folgas: { ...c.folgas, [k]: v } }));
+  const updFundo = <K extends keyof ModuleConfig["fundo"]>(k: K, v: ModuleConfig["fundo"][K]) => setConfig((c) => ({ ...c, fundo: { ...c.fundo, [k]: v } }));
+  const updEsp = (k: keyof ModuleConfig["espessuras"], v: number | null) => setConfig((c) => ({ ...c, espessuras: { ...c.espessuras, [k]: v } }));
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Módulos</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Bancada paramétrica — recálculo instantâneo das peças.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={novoModulo}><Plus className="mr-2 h-4 w-4" /> Novo</Button>
+          <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || invalid}>
+            <Save className="mr-2 h-4 w-4" /> {saveMut.isPending ? "A guardar…" : "Guardar módulo"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Saved modules strip */}
+      {modules && modules.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {modules.map((m: any) => (
+            <button
+              key={m.id}
+              onClick={() => loadModule(m)}
+              className={cn(
+                "group flex min-w-[180px] items-center gap-2 rounded-lg border bg-card px-3 py-2 text-left shadow-sm transition hover:border-primary/50",
+                editingId === m.id && "border-primary ring-1 ring-primary/30"
+              )}
+            >
+              <Box className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{m.name}</div>
+                <div className="text-[11px] text-muted-foreground tabular">{m.width_mm}×{m.height_mm}×{m.depth_mm} mm</div>
+              </div>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); setDelId(m.id); }}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10"
+                aria-label="Apagar módulo"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        {/* ─────────── LEFT: Configuration ─────────── */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Identificação</CardTitle></CardHeader>
+            <CardContent>
+              <Label htmlFor="modname">Nome do módulo</Label>
+              <Input id="modname" value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Dimensões externas (mm)</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <DimRow label="Largura" value={config.dims.width} min={100} max={3000} onChange={(v) => updDim("width", v)} />
+              <DimRow label="Altura" value={config.dims.height} min={100} max={3000} onChange={(v) => updDim("height", v)} />
+              <DimRow label="Profundidade" value={config.dims.depth} min={100} max={1200} onChange={(v) => updDim("depth", v)} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Construção</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Sistema de montagem</Label>
+                <Select value={config.sistemaMontagem} onValueChange={(v) => upd("sistemaMontagem", v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="laterais_cobrem">Laterais cobrem topo/base</SelectItem>
+                    <SelectItem value="tampo_base_cobrem">Topo/base cobrem laterais</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Material</Label>
+                <Select value={materialId ?? "__none__"} onValueChange={(v) => setMaterialId(v === "__none__" ? null : v)}>
+                  <SelectTrigger><SelectValue placeholder="Sem material" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— sem material —</SelectItem>
+                    {(materials ?? []).map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>{m.name} · {m.thickness_mm}mm</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Espessuras (mm)</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Espessura padrão</Label>
+                <Input type="number" min={1} step={1} className="tabular"
+                  value={config.espessuraPadrao}
+                  onChange={(e) => upd("espessuraPadrao", Math.max(1, Number(e.target.value) || 1))} />
+              </div>
+              <button type="button" onClick={() => setShowOverrides((s) => !s)}
+                className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+                {showOverrides ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                Ajustar por peça
+              </button>
+              {showOverrides && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {(["lateral", "tampo", "base", "prateleira"] as const).map((k) => (
+                    <div key={k} className="space-y-1">
+                      <Label className="text-xs capitalize">{k}</Label>
+                      <Input type="number" min={0} step={1} placeholder={`${config.espessuraPadrao}`} className="tabular"
+                        value={config.espessuras[k] ?? ""}
+                        onChange={(e) => updEsp(k, e.target.value === "" ? null : Number(e.target.value))} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Prateleiras</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-3 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Quantidade</Label>
+                <Input type="number" min={0} step={1} className="tabular"
+                  value={config.nPrateleiras}
+                  onChange={(e) => upd("nPrateleiras", Math.max(0, Number(e.target.value) || 0))} />
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Folga lateral</Label>
+                <Input type="number" min={0} step={0.5} className="tabular"
+                  value={config.folgas.prateleira_lateral}
+                  onChange={(e) => updFolga("prateleira_lateral", Number(e.target.value) || 0)} />
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Recuo frontal</Label>
+                <Input type="number" min={0} step={1} className="tabular"
+                  value={config.folgas.prateleira_recuo}
+                  onChange={(e) => updFolga("prateleira_recuo", Number(e.target.value) || 0)} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Fundo</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Modo</Label>
+                  <Select value={config.fundo.modo} onValueChange={(v) => updFundo("modo", v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sobreposto">Sobreposto</SelectItem>
+                      <SelectItem value="ranhura">Em ranhura</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Espessura</Label>
+                  <Input type="number" min={1} step={0.5} className="tabular"
+                    value={config.fundo.espessura}
+                    onChange={(e) => updFundo("espessura", Math.max(1, Number(e.target.value) || 1))} />
+                </div>
+              </div>
+              {config.fundo.modo === "ranhura" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1"><Label className="text-xs">Prof. ranhura</Label>
+                    <Input type="number" min={0} step={0.5} className="tabular"
+                      value={config.fundo.prof_ranhura}
+                      onChange={(e) => updFundo("prof_ranhura", Number(e.target.value) || 0)} />
+                  </div>
+                  <div className="space-y-1"><Label className="text-xs">Recuo</Label>
+                    <Input type="number" min={0} step={1} className="tabular"
+                      value={config.fundo.recuo}
+                      onChange={(e) => updFundo("recuo", Number(e.target.value) || 0)} />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ─────────── RIGHT: Pieces table ─────────── */}
+        <div className="space-y-3">
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b py-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold">Peças calculadas</CardTitle>
+                <div className="text-xs text-muted-foreground tabular">
+                  {totals.qtd} peças · {totals.areaM2.toFixed(3)} m²
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {invalid && (
+                <div className="flex items-start gap-2 border-b bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Dimensões inválidas — algumas peças têm tamanho ≤ 0. Aumente as dimensões externas ou reduza as espessuras/folgas.</span>
+                </div>
+              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Peça</TableHead>
+                    <TableHead className="text-right">Qtd</TableHead>
+                    <TableHead className="text-right">Comprimento</TableHead>
+                    <TableHead className="text-right">Largura</TableHead>
+                    <TableHead className="text-right">Espessura</TableHead>
+                    <TableHead>Veio</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pecas.map((p, i) => (
+                    <TableRow key={i} className={cn((p.comprimento_mm <= 0 || p.largura_mm <= 0) && "bg-destructive/5")}>
+                      <TableCell className="font-medium">{p.descricao}</TableCell>
+                      <TableCell className="text-right tabular">{p.qtd}</TableCell>
+                      <TableCell className="text-right tabular">{p.comprimento_mm} mm</TableCell>
+                      <TableCell className="text-right tabular">{p.largura_mm} mm</TableCell>
+                      <TableCell className="text-right tabular">{p.espessura_mm} mm</TableCell>
+                      <TableCell className="text-muted-foreground">{VEIO_LABEL[p.veio]}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <ConfirmDelete open={!!delId} onOpenChange={(o) => !o && setDelId(null)} onConfirm={() => delId && delMut.mutate(delId)} />
+    </div>
+  );
+}
+
+function DimRow({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
+  const [local, setLocal] = useState(String(value));
+  useEffect(() => { setLocal(String(value)); }, [value]);
+  return (
+    <div className="grid grid-cols-[80px_1fr_96px] items-center gap-3">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Slider value={[value]} min={min} max={max} step={1} onValueChange={([v]) => onChange(v)} />
+      <Input
+        type="number" min={min} max={max} step={1} className="tabular h-8"
+        value={local}
+        onChange={(e) => {
+          setLocal(e.target.value);
+          const n = Number(e.target.value);
+          if (!Number.isNaN(n) && n >= min && n <= max) onChange(n);
+        }}
+        onBlur={() => setLocal(String(value))}
+      />
+    </div>
+  );
+}
