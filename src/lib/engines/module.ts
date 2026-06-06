@@ -225,6 +225,21 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
+  // Tamponamento como peças de corte
+  for (const t of dimensoesTamponamentos(config)) {
+    // size = [largura(X), altura(Y), prof(Z)]
+    // Para esquerda/direita: comprimento = H, largura = D, espessura = X(e)
+    // Para topo: comprimento = W, largura = D, espessura = Y(e)
+    const isVertical = t.lado !== "topo";
+    pecas.push({
+      tipo: "tamponamento", descricao: t.descricao, qtd: 1,
+      comprimento_mm: r(isVertical ? t.size[1] : t.size[0]),
+      largura_mm: r(t.size[2]),
+      espessura_mm: r(isVertical ? t.size[0] : t.size[1]),
+      veio: "comprimento",
+    });
+  }
+
   return pecas;
 }
 
