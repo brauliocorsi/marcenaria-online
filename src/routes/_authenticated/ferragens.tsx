@@ -249,6 +249,13 @@ function CategoryParams({ category, params, setParam }: { category: string; para
           </div>
         </div>
       );
+    case "pino_prateleira":
+      return (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Ø do pino (mm)</Label><NumInput value={params.diametro_mm ?? 5} onChange={(v) => setParam("diametro_mm", v)} placeholder="5" /></div>
+          <div className="space-y-1.5"><Label>Material</Label><Input value={params.material ?? ""} onChange={(e) => setParam("material", e.target.value)} placeholder="Niquelado, latão…" /></div>
+        </div>
+      );
     case "perfil_aluminio":
       return (
         <div className="grid grid-cols-2 gap-3">
