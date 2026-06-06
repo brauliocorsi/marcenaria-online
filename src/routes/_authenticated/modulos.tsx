@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { listMaterials, listHardware } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
-import { calcularPecas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio } from "@/lib/engines/module";
+import { calcularPecas, dimensoesGavetas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo } from "@/lib/engines/module";
 import { calcularFuros, calcularDobradicas, calcularCorredicas, type Furo, type TipoFuro } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
