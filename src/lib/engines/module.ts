@@ -147,3 +147,84 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   fundo: { modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0 },
   nPrateleiras: 1,
 };
+
+// ─────────────────────────────────────────────────────────────
+// Geometria 3D — fonte única de verdade partilhada com calcularPecas.
+// Sistema: X=largura (0..W), Y=altura (0..H), Z=profundidade (0..D).
+// Origem num canto. `center` é o centro da caixa de cada peça.
+// ─────────────────────────────────────────────────────────────
+
+export type Vec3 = [number, number, number];
+
+export interface PecaGeo {
+  tipo: PieceType;
+  descricao: string;
+  size: Vec3;
+  center: Vec3;
+  veio: Veio;
+}
+
+export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
+  const { dims, sistemaMontagem, espessuraPadrao, espessuras, folgas, fundo, nPrateleiras } = config;
+  const W = dims.width, H = dims.height, D = dims.depth;
+  const e = resolverEspessuras(espessuraPadrao, espessuras);
+  const out: PecaGeo[] = [];
+
+  if (sistemaMontagem === "laterais_cobrem") {
+    out.push({ tipo: "lateral", descricao: "Lateral esquerda", veio: "comprimento",
+      size: [e.lateral, H, D], center: [e.lateral / 2, H / 2, D / 2] });
+    out.push({ tipo: "lateral", descricao: "Lateral direita", veio: "comprimento",
+      size: [e.lateral, H, D], center: [W - e.lateral / 2, H / 2, D / 2] });
+    const tbLen = W - 2 * e.lateral;
+    out.push({ tipo: "tampo", descricao: "Tampo", veio: "comprimento",
+      size: [tbLen, e.tampo, D], center: [W / 2, H - e.tampo / 2, D / 2] });
+    out.push({ tipo: "base", descricao: "Base", veio: "comprimento",
+      size: [tbLen, e.base, D], center: [W / 2, e.base / 2, D / 2] });
+  } else {
+    const latLen = H - e.tampo - e.base;
+    out.push({ tipo: "lateral", descricao: "Lateral esquerda", veio: "comprimento",
+      size: [e.lateral, latLen, D], center: [e.lateral / 2, e.base + latLen / 2, D / 2] });
+    out.push({ tipo: "lateral", descricao: "Lateral direita", veio: "comprimento",
+      size: [e.lateral, latLen, D], center: [W - e.lateral / 2, e.base + latLen / 2, D / 2] });
+    out.push({ tipo: "tampo", descricao: "Tampo", veio: "comprimento",
+      size: [W, e.tampo, D], center: [W / 2, H - e.tampo / 2, D / 2] });
+    out.push({ tipo: "base", descricao: "Base", veio: "comprimento",
+      size: [W, e.base, D], center: [W / 2, e.base / 2, D / 2] });
+  }
+
+  if (nPrateleiras > 0) {
+    const pratLen = W - 2 * e.lateral - folgas.prateleira_lateral;
+    const pratDep = D - folgas.prateleira_recuo;
+    const innerBottom = e.base;
+    const innerHeight = H - e.base - e.tampo;
+    for (let i = 1; i <= nPrateleiras; i++) {
+      const cy = innerBottom + (innerHeight * i) / (nPrateleiras + 1);
+      out.push({
+        tipo: "prateleira", descricao: `Prateleira ${i}`, veio: "comprimento",
+        size: [pratLen, e.prateleira, pratDep],
+        center: [W / 2, cy, pratDep / 2],
+      });
+    }
+  }
+
+  if (fundo.modo === "sobreposto") {
+    out.push({
+      tipo: "fundo", descricao: "Fundo (sobreposto)", veio: "largura",
+      size: [W, H, fundo.espessura],
+      center: [W / 2, H / 2, fundo.espessura / 2],
+    });
+  } else {
+    out.push({
+      tipo: "fundo", descricao: "Fundo (ranhura)", veio: "largura",
+      size: [
+        W - 2 * e.lateral + 2 * fundo.prof_ranhura,
+        H - e.tampo - e.base + 2 * fundo.prof_ranhura,
+        fundo.espessura,
+      ],
+      center: [W / 2, H / 2, fundo.espessura / 2],
+    });
+  }
+
+  return out;
+}
+
