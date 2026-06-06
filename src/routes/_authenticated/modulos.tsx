@@ -435,7 +435,7 @@ function ModulosPage() {
                             }
                             const h = corredicas.find((x: any) => x.id === v);
                             if (!h) return;
-                            const p = h.params ?? {};
+                            const p: any = h.params ?? {};
                             const comps: number[] = Array.isArray(p.comprimentosDisponiveis) ? p.comprimentosDisponiveis : [];
                             const cur = config.gavetas.corredica.comprimento;
                             const comp = comps.includes(cur) ? cur : (comps[Math.floor(comps.length / 2)] ?? cur);
