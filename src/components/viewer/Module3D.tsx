@@ -18,6 +18,7 @@ interface Module3DProps {
 }
 
 function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; center3D: [number, number, number] }) {
+  const isPorta = p.tipo === "porta";
   const dx = (p.center[0] - center3D[0]) * explode * 0.8;
   const dy = (p.center[1] - center3D[1]) * explode * 0.8;
   const dz = (p.center[2] - center3D[2]) * explode * 0.8;
@@ -34,7 +35,7 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
   return (
     <mesh position={pos} castShadow receiveShadow>
       <boxGeometry args={size} />
-      <meshStandardMaterial color={COR_MELAMINA} roughness={0.75} metalness={0.02} transparent opacity={0.92} />
+      <meshStandardMaterial color={isPorta ? "#D8D1C0" : COR_MELAMINA} roughness={0.7} metalness={0.02} transparent opacity={isPorta ? 0.85 : 0.92} />
       <Edges threshold={15} color={COR_ARESTA} />
     </mesh>
   );
