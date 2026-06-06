@@ -260,7 +260,7 @@ export const seedFerramentasPadrao = createServerFn({ method: "POST" })
 
 // ---------- SEED: Fundos padrão (platex/HDF) ----------
 const FUNDOS_PADRAO = [
-  { name: "Platex/HDF 3,5 mm (fundo)", brand: "Genérico", thickness_mm: 3, decor_code: null, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: null, has_grain: false },
+  { name: "Platex/HDF 3,5 mm (fundo)", brand: "Genérico", thickness_mm: 3.5, decor_code: null, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: null, has_grain: false },
   { name: "Platex/HDF 6 mm (fundo)", brand: "Genérico", thickness_mm: 6, decor_code: null, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: null, has_grain: false },
   { name: "Platex/HDF 8 mm (fundo)", brand: "Genérico", thickness_mm: 8, decor_code: null, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: null, has_grain: false },
 ];
