@@ -275,3 +275,76 @@ function CategoryParams({ category, params, setParam }: { category: string; para
       return null;
   }
 }
+
+function CorredicaParams({ params, setParam }: { params: any; setParam: (k: string, v: any) => void }) {
+  const lista: number[] = Array.isArray(params.comprimentosDisponiveis) ? params.comprimentosDisponiveis : [];
+  const [novo, setNovo] = useState("");
+  function addLen() {
+    const n = Number(novo);
+    if (!Number.isFinite(n) || n <= 0) return;
+    if (lista.includes(n)) { setNovo(""); return; }
+    setParam("comprimentosDisponiveis", [...lista, n].sort((a, b) => a - b));
+    setNovo("");
+  }
+  function removeLen(n: number) {
+    setParam("comprimentosDisponiveis", lista.filter((x) => x !== n));
+  }
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Tipo</Label>
+          <Select value={params.tipo ?? ""} onValueChange={(v) => setParam("tipo", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="telescopica">Telescópica</SelectItem>
+              <SelectItem value="oculta">Oculta (undermount)</SelectItem>
+              <SelectItem value="roldanas">Roldanas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Folga lateral por lado (mm)</Label>
+          <Input type="number" step="0.1" className="tabular"
+            value={params.folgaLateralPorLado ?? ""}
+            onChange={(e) => setParam("folgaLateralPorLado", e.target.value === "" ? null : Number(e.target.value))}
+            placeholder="13, 21, 12.5…" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Extensão</Label>
+          <Select value={params.extensao ?? ""} onValueChange={(v) => setParam("extensao", v)}>
+            <SelectTrigger><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="total">Total</SelectItem>
+              <SelectItem value="parcial">Parcial</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-between rounded-md border bg-card p-2 mt-5">
+          <Label className="cursor-pointer text-xs">Rebaixo de fundo (oculta)</Label>
+          <Switch checked={!!params.rebaixoFundo} onCheckedChange={(c) => setParam("rebaixoFundo", c)} />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Comprimentos disponíveis (mm)</Label>
+        <div className="flex flex-wrap gap-1.5 rounded-md border bg-card p-2 min-h-9">
+          {lista.length === 0 && <span className="text-xs text-muted-foreground">Sem comprimentos. Adicione abaixo.</span>}
+          {lista.map((n) => (
+            <span key={n} className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs">
+              {n}
+              <button type="button" onClick={() => removeLen(n)} className="text-muted-foreground hover:text-destructive">×</button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input type="number" step="1" className="tabular flex-1" placeholder="ex. 450"
+            value={novo} onChange={(e) => setNovo(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLen(); } }} />
+          <Button type="button" variant="outline" size="sm" onClick={addLen}>Adicionar</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
