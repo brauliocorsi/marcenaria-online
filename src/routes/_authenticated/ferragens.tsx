@@ -101,8 +101,23 @@ function FerragensPage() {
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
 
+  const seed = useServerFn(seedCorredicasPadrao);
+  const seedMut = useMutation({
+    mutationFn: async () => seed(),
+    onSuccess: (r: any) => {
+      toast.success(`Corrediças padrão: ${r.inserted} adicionadas, ${r.skipped} já existiam.`);
+      qc.invalidateQueries({ queryKey: ["hardware"] });
+    },
+    onError: (e: Error) => toast.error("Erro no seeder", { description: e.message }),
+  });
+
   return (
     <>
+      <div className="mb-3 flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
+          {seedMut.isPending ? "A adicionar…" : "Adicionar corrediças padrão"}
+        </Button>
+      </div>
       <CatalogShell
         title="Ferragens"
         subtitle="Minifix, cavilhas, dobradiças, corrediças, pés, perfis e iluminação."
