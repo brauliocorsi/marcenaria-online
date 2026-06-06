@@ -241,21 +241,98 @@ const FERRAMENTAS_PADRAO = [
   { name: "Disco de corte 3,5 mm (rasgo de fundo)", tool_type: "disco_corte", diameter_mm: 3.5, purpose: "geral", passante: false, max_depth_mm: null },
 ] as const;
 
+function toolSig(t: { diameter_mm: number | string; purpose: string; tool_type: string; passante: boolean }) {
+  return `${Number(t.diameter_mm)}|${t.purpose}|${t.tool_type}|${t.passante ? 1 : 0}`;
+}
+
 export const seedFerramentasPadrao = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     const { data: existing, error: e1 } = await supabase
-      .from("drill_bits").select("name").eq("user_id", userId);
+      .from("drill_bits").select("diameter_mm,purpose,tool_type,passante").eq("user_id", userId);
     if (e1) throw new Error(e1.message);
-    const have = new Set((existing ?? []).map((r: any) => r.name));
+    const have = new Set((existing ?? []).map((r: any) => toolSig(r)));
     const toInsert = FERRAMENTAS_PADRAO
-      .filter((f) => !have.has(f.name))
+      .filter((f) => !have.has(toolSig(f as any)))
       .map((f) => ({ ...f, user_id: userId })) as any[];
     if (toInsert.length === 0) return { inserted: 0, skipped: FERRAMENTAS_PADRAO.length };
     const { error: e2 } = await supabase.from("drill_bits").insert(toInsert);
     if (e2) throw new Error(e2.message);
     return { inserted: toInsert.length, skipped: FERRAMENTAS_PADRAO.length - toInsert.length };
+  });
+
+// Consolida ferramentas duplicadas: canónicas = FERRAMENTAS_PADRAO; re-aponta templates e apaga duplicados.
+export const consolidarFerramentas = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+
+    const { data: bits, error: e1 } = await supabase
+      .from("drill_bits").select("id,name,diameter_mm,purpose,tool_type,passante,created_at")
+      .eq("user_id", userId).order("created_at", { ascending: true });
+    if (e1) throw new Error(e1.message);
+
+    const before = bits?.length ?? 0;
+    const padraoNames = new Set(FERRAMENTAS_PADRAO.map((f) => f.name));
+
+    // Agrupa por assinatura
+    const bySig = new Map<string, any[]>();
+    for (const b of bits ?? []) {
+      const sig = toolSig(b as any);
+      const arr = bySig.get(sig) ?? [];
+      arr.push(b);
+      bySig.set(sig, arr);
+    }
+
+    // Map de IDs antigos → canónico
+    const remap = new Map<string, string>();
+    const toDelete: string[] = [];
+
+    for (const group of bySig.values()) {
+      if (group.length < 2) continue;
+      // Canónica: a que tem nome em FERRAMENTAS_PADRAO; senão a mais recente.
+      let canonical = group.find((g) => padraoNames.has(g.name));
+      if (!canonical) canonical = group[group.length - 1];
+      for (const g of group) {
+        if (g.id === canonical.id) continue;
+        remap.set(g.id, canonical.id);
+        toDelete.push(g.id);
+      }
+    }
+
+    // Re-aponta templates
+    let templatesUpdated = 0;
+    if (remap.size > 0) {
+      const { data: templates, error: e2 } = await supabase
+        .from("drilling_templates").select("id,config").eq("user_id", userId);
+      if (e2) throw new Error(e2.message);
+      for (const t of templates ?? []) {
+        const cfg = (t.config ?? {}) as any;
+        const brocas = { ...(cfg.brocas ?? {}) };
+        let changed = false;
+        for (const k of Object.keys(brocas)) {
+          const v = brocas[k];
+          if (v && remap.has(v)) { brocas[k] = remap.get(v); changed = true; }
+        }
+        if (changed) {
+          const { error: e3 } = await supabase
+            .from("drilling_templates").update({ config: { ...cfg, brocas } }).eq("id", t.id).eq("user_id", userId);
+          if (e3) throw new Error(e3.message);
+          templatesUpdated++;
+        }
+      }
+    }
+
+    // Apaga duplicados
+    if (toDelete.length > 0) {
+      const { error: e4 } = await supabase
+        .from("drill_bits").delete().in("id", toDelete).eq("user_id", userId);
+      if (e4) throw new Error(e4.message);
+    }
+
+    const after = before - toDelete.length;
+    return { before, after, removed: toDelete.length, templatesUpdated };
   });
 
 // ---------- SEED: Fundos padrão (platex/HDF) ----------
