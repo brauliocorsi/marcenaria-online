@@ -415,3 +415,69 @@ function DimRow({ label, value, min, max, onChange }: { label: string; value: nu
     </div>
   );
 }
+
+const TIPO_LABEL: Record<TipoFuro, string> = {
+  cavilha: "Cavilha",
+  minifix_corpo: "Minifix (corpo)",
+  minifix_perno: "Minifix (perno)",
+  parafuso: "Parafuso",
+};
+
+function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: boolean }) {
+  if (!hasTemplate) {
+    return (
+      <Card>
+        <CardContent className="flex items-start gap-3 py-5 text-sm">
+          <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <div className="font-medium">Sem template de furação padrão.</div>
+            <div className="text-muted-foreground mt-1">
+              Defina um template de furação padrão em <span className="font-medium">Templates de Furação</span> para gerar a furação automaticamente.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // agrupar por peca + tipo_furo + diametro
+  const grupos = new Map<string, { peca: string; tipo: TipoFuro; diametro: number; profundidade: number; n: number }>();
+  for (const f of furos) {
+    const k = `${f.peca}|${f.tipo_furo}|${f.diametro}|${f.profundidade}`;
+    const g = grupos.get(k);
+    if (g) g.n += 1;
+    else grupos.set(k, { peca: f.peca, tipo: f.tipo_furo, diametro: f.diametro, profundidade: f.profundidade, n: 1 });
+  }
+  const rows = Array.from(grupos.values()).sort((a, b) => a.peca.localeCompare(b.peca) || a.tipo.localeCompare(b.tipo));
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b px-4 py-2.5 text-xs text-muted-foreground">
+        Total de furos: <span className="text-foreground font-medium tabular">{furos.length}</span>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Peça</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead className="text-right">Ø (mm)</TableHead>
+            <TableHead className="text-right">Prof. (mm)</TableHead>
+            <TableHead className="text-right">Qtd</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r, i) => (
+            <TableRow key={i}>
+              <TableCell className="font-medium capitalize">{r.peca}</TableCell>
+              <TableCell>{TIPO_LABEL[r.tipo]}</TableCell>
+              <TableCell className="text-right tabular">{r.diametro}</TableCell>
+              <TableCell className="text-right tabular">{r.profundidade}</TableCell>
+              <TableCell className="text-right tabular">{r.n}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  );
+}
+
