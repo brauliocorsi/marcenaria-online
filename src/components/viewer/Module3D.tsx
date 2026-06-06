@@ -9,7 +9,13 @@ import type { Furo } from "@/lib/engines/drilling";
 const MM_TO_M = 0.001;
 const COR_MELAMINA = "#E8E2D5";
 const COR_ARESTA = "#3a3a3a";
-const COR_FURO = "#1a1a1a";
+const COR_POR_TIPO: Record<string, string> = {
+  minifix_corpo: "#e08a2a",
+  minifix_perno: "#3b82f6",
+  cavilha:       "#16a34a",
+  parafuso:      "#6b7280",
+  dobradica:     "#1a1a1a",
+};
 
 interface Module3DProps {
   config: ModuleConfig;
