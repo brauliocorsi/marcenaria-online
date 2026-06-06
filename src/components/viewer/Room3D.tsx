@@ -159,13 +159,13 @@ export function Room3D({ room }: Room3DProps) {
             return (
               <group key={pid} position={t.position} rotation={t.rotation}>
                 <WallMesh
-                  paredeId={pid}
                   comp={comp}
                   altura={room.altura}
                   esp={room.espessuraParede}
                   aberturas={aberturas}
                 />
               </group>
+
             );
           })}
         </Suspense>
