@@ -97,6 +97,19 @@ export function Module3D({ config, explode = 0, furos = [] }: Module3DProps) {
 
       {furos.map((f, i) => <FuroMesh key={i} f={f} />)}
 
+      {dimensoesPortas(config).map((p, i) => {
+        // marcador esférico no lado oposto às dobradiças (lado do puxador), a meia altura
+        const xPux = p.ladoDobradicas === "esquerda" ? p.xMax : p.xMin;
+        const pos: [number, number, number] = [xPux * MM_TO_M, p.cy * MM_TO_M, p.zFront * MM_TO_M + 0.005];
+        return (
+          <mesh key={`pux-${i}`} position={pos}>
+            <sphereGeometry args={[0.008, 16, 16]} />
+            <meshStandardMaterial color="#d94a4a" roughness={0.4} metalness={0.3} />
+          </mesh>
+        );
+      })}
+
+
       <Grid
         position={[target[0], 0, target[2]]}
         args={[10, 10]} cellSize={0.1} cellThickness={0.6} sectionSize={1} sectionThickness={1}
