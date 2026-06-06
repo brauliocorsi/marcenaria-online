@@ -29,6 +29,15 @@ export interface FundoConfig {
   recuo: number; // reservado para uso futuro
 }
 
+export interface PortasConfig {
+  nPortas: 0 | 1 | 2;
+  modo: PortaModo;
+  ladoAbertura: LadoAbertura; // só relevante p/ 1 porta
+  espessura: number | null;   // null = espessuraPadrao
+  folga: number;
+  folgaCentral: number;
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
@@ -40,6 +49,7 @@ export interface ModuleConfig {
   };
   fundo: FundoConfig;
   nPrateleiras: number;
+  portas: PortasConfig;
 }
 
 export interface Peca {
