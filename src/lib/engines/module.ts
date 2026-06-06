@@ -147,6 +147,15 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
+  // Portas como peças reais
+  for (const pp of dimensoesPortas(config)) {
+    pecas.push({
+      tipo: "porta", descricao: pp.descricao,
+      qtd: 1, comprimento_mm: r(pp.altura), largura_mm: r(pp.largura), espessura_mm: r(pp.espessura),
+      veio: "comprimento",
+    });
+  }
+
   return pecas;
 }
 
@@ -158,6 +167,7 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   folgas: { prateleira_lateral: 2, prateleira_recuo: 10 },
   fundo: { modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0 },
   nPrateleiras: 1,
+  portas: { nPortas: 0, modo: "sobreposta", ladoAbertura: "direita", espessura: null, folga: 2, folgaCentral: 3 },
 };
 
 // ─────────────────────────────────────────────────────────────
