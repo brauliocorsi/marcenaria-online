@@ -242,12 +242,13 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         );
       })}
 
-      {/* ── Gavetas (animadas — translação em +Z) ── */}
+      {/* ── Gavetas (animadas — translação em +Z; lift Y para undermount) ── */}
       {gavetas.caixas.map((c: GavetaCaixa, i) => {
         const ext = extensaoFromTipo(c.tipoCorredica);
         const openZ = aberturaGaveta(c.boxDepth, ext, drawerPct);
+        const liftY = liftYUndermount(c.tipoCorredica);
         return (
-          <group key={`drawer-${i}`} position={[0, 0, openZ * MM_TO_M]}>
+          <group key={`drawer-${i}`} position={[0, liftY * MM_TO_M, openZ * MM_TO_M]}>
             {bucket.drawerPecas[i].map((p, j) => (
               <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} />
             ))}
@@ -255,6 +256,10 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
           </group>
         );
       })}
+
+      {/* ── Cotas (L/A/P) ── */}
+      {showCotas && <CotasModulo W={W} H={H} D={D} />}
+
 
       {/* Pés */}
       {pes.posicoes.map((p, i) => {
