@@ -270,24 +270,35 @@ function ModulosPage() {
 
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-sm">Prateleiras</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-3 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Quantidade</Label>
-                <Input type="number" min={0} step={1} className="tabular"
-                  value={config.nPrateleiras}
-                  onChange={(e) => upd("nPrateleiras", Math.max(0, Number(e.target.value) || 0))} />
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Quantidade</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.nPrateleiras}
+                    onChange={(e) => upd("nPrateleiras", Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Folga lateral</Label>
+                  <Input type="number" min={0} step={0.5} className="tabular"
+                    value={config.folgas.prateleira_lateral}
+                    onChange={(e) => updFolga("prateleira_lateral", Number(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1"><Label className="text-xs">Recuo frontal</Label>
+                  <Input type="number" min={0} step={1} className="tabular"
+                    value={config.folgas.prateleira_recuo}
+                    onChange={(e) => updFolga("prateleira_recuo", Number(e.target.value) || 0)} />
+                </div>
               </div>
-              <div className="space-y-1"><Label className="text-xs">Folga lateral</Label>
-                <Input type="number" min={0} step={0.5} className="tabular"
-                  value={config.folgas.prateleira_lateral}
-                  onChange={(e) => updFolga("prateleira_lateral", Number(e.target.value) || 0)} />
-              </div>
-              <div className="space-y-1"><Label className="text-xs">Recuo frontal</Label>
-                <Input type="number" min={0} step={1} className="tabular"
-                  value={config.folgas.prateleira_recuo}
-                  onChange={(e) => updFolga("prateleira_recuo", Number(e.target.value) || 0)} />
+              <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="prat-mov" className="text-xs">Prateleiras móveis (pinos Ø5)</Label>
+                  <p className="text-[10px] text-muted-foreground">Desligado = fixas com minifix + cavilha.</p>
+                </div>
+                <Switch id="prat-mov" checked={config.prateleirasMoveis !== false}
+                  onCheckedChange={(v) => upd("prateleirasMoveis", v)} disabled={config.nPrateleiras === 0} />
               </div>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-sm">Fundo</CardTitle></CardHeader>
