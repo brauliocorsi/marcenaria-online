@@ -12,6 +12,9 @@ import {
   CavilhaModel, CorredicaCarcaca, CorredicaGaveta, DobradicaCaneco, DobradicaChapa,
   MinifixCorpo, MinifixPerno, PinoPrateleiraModel, liftYUndermount,
 } from "./hardware/HardwareMeshes";
+import {
+  pecasGavetaPorTemplate, DEFAULT_CLASSICA, type GavetaTemplate,
+} from "@/lib/engines/gaveta-template";
 
 const MM_TO_M = 0.001;
 const COR_MELAMINA = "#E8E2D5";
