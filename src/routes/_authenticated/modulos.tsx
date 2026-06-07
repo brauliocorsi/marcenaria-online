@@ -780,6 +780,8 @@ function ModulosPage() {
                     drawerPct={drawerPct}
                     showCotas={showCotas}
                     gavetaTemplates={gavetaTemplates as any}
+                    materialCorpo={(materials ?? []).find((m: any) => m.id === materialId) as any}
+                    materialFrente={(materials ?? []).find((m: any) => m.id === (materialFrenteId ?? materialId)) as any}
                   />
                 </div>
                 {showFuros && templateConfig && <FurosLegend />}
