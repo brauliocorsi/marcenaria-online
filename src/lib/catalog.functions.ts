@@ -3,16 +3,23 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 // ---------- MATERIAIS ----------
+const acabamentos = ["mate", "brilho", "madeira", "texturado"] as const;
 const materialSchema = z.object({
   name: z.string().min(1, "Nome obrigatório").max(200),
   brand: z.string().max(120).default("Kronospan"),
+  fabricante: z.string().max(120).nullable().optional(),
+  decor_nome: z.string().max(200).nullable().optional(),
   decor_code: z.string().max(60).nullable().optional(),
+  acabamento: z.enum(acabamentos).default("mate"),
+  cor_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida (use #RRGGBB)").default("#E8E2D5"),
+  textura_url: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
   thickness_mm: z.number().min(0.1).max(100),
   sheet_width_mm: z.number().int().min(100).max(10000),
   sheet_height_mm: z.number().int().min(100).max(10000),
   price_per_sheet: z.number().min(0).nullable().optional(),
   has_grain: z.boolean().default(false),
 });
+export const ACABAMENTOS = acabamentos;
 
 export const listMaterials = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
