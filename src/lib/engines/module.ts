@@ -134,6 +134,10 @@ export interface ModuleConfig {
   pes: PesConfig;
   tamponamento: TamponamentoConfig;
   sistema32: Sistema32Config;
+  /** ID do material aplicado à carcaça (laterais/tampo/base/prateleiras/fundo). */
+  materialCorpoId?: string | null;
+  /** ID do material aplicado às frentes (portas + frentes de gaveta). Fallback = materialCorpoId. */
+  materialFrenteId?: string | null;
 }
 
 
