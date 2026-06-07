@@ -55,6 +55,7 @@ function ModulosPage() {
   const [viewTab, setViewTab] = useState<"3d" | "pecas" | "furacao" | "ferragens">("3d");
   const [showFuros, setShowFuros] = useState(true);
   const [showHardware, setShowHardware] = useState(true);
+  const [showCotas, setShowCotas] = useState(false);
   const [doorAngleDeg, setDoorAngleDeg] = useState(0);
   const [drawerPct, setDrawerPct] = useState(0);
 
@@ -660,6 +661,10 @@ function ModulosPage() {
                     <Switch id="show-hw" checked={showHardware} onCheckedChange={setShowHardware} />
                     <Label htmlFor="show-hw" className="text-xs text-muted-foreground cursor-pointer">Ferragens</Label>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Switch id="show-cotas" checked={showCotas} onCheckedChange={setShowCotas} />
+                    <Label htmlFor="show-cotas" className="text-xs text-muted-foreground cursor-pointer">Cotas</Label>
+                  </div>
 
                   <div className="flex items-center gap-2 pl-3 border-l">
                     <Label className="text-xs text-muted-foreground shrink-0">Abrir portas</Label>
@@ -688,6 +693,7 @@ function ModulosPage() {
                     showHardware={showHardware}
                     doorAngleDeg={doorAngleDeg}
                     drawerPct={drawerPct}
+                    showCotas={showCotas}
                   />
                 </div>
                 {showFuros && templateConfig && <FurosLegend />}
@@ -954,6 +960,21 @@ function FerragensBOM({ furos, nGavetas, corredicaNome }: { furos: Furo[]; nGave
       qtd: nGavetas,
       localizacao: Array.from({ length: nGavetas }, (_, i) => `gaveta ${i + 1}`).join("; "),
     });
+    // Furos de montagem das corrediças (marcação) agrupados por gaveta + lateral
+    const montagemPorGav = new Map<string, number>();
+    for (const f of furos) {
+      if (f.tipo_furo !== "marcacao") continue;
+      const m = /^corredica_gaveta(\d+)_(lateral|ilharga|clip_frente|suporte_tras)_?(esq|dir)?$/.exec(f.junta);
+      if (!m) continue;
+      const gav = m[1], parte = m[2], lado = m[3] ?? "";
+      const k = `gaveta ${gav} · ${parte}${lado ? " " + lado : ""}`;
+      montagemPorGav.set(k, (montagemPorGav.get(k) ?? 0) + 1);
+    }
+    if (montagemPorGav.size > 0) {
+      const total = Array.from(montagemPorGav.values()).reduce((a, b) => a + b, 0);
+      const loc = Array.from(montagemPorGav.entries()).map(([k, n]) => `${k} (${n})`).join("; ");
+      rows.push({ ferragem: "Furos de montagem corrediça (Ø3 / 0,5mm)", qtd: total, localizacao: loc });
+    }
   }
 
   if (rows.length === 0) {

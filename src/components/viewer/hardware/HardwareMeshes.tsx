@@ -1,6 +1,4 @@
-// Modelos 3D simplificados de ferragens (Fase 4H).
-// Geometria reconhecível, cor metálica salvo indicado.
-// Posições/coords em mm; convertemos para metros aqui dentro.
+// Modelos 3D simplificados de ferragens (Fase 4H + 5C corrediças fiéis por tipo).
 import { useMemo } from "react";
 import { Quaternion, Vector3 } from "three";
 import type { Furo } from "@/lib/engines/drilling";
@@ -8,6 +6,8 @@ import type { GavetaCaixa } from "@/lib/engines/module";
 
 const MM = 0.001;
 const COLOR_METAL = "#6B7280";
+const COLOR_SLIDE = "#9CA3AF";
+const COLOR_SLIDE_INNER = "#7a8089";
 const COLOR_WOOD = "#C9A66B";
 const UP = new Vector3(0, 1, 0);
 
@@ -49,7 +49,6 @@ export function MinifixPerno({ f }: { f: Furo }) {
 }
 
 export function CavilhaModel({ f }: { f: Furo }) {
-  // cavilha atravessa a junta — comprimento ≈ 2× profundidade
   const len = Math.max(20, f.profundidade * 2 - 2);
   const r = 4;
   const q = useDirQuat(f.dir);
@@ -73,10 +72,8 @@ export function PinoPrateleiraModel({ f }: { f: Furo }) {
 }
 
 export function DobradicaCaneco({ f }: { f: Furo }) {
-  // Caneco Ø35 (h=12) + braço (box ~ 50×20×12) saindo para -dir (para dentro do módulo).
   const r = 17.5, h = 12;
   const q = useDirQuat(f.dir);
-  // braço como segundo cilindro+box num group, simplificado: uma box atrás do caneco
   const bracoLen = 50, bracoW = 22, bracoH = 14;
   return (
     <group>
@@ -105,7 +102,6 @@ export function DobradicaCaneco({ f }: { f: Furo }) {
 }
 
 export function DobradicaChapa({ centro, dir }: { centro: [number, number, number]; dir: [number, number, number] }) {
-  // chapa fixa na lateral; sai um pouco para fora da face
   const thick = 3;
   const cx = centro[0] + (dir[0] * thick) / 2;
   const cy = centro[1] + (dir[1] * thick) / 2;
@@ -121,44 +117,112 @@ export function DobradicaChapa({ centro, dir }: { centro: [number, number, numbe
   );
 }
 
-// Corrediça: dois perfis (carcaça + gaveta), boxes finos ao longo da profundidade
+// ── Corrediças fiéis por tipo ──
+// Membro de CARCAÇA (fixa à lateral do módulo) — render no espaço estático.
 export function CorredicaCarcaca({ caixa, ladoXmin, ladoXmax }: { caixa: GavetaCaixa; ladoXmin: number; ladoXmax: number }) {
+  const tipo = caixa.tipoCorredica ?? "telescopica";
   const len = caixa.boxDepth;
-  const altura = 17;
-  const espessura = 12;
   const cy = caixa.center[1];
   const cz = caixa.center[2];
+
+  if (tipo === "oculta") {
+    // 2 calhas SOB a base da gaveta (junto às ilhargas), em Z.
+    const calha = 16;
+    const halfW = caixa.boxWidth / 2;
+    const yCalha = (cy - caixa.boxHeight / 2 - calha / 2);
+    const xs = [caixa.center[0] - halfW + calha / 2, caixa.center[0] + halfW - calha / 2];
+    return (
+      <group>
+        {xs.map((x, i) => (
+          <mesh key={i} position={[x * MM, yCalha * MM, cz * MM]}>
+            <boxGeometry args={[calha * MM, calha * MM, len * MM]} />
+            <meshStandardMaterial color={COLOR_METAL} metalness={0.85} roughness={0.3} />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+
+  // Telescópica / Roldanas: perfil em cada lateral
+  const esp = tipo === "roldanas" ? 12.5 : 13;
+  const alt = tipo === "roldanas" ? 35 : 45;
   return (
     <group>
       {[ladoXmin, ladoXmax].map((x, i) => {
-        const dirX = i === 0 ? 1 : -1; // sai da lateral para o interior
+        const dirX = i === 0 ? 1 : -1;
         return (
-          <mesh key={i} position={[(x + dirX * espessura / 2) * MM, cy * MM, cz * MM]}>
-            <boxGeometry args={[espessura * MM, altura * MM, len * MM]} />
-            <meshStandardMaterial color={COLOR_METAL} metalness={0.85} roughness={0.3} />
-          </mesh>
+          <group key={i}>
+            <mesh position={[(x + dirX * esp / 2) * MM, cy * MM, cz * MM]}>
+              <boxGeometry args={[esp * MM, alt * MM, len * MM]} />
+              <meshStandardMaterial color={COLOR_SLIDE} metalness={0.9} roughness={0.25} />
+            </mesh>
+            {tipo === "roldanas" && (
+              // roldana na traseira do membro de carcaça
+              <mesh
+                position={[(x + dirX * (esp + 4)) * MM, cy * MM, (caixa.zBack + 12) * MM]}
+                rotation={[0, 0, Math.PI / 2]}
+              >
+                <cylinderGeometry args={[9 * MM, 9 * MM, 6 * MM, 18]} />
+                <meshStandardMaterial color="#2c2c2c" metalness={0.4} roughness={0.6} />
+              </mesh>
+            )}
+          </group>
         );
       })}
     </group>
   );
 }
 
+// Membro de GAVETA (fixa à ilharga) — render dentro do grupo animado da gaveta.
 export function CorredicaGaveta({ caixa }: { caixa: GavetaCaixa }) {
-  // perfis montados nas laterais da caixa, em ambos os lados
+  const tipo = caixa.tipoCorredica ?? "telescopica";
   const len = caixa.boxDepth;
-  const altura = 17;
-  const espessura = 8;
   const cy = caixa.center[1];
   const cz = caixa.center[2];
   const halfW = caixa.boxWidth / 2;
+
+  if (tipo === "oculta") {
+    // clip frontal visível na frente da caixa
+    const cx = caixa.center[0];
+    return (
+      <mesh position={[cx * MM, (cy - caixa.boxHeight / 2 + 6) * MM, (caixa.zFront - 8) * MM]}>
+        <boxGeometry args={[(caixa.boxWidth * 0.55) * MM, 10 * MM, 14 * MM]} />
+        <meshStandardMaterial color={COLOR_METAL} metalness={0.85} roughness={0.3} />
+      </mesh>
+    );
+  }
+
+  const esp = tipo === "roldanas" ? 10 : 8;
+  const alt = tipo === "roldanas" ? 30 : 40;
+  const xs = [caixa.center[0] - halfW - esp / 2, caixa.center[0] + halfW + esp / 2];
   return (
     <group>
-      {[caixa.center[0] - halfW - espessura / 2, caixa.center[0] + halfW + espessura / 2].map((x, i) => (
-        <mesh key={i} position={[x * MM, cy * MM, cz * MM]}>
-          <boxGeometry args={[espessura * MM, altura * MM, len * MM]} />
-          <meshStandardMaterial color="#7a8089" metalness={0.85} roughness={0.3} />
-        </mesh>
-      ))}
+      {xs.map((x, i) => {
+        const dirX = i === 0 ? -1 : 1;
+        return (
+          <group key={i}>
+            <mesh position={[x * MM, cy * MM, cz * MM]}>
+              <boxGeometry args={[esp * MM, alt * MM, len * MM]} />
+              <meshStandardMaterial color={COLOR_SLIDE_INNER} metalness={0.85} roughness={0.3} />
+            </mesh>
+            {tipo === "roldanas" && (
+              // roldana na FRENTE do membro de gaveta
+              <mesh
+                position={[(x + dirX * 4) * MM, cy * MM, (caixa.zFront - 12) * MM]}
+                rotation={[0, 0, Math.PI / 2]}
+              >
+                <cylinderGeometry args={[9 * MM, 9 * MM, 6 * MM, 18]} />
+                <meshStandardMaterial color="#2c2c2c" metalness={0.4} roughness={0.6} />
+              </mesh>
+            )}
+          </group>
+        );
+      })}
     </group>
   );
+}
+
+// Helper: lift Y para undermount (caixa assenta sobre as calhas)
+export function liftYUndermount(tipo?: GavetaCaixa["tipoCorredica"]): number {
+  return tipo === "oculta" ? 16 : 0;
 }

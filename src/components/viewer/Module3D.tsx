@@ -1,6 +1,6 @@
 import { Suspense, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment } from "@react-three/drei";
+import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment, Line, Html } from "@react-three/drei";
 import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo, PortaDim, GavetaCaixa } from "@/lib/engines/module";
 import {
@@ -10,7 +10,7 @@ import { aberturaGaveta, anguloPortaRad, extensaoFromTipo, pivotPorta } from "@/
 import type { Furo } from "@/lib/engines/drilling";
 import {
   CavilhaModel, CorredicaCarcaca, CorredicaGaveta, DobradicaCaneco, DobradicaChapa,
-  MinifixCorpo, MinifixPerno, PinoPrateleiraModel,
+  MinifixCorpo, MinifixPerno, PinoPrateleiraModel, liftYUndermount,
 } from "./hardware/HardwareMeshes";
 
 const MM_TO_M = 0.001;
@@ -33,6 +33,7 @@ interface Module3DProps {
   showHardware?: boolean;
   doorAngleDeg?: number;
   drawerPct?: number;
+  showCotas?: boolean;
 }
 
 function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; center3D: [number, number, number] }) {
@@ -98,7 +99,7 @@ function isDrawerPiece(p: PecaGeo, idx: number): boolean {
   return new RegExp(`gaveta\\s+${idx + 1}\\b`, "i").test(p.descricao);
 }
 
-export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0 }: Module3DProps) {
+export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
   const pes = useMemo(() => calcularPes(config), [config]);
   const portas = useMemo(() => dimensoesPortas(config), [config]);
@@ -241,12 +242,13 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         );
       })}
 
-      {/* ── Gavetas (animadas — translação em +Z) ── */}
+      {/* ── Gavetas (animadas — translação em +Z; lift Y para undermount) ── */}
       {gavetas.caixas.map((c: GavetaCaixa, i) => {
         const ext = extensaoFromTipo(c.tipoCorredica);
         const openZ = aberturaGaveta(c.boxDepth, ext, drawerPct);
+        const liftY = liftYUndermount(c.tipoCorredica);
         return (
-          <group key={`drawer-${i}`} position={[0, 0, openZ * MM_TO_M]}>
+          <group key={`drawer-${i}`} position={[0, liftY * MM_TO_M, openZ * MM_TO_M]}>
             {bucket.drawerPecas[i].map((p, j) => (
               <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} />
             ))}
@@ -254,6 +256,10 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
           </group>
         );
       })}
+
+      {/* ── Cotas (L/A/P) ── */}
+      {showCotas && <CotasModulo W={W} H={H} D={D} />}
+
 
       {/* Pés */}
       {pes.posicoes.map((p, i) => {
@@ -277,5 +283,86 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         <GizmoViewport axisColors={["#d94a4a", "#4ab06a", "#4a7fd9"]} labelColor="white" />
       </GizmoHelper>
     </Canvas>
+  );
+}
+
+// ── Cotas (Largura X, Altura Y, Profundidade Z) ──
+export function cotasLabels(W: number, H: number, D: number) {
+  return [
+    { eixo: "L" as const, mm: Math.round(W) },
+    { eixo: "A" as const, mm: Math.round(H) },
+    { eixo: "P" as const, mm: Math.round(D) },
+  ];
+}
+
+function CotaLinha({ a, b, label, color }: { a: [number, number, number]; b: [number, number, number]; label: string; color: string }) {
+  const mid: [number, number, number] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+  // setas como pontas cónicas
+  const va = new Vector3(...a), vb = new Vector3(...b);
+  const dir = vb.clone().sub(va).normalize();
+  const tipLen = 0.02;
+  const arrowA = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone());
+  const arrowB = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone().multiplyScalar(-1));
+  const posA: [number, number, number] = [a[0] + dir.x * tipLen / 2, a[1] + dir.y * tipLen / 2, a[2] + dir.z * tipLen / 2];
+  const posB: [number, number, number] = [b[0] - dir.x * tipLen / 2, b[1] - dir.y * tipLen / 2, b[2] - dir.z * tipLen / 2];
+  return (
+    <group>
+      <Line points={[a, b]} color={color} lineWidth={1.6} />
+      <mesh position={posA} quaternion={arrowA}>
+        <coneGeometry args={[0.006, tipLen, 12]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={posB} quaternion={arrowB}>
+        <coneGeometry args={[0.006, tipLen, 12]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <Html position={mid} center distanceFactor={1.6} zIndexRange={[10, 0]} pointerEvents="none">
+        <div
+          data-cota-label
+          style={{
+            background: "rgba(255,255,255,0.92)",
+            border: `1px solid ${color}`,
+            borderRadius: 4,
+            padding: "1px 6px",
+            fontSize: 11,
+            fontVariantNumeric: "tabular-nums",
+            color: "#111",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function CotasModulo({ W, H, D }: { W: number; H: number; D: number }) {
+  const off = 0.08; // 80mm de afastamento
+  const wM = W * MM_TO_M, hM = H * MM_TO_M, dM = D * MM_TO_M;
+  return (
+    <group>
+      {/* Largura (X) — em baixo, frente */}
+      <CotaLinha
+        a={[0, -off, dM + off]}
+        b={[wM, -off, dM + off]}
+        label={`L ${Math.round(W)}`}
+        color="#d94a4a"
+      />
+      {/* Altura (Y) — lateral esquerda, frente */}
+      <CotaLinha
+        a={[-off, 0, dM + off]}
+        b={[-off, hM, dM + off]}
+        label={`A ${Math.round(H)}`}
+        color="#4ab06a"
+      />
+      {/* Profundidade (Z) — em baixo, lateral esquerda */}
+      <CotaLinha
+        a={[-off, -off, 0]}
+        b={[-off, -off, dM]}
+        label={`P ${Math.round(D)}`}
+        color="#4a7fd9"
+      />
+    </group>
   );
 }

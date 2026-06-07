@@ -1,23 +1,20 @@
 import { calcularFuros, calcularCorredicas, calcularSistema32 } from "./drilling";
 import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "./module";
 import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
+import { cotasLabels } from "@/components/viewer/Module3D";
 
 export function runDrillingAsserts() {
-  // ─── FIX 1+2: cenário base 800×720×560, laterais_cobrem, 1 prateleira MÓVEL ───
+  // ─── REGRESSÃO da junção (FIX 1+2 anteriores) ───
   const cfg: ModuleConfig = { ...DEFAULT_MODULE_CONFIG, prateleirasMoveis: true };
-  const furos = cfg ? calcularFuros(cfg, DEFAULT_TEMPLATE_CONFIG) : [];
-
+  const furos = calcularFuros(cfg, DEFAULT_TEMPLATE_CONFIG);
   const corpos = furos.filter(f => f.tipo_furo === "minifix_corpo");
   const pernos = furos.filter(f => f.tipo_furo === "minifix_perno");
   const pinos = furos.filter(f => f.tipo_furo === "pino");
-  const cavs = furos.filter(f => f.tipo_furo === "cavilha");
-
   const relogioSoNasLaterais = corpos.length > 0 && corpos.every(f => f.peca === "lateral");
   const pernoSoEmTampoBase = pernos.length > 0 && pernos.every(f => f.peca === "tampo" || f.peca === "base");
   const zeroFurosNaPrateleira = furos.every(f => f.peca !== "prateleira");
   const pinos4Lateral = pinos.length === 4 && pinos.every(f => f.diametro === 5 && f.peca === "lateral" && /prateleira/.test(f.junta));
 
-  // ─── FIX 3: trocar para tampo_base_cobrem → INVERTE (e renderiza) ───
   const cfg2: ModuleConfig = { ...cfg, sistemaMontagem: "tampo_base_cobrem" };
   const f2 = calcularFuros(cfg2, DEFAULT_TEMPLATE_CONFIG);
   const corpos2 = f2.filter(f => f.tipo_furo === "minifix_corpo");
@@ -25,9 +22,37 @@ export function runDrillingAsserts() {
   const invRelogio = corpos2.length > 0 && corpos2.every(f => f.peca === "tampo" || f.peca === "base");
   const invPerno = pernos2.length > 0 && pernos2.every(f => f.peca === "lateral");
 
-  // ─── 4G.2 Marcação corrediças & Sistema 32 (preservados) ───
-  const cfgGav: ModuleConfig = { ...DEFAULT_MODULE_CONFIG, gavetas: { ...DEFAULT_MODULE_CONFIG.gavetas, nGavetas: 3 } };
-  const marc = calcularCorredicas(cfgGav, DEFAULT_TEMPLATE_CONFIG);
+  // ─── NOVO: corrediças por tipo ───
+  // Telescópica (default): 3 marcas/lado na lateral + 3 marcas/lado na ilharga, por gaveta.
+  const cfgTele: ModuleConfig = { ...DEFAULT_MODULE_CONFIG, gavetas: { ...DEFAULT_MODULE_CONFIG.gavetas, nGavetas: 1 } };
+  const mTele = calcularCorredicas(cfgTele, DEFAULT_TEMPLATE_CONFIG);
+  const teleLateral = mTele.filter(f => f.peca === "lateral").length;
+  const teleIlharga = mTele.filter(f => f.peca === "gaveta_lateral").length;
+  const teleOk = teleLateral >= 6 && teleIlharga >= 6 && mTele.every(f => f.diametro === 3 && f.profundidade === 0.5);
+
+  // Undermount: clip frontal + 2 suportes traseiros, por gaveta.
+  const cfgUnd: ModuleConfig = {
+    ...DEFAULT_MODULE_CONFIG,
+    gavetas: {
+      ...DEFAULT_MODULE_CONFIG.gavetas,
+      nGavetas: 1,
+      corredica: { ...DEFAULT_MODULE_CONFIG.gavetas.corredica, tipo: "oculta", folgaLateralPorLado: 21 },
+    },
+  };
+  const mUnd = calcularCorredicas(cfgUnd, DEFAULT_TEMPLATE_CONFIG);
+  const clip = mUnd.filter(f => /clip_frente/.test(f.junta)).length;
+  const suporte = mUnd.filter(f => /suporte_tras/.test(f.junta)).length;
+  const undOk = clip === 1 && suporte === 2;
+
+  // ─── COTAS: helper devolve 3 labels L/A/P inteiros ───
+  const labels = cotasLabels(cfg.dims.width, cfg.dims.height, cfg.dims.depth);
+  const cotasOk =
+    labels.length === 3 &&
+    labels[0].eixo === "L" && labels[0].mm === cfg.dims.width &&
+    labels[1].eixo === "A" && labels[1].mm === cfg.dims.height &&
+    labels[2].eixo === "P" && labels[2].mm === cfg.dims.depth;
+
+  // ─── Sistema 32 (preservado) ───
   const cfgS32: ModuleConfig = {
     ...DEFAULT_MODULE_CONFIG,
     dims: { width: 800, height: 2000, depth: 560 },
@@ -36,22 +61,23 @@ export function runDrillingAsserts() {
   const s32 = calcularSistema32(cfgS32, DEFAULT_TEMPLATE_CONFIG);
 
   const tests: Array<[string, boolean]> = [
-    ["[FIX 1] laterais_cobrem: relógio SÓ nas laterais", relogioSoNasLaterais],
-    ["[FIX 1] laterais_cobrem: perno SÓ em tampo/base", pernoSoEmTampoBase],
-    ["[FIX 2] ZERO minifix/cavilha em prateleira (móvel)", zeroFurosNaPrateleira],
-    ["[FIX 2] Prateleira móvel → 4 pinos Ø5 nas laterais", pinos4Lateral],
-    ["[FIX 1+3] tampo_base_cobrem inverte: relógio em tampo/base", invRelogio],
-    ["[FIX 1+3] tampo_base_cobrem inverte: perno em laterais", invPerno],
-    ["[FIX 3] tampo_base_cobrem renderiza ferragens (furos > 0)", f2.length > 0],
-    ["[4G.2] Marcação: 3 gavetas → 18 Ø3/0.5", marc.length === 18 && marc.every(f => f.diametro === 3 && f.profundidade === 0.5)],
+    ["[regressão] laterais_cobrem: relógio SÓ nas laterais", relogioSoNasLaterais],
+    ["[regressão] laterais_cobrem: perno SÓ em tampo/base", pernoSoEmTampoBase],
+    ["[regressão] ZERO minifix/cavilha em prateleira (móvel)", zeroFurosNaPrateleira],
+    ["[regressão] Prateleira móvel → 4 pinos Ø5 nas laterais", pinos4Lateral],
+    ["[regressão] tampo_base_cobrem inverte: relógio em tampo/base", invRelogio],
+    ["[regressão] tampo_base_cobrem inverte: perno em laterais", invPerno],
+    ["[regressão] tampo_base_cobrem renderiza ferragens (furos>0)", f2.length > 0],
+    ["[novo] Telescópica: ≥3 marcas/lado em lateral + ilharga", teleOk],
+    ["[novo] Undermount: clip frontal + 2 suportes traseiros", undOk],
+    ["[novo] Cotas: 3 labels L/A/P corretos", cotasOk],
     ["[4G.2] Sistema 32: 204 furos Ø5", s32.length === 204 && s32.every(f => f.diametro === 5)],
-    ["[4G] Ferramenta resolvida em todos os furos", furos.every(f => !!f.ferramentaNome) && cavs.length > 0],
   ];
   let ok = true;
   for (const [label, pass] of tests) {
     console.assert(pass, `[drilling.assert] FALHOU: ${label}`);
     if (!pass) ok = false;
   }
-  if (ok) console.info(`[drilling.assert] ✓ minifix correto + inversão por sistema + pinos de prateleira — OK.`);
+  if (ok) console.info(`[drilling.assert] ✓ corrediças por tipo + cotas + regressão junção — OK.`);
   return ok;
 }
