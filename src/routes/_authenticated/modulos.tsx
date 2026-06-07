@@ -49,6 +49,8 @@ function ModulosPage() {
   const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
   const fetchGavetaTpls = useServerFn(listGavetaTemplates);
   const { data: gavetaTemplates } = useQuery({ queryKey: ["gaveta_templates"], queryFn: () => fetchGavetaTpls() });
+  const fetchPuxadores = useServerFn(listPuxadores);
+  const { data: puxadores } = useQuery({ queryKey: ["puxadores"], queryFn: () => fetchPuxadores() });
   const corredicas = useMemo(() => (hardware ?? []).filter((h: any) => h.category === "corredica"), [hardware]);
 
   const [name, setName] = useState("Módulo sem nome");
