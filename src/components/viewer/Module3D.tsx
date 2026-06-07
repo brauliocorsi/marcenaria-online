@@ -5,6 +5,7 @@ import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo, PortaDim, GavetaCaixa } from "@/lib/engines/module";
 import {
   calcularGeometria, calcularPes, dimensoesPortas, dimensoesGavetas, resolverEspessuras,
+  pecasPortaAluminio,
 } from "@/lib/engines/module";
 import { aberturaGaveta, anguloPortaRad, extensaoFromTipo, pivotPorta } from "@/lib/engines/hardware-anim";
 import type { Furo } from "@/lib/engines/drilling";
@@ -29,6 +30,20 @@ const COR_POR_TIPO: Record<string, string> = {
   pino:          "#8b5cf6",
 };
 
+// ── Material da biblioteca (linha de `materials`) — só campos visuais ──
+export type MatDef = { cor_hex?: string | null; acabamento?: string | null; decor_nome?: string | null; name?: string | null } | null | undefined;
+
+// acabamento → propriedades físicas (PBR) reproduzíveis pelo render
+export function materialPhys(acab?: string | null): { roughness: number; metalness: number } {
+  switch ((acab ?? "").toLowerCase()) {
+    case "brilho":    return { roughness: 0.15, metalness: 0.05 };
+    case "mate":      return { roughness: 0.85, metalness: 0.0 };
+    case "madeira":   return { roughness: 0.7,  metalness: 0.0 };
+    case "texturado": return { roughness: 0.6,  metalness: 0.0 };
+    default:          return { roughness: 0.7,  metalness: 0.02 };
+  }
+}
+
 interface Module3DProps {
   config: ModuleConfig;
   explode?: number;
@@ -38,6 +53,8 @@ interface Module3DProps {
   drawerPct?: number;
   showCotas?: boolean;
   gavetaTemplates?: Array<{ id: string; nome: string; tipo: string; config: any }>;
+  materialCorpo?: MatDef;
+  materialFrente?: MatDef;
 }
 
 // Resolve template ativo da gaveta — fallback DEFAULT_CLASSICA.
