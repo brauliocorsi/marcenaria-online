@@ -583,6 +583,24 @@ export interface PortaDim {
   xCharneira: number;                    // x da aresta da porta no lado das dobradiças
 }
 
+function aplicarRevealFrente(
+  yMin: number, yMax: number, altura: number, cy: number,
+  reveal: number, pos: PuxadorPos | undefined,
+) {
+  if (reveal <= 0) return { yMin, yMax, altura, cy };
+  const p = pos ?? "superior";
+  if (p === "superior") {
+    const nyMax = yMax - reveal, nAlt = altura - reveal;
+    return { yMin, yMax: nyMax, altura: nAlt, cy: (yMin + nyMax) / 2 };
+  }
+  if (p === "inferior") {
+    const nyMin = yMin + reveal, nAlt = altura - reveal;
+    return { yMin: nyMin, yMax, altura: nAlt, cy: (nyMin + yMax) / 2 };
+  }
+  // lateral: sem alteração de altura
+  return { yMin, yMax, altura, cy };
+}
+
 export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
   const { dims, espessuraPadrao, espessuras, portas, gavetas } = config;
   if (!portas || portas.nPortas === 0) return [];
