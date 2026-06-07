@@ -230,6 +230,6 @@ export function runGavetaTemplateAsserts() {
     console.assert(pass, `[gaveta-template.assert] FALHOU: ${label}`);
     if (!pass) ok = false;
   }
-  if (ok) console.info("[gaveta-template.assert] ✓ 3 templates produzem peças/rasgos/furos corretos.");
+  if (ok) console.info("[gaveta-template.assert] ✓ 6 testes (3 motor + 3 render) passam.");
   return ok;
 }
