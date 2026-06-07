@@ -49,6 +49,8 @@ export interface FundoConfig {
   espacamentoParafusoFundo?: number; // mm (default 250)
 }
 
+export type TipoPorta = "melamina" | "aluminio_espelho";
+
 export interface PortasConfig {
   nPortas: 0 | 1 | 2;
   modo: PortaModo;
@@ -56,6 +58,12 @@ export interface PortasConfig {
   espessura: number | null;   // null = espessuraPadrao
   folga: number;
   folgaCentral: number;
+  /** Tipo construtivo da porta. Default 'melamina' (comportamento clássico). */
+  tipoPorta?: TipoPorta;
+  /** Largura do perfil de alumínio (mm), só usado em aluminio_espelho. Default 25. */
+  perfilLarguraMm?: number;
+  /** Espessura do perfil/painel (mm) na porta de alumínio. Default 20. */
+  perfilEspessuraMm?: number;
 }
 
 export type CorredicaTipo = "telescopica" | "oculta" | "roldanas";
