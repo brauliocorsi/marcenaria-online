@@ -429,6 +429,36 @@ function ModulosPage() {
                     onChange={(e) => updPorta("folgaCentral", Number(e.target.value) || 0)} />
                 </div>
               </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1 col-span-1">
+                  <Label className="text-xs">Tipo de porta</Label>
+                  <Select
+                    value={config.portas.tipoPorta ?? "melamina"}
+                    onValueChange={(v) => updPorta("tipoPorta", v as any)}
+                    disabled={config.portas.nPortas === 0}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="melamina">Melamina (painel)</SelectItem>
+                      <SelectItem value="aluminio_espelho">Alumínio + espelho</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Perfil largura (mm)</Label>
+                  <Input type="number" min={10} step={1} className="tabular"
+                    value={config.portas.perfilLarguraMm ?? 25}
+                    disabled={config.portas.nPortas === 0 || (config.portas.tipoPorta ?? "melamina") !== "aluminio_espelho"}
+                    onChange={(e) => updPorta("perfilLarguraMm", Math.max(10, Number(e.target.value) || 25))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Perfil espessura (mm)</Label>
+                  <Input type="number" min={6} step={1} className="tabular"
+                    value={config.portas.perfilEspessuraMm ?? 20}
+                    disabled={config.portas.nPortas === 0 || (config.portas.tipoPorta ?? "melamina") !== "aluminio_espelho"}
+                    onChange={(e) => updPorta("perfilEspessuraMm", Math.max(6, Number(e.target.value) || 20))} />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
