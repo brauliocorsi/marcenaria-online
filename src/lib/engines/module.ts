@@ -491,10 +491,10 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
       size: [innerW, c.boxHeight, c.espessuraCaixa], center: [c.center[0], c.center[1], zFront] });
     out.push({ tipo: "gaveta_frenteCaixa", descricao: `Traseira caixa gaveta ${c.idx + 1}`, veio: "comprimento",
       size: [innerW, c.boxHeight, c.espessuraCaixa], center: [c.center[0], c.center[1], zBack] });
-    // fundo (assente em baixo)
-    const yFundo = c.center[1] - c.boxHeight / 2 + c.espessuraFundo / 2;
+    // fundo da gaveta (rasgo) — encaixado nas 4 peças da caixa
+    const fg = dimensoesFundoGaveta(c, config);
     out.push({ tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`, veio: "largura",
-      size: [c.boxWidth, c.espessuraFundo, c.boxDepth], center: [c.center[0], yFundo, c.center[2]] });
+      size: [fg.wFundo, c.espessuraFundo, fg.dFundo], center: [c.center[0], fg.yFundo, c.center[2]] });
   }
 
   // Tamponamentos
