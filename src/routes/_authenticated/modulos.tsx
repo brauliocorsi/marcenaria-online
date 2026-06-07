@@ -55,6 +55,7 @@ function ModulosPage() {
   const [viewTab, setViewTab] = useState<"3d" | "pecas" | "furacao" | "ferragens">("3d");
   const [showFuros, setShowFuros] = useState(true);
   const [showHardware, setShowHardware] = useState(true);
+  const [showCotas, setShowCotas] = useState(false);
   const [doorAngleDeg, setDoorAngleDeg] = useState(0);
   const [drawerPct, setDrawerPct] = useState(0);
 
