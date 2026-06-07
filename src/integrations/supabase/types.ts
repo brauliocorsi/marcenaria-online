@@ -137,6 +137,33 @@ export type Database = {
         }
         Relationships: []
       }
+      gaveta_templates: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          nome: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          nome: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          nome?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       hardware: {
         Row: {
           category: Database["public"]["Enums"]["hardware_category"]
