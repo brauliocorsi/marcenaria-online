@@ -109,13 +109,16 @@ function ModulosPage() {
       ? { ...DEFAULT_MODULE_CONFIG, ...m.config,
           dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } }
       : { ...DEFAULT_MODULE_CONFIG, dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } };
-    setConfig(normalizarConfig(cfg as ModuleConfig));
+    const normalized = normalizarConfig(cfg as ModuleConfig);
+    setMaterialFrenteId((normalized as any).materialFrenteId ?? null);
+    setConfig(normalized);
   }
 
   function novoModulo() {
     setEditingId(null);
     setName("Módulo sem nome");
     setMaterialId(null);
+    setMaterialFrenteId(null);
     setConfig(DEFAULT_MODULE_CONFIG);
   }
 
