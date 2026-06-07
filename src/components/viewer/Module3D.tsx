@@ -285,3 +285,84 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
     </Canvas>
   );
 }
+
+// ── Cotas (Largura X, Altura Y, Profundidade Z) ──
+export function cotasLabels(W: number, H: number, D: number) {
+  return [
+    { eixo: "L" as const, mm: Math.round(W) },
+    { eixo: "A" as const, mm: Math.round(H) },
+    { eixo: "P" as const, mm: Math.round(D) },
+  ];
+}
+
+function CotaLinha({ a, b, label, color }: { a: [number, number, number]; b: [number, number, number]; label: string; color: string }) {
+  const mid: [number, number, number] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+  // setas como pontas cónicas
+  const va = new Vector3(...a), vb = new Vector3(...b);
+  const dir = vb.clone().sub(va).normalize();
+  const tipLen = 0.02;
+  const arrowA = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone());
+  const arrowB = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone().multiplyScalar(-1));
+  const posA: [number, number, number] = [a[0] + dir.x * tipLen / 2, a[1] + dir.y * tipLen / 2, a[2] + dir.z * tipLen / 2];
+  const posB: [number, number, number] = [b[0] - dir.x * tipLen / 2, b[1] - dir.y * tipLen / 2, b[2] - dir.z * tipLen / 2];
+  return (
+    <group>
+      <Line points={[a, b]} color={color} lineWidth={1.6} />
+      <mesh position={posA} quaternion={arrowA}>
+        <coneGeometry args={[0.006, tipLen, 12]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={posB} quaternion={arrowB}>
+        <coneGeometry args={[0.006, tipLen, 12]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <Html position={mid} center distanceFactor={1.6} zIndexRange={[10, 0]} pointerEvents="none">
+        <div
+          data-cota-label
+          style={{
+            background: "rgba(255,255,255,0.92)",
+            border: `1px solid ${color}`,
+            borderRadius: 4,
+            padding: "1px 6px",
+            fontSize: 11,
+            fontVariantNumeric: "tabular-nums",
+            color: "#111",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function CotasModulo({ W, H, D }: { W: number; H: number; D: number }) {
+  const off = 0.08; // 80mm de afastamento
+  const wM = W * MM_TO_M, hM = H * MM_TO_M, dM = D * MM_TO_M;
+  return (
+    <group>
+      {/* Largura (X) — em baixo, frente */}
+      <CotaLinha
+        a={[0, -off, dM + off]}
+        b={[wM, -off, dM + off]}
+        label={`L ${Math.round(W)}`}
+        color="#d94a4a"
+      />
+      {/* Altura (Y) — lateral esquerda, frente */}
+      <CotaLinha
+        a={[-off, 0, dM + off]}
+        b={[-off, hM, dM + off]}
+        label={`A ${Math.round(H)}`}
+        color="#4ab06a"
+      />
+      {/* Profundidade (Z) — em baixo, lateral esquerda */}
+      <CotaLinha
+        a={[-off, -off, 0]}
+        b={[-off, -off, dM]}
+        label={`P ${Math.round(D)}`}
+        color="#4a7fd9"
+      />
+    </group>
+  );
+}
