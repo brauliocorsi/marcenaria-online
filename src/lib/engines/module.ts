@@ -788,13 +788,24 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
   const frentes: GavetaFrente[] = [];
   const caixas: GavetaCaixa[] = [];
 
+  // Encurtamento por gola (reveal) aplicado por cada frente de gaveta.
+  const revealG = revealOfPuxador((g.puxador ?? null) as PuxadorSnapshot | null);
+  const posG = g.puxadorPos ?? "superior";
+
   for (let j = 0; j < n; j++) {
     const cyFrente = yMin + j * (alturaFrente + f) + alturaFrente / 2;
+    let altF = alturaFrente, cyF = cyFrente;
+    if (revealG > 0) {
+      const yMinF = cyFrente - alturaFrente / 2;
+      const yMaxF = cyFrente + alturaFrente / 2;
+      const adj = aplicarRevealFrente(yMinF, yMaxF, alturaFrente, cyFrente, revealG, posG);
+      altF = adj.altura; cyF = adj.cy;
+    }
     frentes.push({
       idx: j,
       descricao: `Frente gaveta ${j + 1}`,
-      size: [larguraFrente, alturaFrente, eF],
-      center: [cx, cyFrente, cz],
+      size: [larguraFrente, altF, eF],
+      center: [cx, cyF, cz],
     });
     caixas.push({
       idx: j,
