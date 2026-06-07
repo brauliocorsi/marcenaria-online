@@ -185,6 +185,19 @@ export function pecasGavetaPorTemplate(
   }
 }
 
+// ─── Helper de render: deslocamento Z para colar a caixa à frente decorativa ──
+// Em frente_integrada, a face frontal das ilhargas deve encostar à face
+// traseira da frente decorativa (sem folga). Devolve o deltaZ a aplicar ao
+// CENTRO das peças da caixa (laterais + traseira + fundo).
+export function calcShiftZFrenteIntegrada(
+  boxCenterZ: number, boxDepth: number,
+  frenteCenterZ: number, frenteEspessura: number,
+): number {
+  const backFaceFrente = frenteCenterZ - frenteEspessura / 2;
+  const currentFrontBox = boxCenterZ + boxDepth / 2;
+  return backFaceFrente - currentFrontBox;
+}
+
 // ─── Asserts ─────────────────────────────────────────────────────────────
 export function runGavetaTemplateAsserts() {
   const dims = { boxWidth: 762, boxHeight: 200, boxDepth: 500 };
