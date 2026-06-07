@@ -960,6 +960,21 @@ function FerragensBOM({ furos, nGavetas, corredicaNome }: { furos: Furo[]; nGave
       qtd: nGavetas,
       localizacao: Array.from({ length: nGavetas }, (_, i) => `gaveta ${i + 1}`).join("; "),
     });
+    // Furos de montagem das corrediças (marcação) agrupados por gaveta + lateral
+    const montagemPorGav = new Map<string, number>();
+    for (const f of furos) {
+      if (f.tipo_furo !== "marcacao") continue;
+      const m = /^corredica_gaveta(\d+)_(lateral|ilharga|clip_frente|suporte_tras)_?(esq|dir)?$/.exec(f.junta);
+      if (!m) continue;
+      const gav = m[1], parte = m[2], lado = m[3] ?? "";
+      const k = `gaveta ${gav} · ${parte}${lado ? " " + lado : ""}`;
+      montagemPorGav.set(k, (montagemPorGav.get(k) ?? 0) + 1);
+    }
+    if (montagemPorGav.size > 0) {
+      const total = Array.from(montagemPorGav.values()).reduce((a, b) => a + b, 0);
+      const loc = Array.from(montagemPorGav.entries()).map(([k, n]) => `${k} (${n})`).join("; ");
+      rows.push({ ferragem: "Furos de montagem corrediça (Ø3 / 0,5mm)", qtd: total, localizacao: loc });
+    }
   }
 
   if (rows.length === 0) {
