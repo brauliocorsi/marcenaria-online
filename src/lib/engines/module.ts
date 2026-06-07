@@ -264,6 +264,8 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   folgas: { prateleira_lateral: 2, prateleira_recuo: 10 },
   fundo: { modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0 },
   nPrateleiras: 1,
+  prateleirasMoveis: true,
+
   portas: { nPortas: 0, modo: "sobreposta", ladoAbertura: "direita", espessura: null, folga: 2, folgaCentral: 3 },
   gavetas: {
     nGavetas: 0, modo: "sobreposta", folga: 3, espessuraFrente: 19,
