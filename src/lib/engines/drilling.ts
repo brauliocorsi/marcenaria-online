@@ -1,5 +1,6 @@
 // Motor de furação — função pura e determinística.
-// X=W, Y=H, Z=D. Sistema 'laterais_cobrem' apenas.
+// X=W, Y=H, Z=D. Suporta ambos sistemas: 'laterais_cobrem' e 'tampo_base_cobrem'.
+
 
 import { resolverEspessuras, dimensoesPortas, posicoesDobradicasY, type ModuleConfig, type PieceType, type Vec3 } from "./module";
 import type { TemplateConfig } from "@/lib/drilling.functions";
@@ -153,13 +154,31 @@ function tipoNoTopo(papel: Papel): TipoFuro {
   return "parafuso";
 }
 
+/**
+ * Definição de uma junta minifix/cavilha entre 2 painéis a 90°.
+ * - pecaCobre: painel CONTÍNUO (recebe relógio Ø15 na sua face interna)
+ * - pecaEncosta: painel que ENCOSTA (recebe perno Ø8 na sua orla)
+ * O relógio e o perno do MESMO minifix partilham (x, y) e estão colineares.
+ * O eixo (dir) do relógio é perpendicular à face de pecaCobre (entra no painel).
+ * O eixo do perno é ao longo do comprimento de pecaEncosta (entra a partir da orla).
+ * Para varrer Z usamos (xRef, yRef) fixos e variamos a coordenada Z.
+ */
+type JuntaDef = {
+  nome: string;
+  xRef: number;
+  yRef: number;
+  dirCobre: Vec3;
+  dirEncosta: Vec3;
+  pecaCobre: PieceType;
+  pecaEncosta: PieceType;
+};
+
 export function calcularFuros(
   config: ModuleConfig,
   template: TemplateConfig,
   bits?: DrillBitLike[],
 ): Furo[] {
-  if (config.sistemaMontagem !== "laterais_cobrem") return [];
-  const { dims, espessuraPadrao, espessuras, nPrateleiras } = config;
+  const { dims, espessuraPadrao, espessuras, nPrateleiras, sistemaMontagem } = config;
   const W = dims.width, H = dims.height, D = dims.depth;
   const e = resolverEspessuras(espessuraPadrao, espessuras);
   const { regras, sistemaUniao, brocas } = template;
@@ -173,45 +192,65 @@ export function calcularFuros(
   const zMax = D - regras.recuo_extremidade;
   const dz = regras.espacamento_cavilha_minifix ?? 32;
 
-  type JuntaDef = { nome: string; yJunta: number; xFace: number; sinalLateral: 1 | -1; pecaH: PieceType; };
   const juntas: JuntaDef[] = [];
-  const yTampo = H - e.tampo / 2;
-  juntas.push({ nome: "lateral_esq↔tampo", yJunta: yTampo, xFace: e.lateral, sinalLateral: 1, pecaH: "tampo" });
-  juntas.push({ nome: "lateral_dir↔tampo", yJunta: yTampo, xFace: W - e.lateral, sinalLateral: -1, pecaH: "tampo" });
-  const yBase = e.base / 2;
-  juntas.push({ nome: "lateral_esq↔base", yJunta: yBase, xFace: e.lateral, sinalLateral: 1, pecaH: "base" });
-  juntas.push({ nome: "lateral_dir↔base", yJunta: yBase, xFace: W - e.lateral, sinalLateral: -1, pecaH: "base" });
-  if (nPrateleiras > 0) {
+
+  if (sistemaMontagem === "laterais_cobrem") {
+    // Relógio na face interna da LATERAL; perno na orla do TAMPO/BASE.
+    const yT = H - e.tampo / 2, yB = e.base / 2;
+    juntas.push({ nome: "lateral_esq↔tampo", xRef: e.lateral, yRef: yT,
+      dirCobre: [-1, 0, 0], dirEncosta: [1, 0, 0], pecaCobre: "lateral", pecaEncosta: "tampo" });
+    juntas.push({ nome: "lateral_dir↔tampo", xRef: W - e.lateral, yRef: yT,
+      dirCobre: [1, 0, 0], dirEncosta: [-1, 0, 0], pecaCobre: "lateral", pecaEncosta: "tampo" });
+    juntas.push({ nome: "lateral_esq↔base", xRef: e.lateral, yRef: yB,
+      dirCobre: [-1, 0, 0], dirEncosta: [1, 0, 0], pecaCobre: "lateral", pecaEncosta: "base" });
+    juntas.push({ nome: "lateral_dir↔base", xRef: W - e.lateral, yRef: yB,
+      dirCobre: [1, 0, 0], dirEncosta: [-1, 0, 0], pecaCobre: "lateral", pecaEncosta: "base" });
+  } else {
+    // tampo_base_cobrem — INVERTE: relógio em TAMPO/BASE, perno na orla da LATERAL.
+    const yT = H - e.tampo, yB = e.base;
+    const xLE = e.lateral / 2, xLD = W - e.lateral / 2;
+    juntas.push({ nome: "tampo↔lateral_esq", xRef: xLE, yRef: yT,
+      dirCobre: [0, 1, 0], dirEncosta: [0, -1, 0], pecaCobre: "tampo", pecaEncosta: "lateral" });
+    juntas.push({ nome: "tampo↔lateral_dir", xRef: xLD, yRef: yT,
+      dirCobre: [0, 1, 0], dirEncosta: [0, -1, 0], pecaCobre: "tampo", pecaEncosta: "lateral" });
+    juntas.push({ nome: "base↔lateral_esq", xRef: xLE, yRef: yB,
+      dirCobre: [0, -1, 0], dirEncosta: [0, 1, 0], pecaCobre: "base", pecaEncosta: "lateral" });
+    juntas.push({ nome: "base↔lateral_dir", xRef: xLD, yRef: yB,
+      dirCobre: [0, -1, 0], dirEncosta: [0, 1, 0], pecaCobre: "base", pecaEncosta: "lateral" });
+  }
+
+  // Prateleiras FIXAS → junta minifix+cavilha normal (relógio na lateral, perno na orla da prateleira).
+  // Prateleiras MÓVEIS (default) → não geram juntas; geram pinos Ø5 (ver abaixo).
+  const prateleirasMoveis = config.prateleirasMoveis !== false;
+  if (nPrateleiras > 0 && !prateleirasMoveis) {
     const innerBottom = e.base;
     const innerHeight = H - e.base - e.tampo;
     for (let i = 1; i <= nPrateleiras; i++) {
       const cy = innerBottom + (innerHeight * i) / (nPrateleiras + 1);
-      juntas.push({ nome: `lateral_esq↔prateleira${i}`, yJunta: cy, xFace: e.lateral, sinalLateral: 1, pecaH: "prateleira" });
-      juntas.push({ nome: `lateral_dir↔prateleira${i}`, yJunta: cy, xFace: W - e.lateral, sinalLateral: -1, pecaH: "prateleira" });
+      juntas.push({ nome: `lateral_esq↔prateleira${i}`, xRef: e.lateral, yRef: cy,
+        dirCobre: [-1, 0, 0], dirEncosta: [1, 0, 0], pecaCobre: "lateral", pecaEncosta: "prateleira" });
+      juntas.push({ nome: `lateral_dir↔prateleira${i}`, xRef: W - e.lateral, yRef: cy,
+        dirCobre: [1, 0, 0], dirEncosta: [-1, 0, 0], pecaCobre: "lateral", pecaEncosta: "prateleira" });
     }
   }
 
   const furos: Furo[] = [];
-  const push2 = (
-    junta: string,
-    tFace: TipoFuro, tTopo: TipoFuro,
-    j: JuntaDef, z: number,
-  ) => {
+  const push2 = (junta: string, tCobre: TipoFuro, tEncosta: TipoFuro, j: JuntaDef, z: number) => {
     furos.push(makeFuro({
-      junta, tipo_furo: tFace,
-      pos: [j.xFace, j.yJunta, z],
-      dir: [-j.sinalLateral as number, 0, 0] as Vec3,
-      diametro: diametroPara(tFace, regras),
-      profundidade: profundidadePara(tFace, regras),
-      peca: "lateral",
+      junta, tipo_furo: tCobre,
+      pos: [j.xRef, j.yRef, z],
+      dir: j.dirCobre,
+      diametro: diametroPara(tCobre, regras),
+      profundidade: profundidadePara(tCobre, regras),
+      peca: j.pecaCobre,
     }, bits, brocas));
     furos.push(makeFuro({
-      junta, tipo_furo: tTopo,
-      pos: [j.xFace, j.yJunta, z],
-      dir: [j.sinalLateral as number, 0, 0] as Vec3,
-      diametro: diametroPara(tTopo, regras),
-      profundidade: profundidadePara(tTopo, regras),
-      peca: j.pecaH,
+      junta, tipo_furo: tEncosta,
+      pos: [j.xRef, j.yRef, z],
+      dir: j.dirEncosta,
+      diametro: diametroPara(tEncosta, regras),
+      profundidade: profundidadePara(tEncosta, regras),
+      peca: j.pecaEncosta,
     }, bits, brocas));
   };
 
@@ -219,11 +258,11 @@ export function calcularFuros(
     for (let k = 0; k < n; k++) {
       const papel = papeis[k];
       const z = zs[k];
-      const tF = tipoNaFace(papel);
-      const tT = tipoNoTopo(papel);
-      push2(j.nome, tF, tT, j, z);
+      const tCobre = tipoNaFace(papel);       // relógio (corpo) ou cavilha ou parafuso
+      const tEncosta = tipoNoTopo(papel);     // perno ou cavilha ou parafuso
+      push2(j.nome, tCobre, tEncosta, j, z);
 
-      // Cavilha companheira para cada minifix (a 32mm, em direção ao centro da junta)
+      // Cavilha companheira para cada minifix (a 32mm em direção ao centro).
       if (papel === "minifix") {
         let zComp = z + (z < D / 2 ? dz : -dz);
         if (zComp < zMin || zComp > zMax) zComp = z + (z < D / 2 ? -dz : dz);
@@ -234,8 +273,46 @@ export function calcularFuros(
     }
   }
 
+  // ── Pinos Ø5 para prateleiras móveis (default) ──
+  if (nPrateleiras > 0 && prateleirasMoveis) {
+    const innerBottom = e.base;
+    const innerHeight = H - e.base - e.tampo;
+    const s = config.sistema32;
+    const recF = s?.recuoFrente ?? 37;
+    const recT = s?.recuoTras ?? 37;
+    const zs2 = [recF, D - recT];
+    for (let i = 1; i <= nPrateleiras; i++) {
+      const cy = innerBottom + (innerHeight * i) / (nPrateleiras + 1);
+      // Se sistema 32 ativo, snap à coluna 32 mais próxima.
+      let yPino = cy;
+      if (s?.ativo) {
+        const ini = s.inicioY ?? 100;
+        const passo = Math.max(1, s.passoVertical ?? 32);
+        const fim = s.fimY ?? (H - 100);
+        const k = Math.round((cy - ini) / passo);
+        yPino = Math.min(fim, Math.max(ini, ini + k * passo));
+      }
+      for (const lado of ["esq", "dir"] as const) {
+        const xFace = lado === "esq" ? e.lateral : W - e.lateral;
+        const dir: Vec3 = lado === "esq" ? [-1, 0, 0] : [1, 0, 0];
+        for (const z of zs2) {
+          furos.push(makeFuro({
+            junta: `prateleira${i}_pino_${lado}`,
+            tipo_furo: "pino",
+            pos: [xFace, yPino, z],
+            dir,
+            diametro: diametroPara("pino", regras),
+            profundidade: profundidadePara("pino", regras),
+            peca: "lateral",
+          }, bits, brocas));
+        }
+      }
+    }
+  }
+
   return furos;
 }
+
 
 // ───── Dobradiças ─────
 const RECUO_CANECO = 22;

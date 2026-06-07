@@ -96,6 +96,8 @@ export interface ModuleConfig {
   };
   fundo: FundoConfig;
   nPrateleiras: number;
+  /** true → prateleiras móveis em pinos Ø5; false → prateleiras fixas em minifix+cavilha. Default true. */
+  prateleirasMoveis?: boolean;
   portas: PortasConfig;
   // REGRA: se nGavetas>0, a frente são gavetas (portas ignoradas).
   gavetas: GavetasConfig;
@@ -103,6 +105,7 @@ export interface ModuleConfig {
   tamponamento: TamponamentoConfig;
   sistema32: Sistema32Config;
 }
+
 
 export interface Peca {
   tipo: PieceType;
@@ -261,6 +264,8 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   folgas: { prateleira_lateral: 2, prateleira_recuo: 10 },
   fundo: { modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0 },
   nPrateleiras: 1,
+  prateleirasMoveis: true,
+
   portas: { nPortas: 0, modo: "sobreposta", ladoAbertura: "direita", espessura: null, folga: 2, folgaCentral: 3 },
   gavetas: {
     nGavetas: 0, modo: "sobreposta", folga: 3, espessuraFrente: 19,
@@ -294,7 +299,9 @@ export function normalizarConfig(c: ModuleConfig): ModuleConfig {
   if (!out.pes) out.pes = { ...DEFAULT_MODULE_CONFIG.pes };
   if (!out.tamponamento) out.tamponamento = { ...DEFAULT_MODULE_CONFIG.tamponamento };
   if (!out.sistema32) out.sistema32 = { ...DEFAULT_MODULE_CONFIG.sistema32, fimY: Math.max(200, out.dims.height - 100) };
+  if (typeof out.prateleirasMoveis !== "boolean") out.prateleirasMoveis = true;
   return out;
+
 }
 
 // ─────────────────────────────────────────────────────────────
