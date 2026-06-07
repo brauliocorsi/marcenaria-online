@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      ambiente_modulos: {
+        Row: {
+          altura_chao_mm: number
+          ambiente_id: string
+          created_at: string
+          id: string
+          module_id: string
+          parede: string
+          rotacao_deg: number
+          user_id: string
+          x_offset_mm: number
+        }
+        Insert: {
+          altura_chao_mm?: number
+          ambiente_id: string
+          created_at?: string
+          id?: string
+          module_id: string
+          parede: string
+          rotacao_deg?: number
+          user_id: string
+          x_offset_mm?: number
+        }
+        Update: {
+          altura_chao_mm?: number
+          ambiente_id?: string
+          created_at?: string
+          id?: string
+          module_id?: string
+          parede?: string
+          rotacao_deg?: number
+          user_id?: string
+          x_offset_mm?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambiente_modulos_ambiente_id_fkey"
+            columns: ["ambiente_id"]
+            isOneToOne: false
+            referencedRelation: "ambientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambiente_modulos_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ambientes: {
         Row: {
           config: Json

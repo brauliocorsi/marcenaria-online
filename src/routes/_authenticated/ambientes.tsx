@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Save, Plus, Trash2, Home, AlertTriangle } from "lucide-react";
+import { Save, Plus, Trash2, Home, AlertTriangle, Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,17 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
-import { Room3D } from "@/components/viewer/Room3D";
+import { Room3D, type PlacedModule } from "@/components/viewer/Room3D";
 import { listAmbientes, upsertAmbiente, deleteAmbiente } from "@/lib/ambientes.functions";
+import { listModules } from "@/lib/modules.functions";
+import {
+  listAmbienteModulos, upsertAmbienteModulo, deleteAmbienteModulo,
+} from "@/lib/ambiente-modulos.functions";
 import {
   DEFAULT_ROOM, normalizarRoom, validarAbertura, comprimentoParede,
   type RoomConfig, type ParedeId, type Abertura, type TipoAbertura,
 } from "@/lib/engines/ambiente";
+import { transformColocacao, type ParedeColocavel } from "@/lib/engines/ambiente-modulos";
 import { cn } from "@/lib/utils";
 
 
@@ -36,13 +41,42 @@ function AmbientesPage() {
   const fetchAmbientes = useServerFn(listAmbientes);
   const save = useServerFn(upsertAmbiente);
   const del = useServerFn(deleteAmbiente);
+  const fetchModules = useServerFn(listModules);
+  const fetchPlacements = useServerFn(listAmbienteModulos);
+  const upsertPlacement = useServerFn(upsertAmbienteModulo);
+  const deletePlacement = useServerFn(deleteAmbienteModulo);
 
   const { data: ambientes } = useQuery({ queryKey: ["ambientes"], queryFn: () => fetchAmbientes() });
+  const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
 
   const [name, setName] = useState("Ambiente sem nome");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [room, setRoom] = useState<RoomConfig>(DEFAULT_ROOM);
   const [delId, setDelId] = useState<string | null>(null);
+  const [showHardware, setShowHardware] = useState(false);
+  const [delPlacementId, setDelPlacementId] = useState<string | null>(null);
+
+  const { data: placements } = useQuery({
+    queryKey: ["ambiente_modulos", editingId],
+    queryFn: () => editingId ? fetchPlacements({ data: { ambienteId: editingId } }) : Promise.resolve([]),
+    enabled: !!editingId,
+  });
+
+  const placementsForRender: PlacedModule[] = useMemo(() => {
+    if (!placements || !modules) return [];
+    return (placements as any[]).flatMap((p) => {
+      const m = (modules as any[]).find((x) => x.id === p.module_id);
+      if (!m) return [];
+      return [{
+        id: p.id,
+        module: m,
+        parede: p.parede,
+        x_offset_mm: p.x_offset_mm,
+        altura_chao_mm: p.altura_chao_mm,
+        rotacao_deg: p.rotacao_deg,
+      }];
+    });
+  }, [placements, modules]);
 
   function loadAmbiente(a: any) {
     setEditingId(a.id);
@@ -73,6 +107,25 @@ function AmbientesPage() {
       if (editingId === delId) novo();
       setDelId(null);
       qc.invalidateQueries({ queryKey: ["ambientes"] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
+  const placementMut = useMutation({
+    mutationFn: async (payload: any) => upsertPlacement({ data: payload }),
+    onSuccess: () => {
+      toast.success("Colocação guardada");
+      qc.invalidateQueries({ queryKey: ["ambiente_modulos", editingId] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
+  const placementDelMut = useMutation({
+    mutationFn: async (id: string) => deletePlacement({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Colocação removida");
+      setDelPlacementId(null);
+      qc.invalidateQueries({ queryKey: ["ambiente_modulos", editingId] });
     },
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
@@ -113,7 +166,11 @@ function AmbientesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Ambientes</h1>
           <p className="mt-1 text-sm text-muted-foreground">Define a sala (paredes + chão) para depois colocar módulos.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs">
+            <Switch id="show-hw" checked={showHardware} onCheckedChange={setShowHardware} />
+            <Label htmlFor="show-hw" className="cursor-pointer">Furação/ferragens</Label>
+          </div>
           <Button variant="outline" onClick={novo}><Plus className="mr-2 h-4 w-4" /> Novo</Button>
           <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
             <Save className="mr-2 h-4 w-4" /> {saveMut.isPending ? "A guardar…" : "Guardar ambiente"}
@@ -203,20 +260,161 @@ function AmbientesPage() {
               ))}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4" /> Módulos no ambiente
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!editingId && (
+                <p className="text-xs text-muted-foreground">
+                  Guarda o ambiente primeiro para poderes colocar módulos.
+                </p>
+              )}
+              {editingId && (modules ?? []).length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Sem módulos guardados. Cria um em "Módulos" primeiro.
+                </p>
+              )}
+              {editingId && (modules ?? []).length > 0 && (
+                <AddPlacement
+                  modules={modules as any[]}
+                  onAdd={(payload) => placementMut.mutate({ ambiente_id: editingId, ...payload })}
+                />
+              )}
+              {(placements as any[] | undefined ?? []).map((p) => {
+                const m = (modules as any[] | undefined ?? []).find((x) => x.id === p.module_id);
+                if (!m) return null;
+                const t = transformColocacao(
+                  { parede: p.parede, x_offset_mm: p.x_offset_mm, altura_chao_mm: p.altura_chao_mm, rotacao_deg: p.rotacao_deg },
+                  { width: m.width_mm, height: m.height_mm, depth: m.depth_mm },
+                  { largura: room.largura, profundidade: room.profundidade, altura: room.altura },
+                );
+                return (
+                  <PlacementRow
+                    key={p.id}
+                    placement={p}
+                    moduleName={m.name}
+                    moduleW={m.width_mm}
+                    excede={t.excede}
+                    onChange={(patch) => placementMut.mutate({ id: p.id, ambiente_id: editingId, module_id: p.module_id, parede: p.parede, x_offset_mm: p.x_offset_mm, altura_chao_mm: p.altura_chao_mm, rotacao_deg: p.rotacao_deg, ...patch })}
+                    onRemove={() => setDelPlacementId(p.id)}
+                  />
+                );
+              })}
+            </CardContent>
+          </Card>
         </div>
 
 
         <Card className="overflow-hidden">
           <div className="h-[640px] w-full bg-muted">
-            <Room3D room={room} />
+            <Room3D room={room} placements={placementsForRender} showHardware={showHardware} />
           </div>
         </Card>
       </div>
 
+
       <ConfirmDelete open={!!delId} onOpenChange={(o) => !o && setDelId(null)} onConfirm={() => delId && delMut.mutate(delId)} />
+      <ConfirmDelete open={!!delPlacementId} onOpenChange={(o) => !o && setDelPlacementId(null)} onConfirm={() => delPlacementId && placementDelMut.mutate(delPlacementId)} />
     </div>
   );
 }
+
+const PAREDES_COLOC: { id: ParedeColocavel; label: string }[] = [
+  { id: "fundo", label: "Fundo" },
+  { id: "esquerda", label: "Esquerda" },
+  { id: "direita", label: "Direita" },
+];
+
+function AddPlacement({ modules, onAdd }: { modules: any[]; onAdd: (p: { module_id: string; parede: ParedeColocavel; x_offset_mm: number; altura_chao_mm: number; rotacao_deg: number }) => void }) {
+  const [moduleId, setModuleId] = useState<string>(modules[0]?.id ?? "");
+  const [parede, setParede] = useState<ParedeColocavel>("fundo");
+  const [xOffset, setXOffset] = useState(0);
+  const [altura, setAltura] = useState(0);
+  return (
+    <div className="rounded-md border p-2 space-y-2 bg-muted/30">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="col-span-2">
+          <Label className="text-[10px] text-muted-foreground">Módulo</Label>
+          <Select value={moduleId} onValueChange={setModuleId}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {modules.map((m) => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name} ({m.width_mm}×{m.height_mm}×{m.depth_mm})</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Parede</Label>
+          <Select value={parede} onValueChange={(v) => setParede(v as ParedeColocavel)}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PAREDES_COLOC.map((p) => <SelectItem key={p.id} value={p.id} className="text-xs">{p.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">x offset</Label>
+          <Input type="number" className="h-7 text-xs" value={xOffset} onChange={(e) => setXOffset(Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Altura chão</Label>
+          <Input type="number" className="h-7 text-xs" value={altura} onChange={(e) => setAltura(Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+        </div>
+      </div>
+      <Button size="sm" className="h-7 w-full" disabled={!moduleId}
+        onClick={() => onAdd({ module_id: moduleId, parede, x_offset_mm: xOffset, altura_chao_mm: altura, rotacao_deg: 0 })}>
+        <Plus className="mr-1 h-3 w-3" /> Adicionar
+      </Button>
+    </div>
+  );
+}
+
+function PlacementRow({ placement, moduleName, moduleW, excede, onChange, onRemove }: {
+  placement: any; moduleName: string; moduleW: number; excede: boolean;
+  onChange: (patch: Partial<{ parede: ParedeColocavel; x_offset_mm: number; altura_chao_mm: number; rotacao_deg: number }>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className={cn("rounded-md border p-2 space-y-2", excede && "border-destructive")}>
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium truncate">{moduleName} <span className="text-muted-foreground">({moduleW}mm)</span></div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRemove}><Trash2 className="h-3 w-3" /></Button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Parede</Label>
+          <Select value={placement.parede} onValueChange={(v) => onChange({ parede: v as ParedeColocavel })}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PAREDES_COLOC.map((p) => <SelectItem key={p.id} value={p.id} className="text-xs">{p.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Rotação °</Label>
+          <Input type="number" className="h-7 text-xs" value={placement.rotacao_deg} onChange={(e) => onChange({ rotacao_deg: Math.round(Number(e.target.value) || 0) })} />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">x offset</Label>
+          <Input type="number" className="h-7 text-xs" value={placement.x_offset_mm} onChange={(e) => onChange({ x_offset_mm: Math.max(0, Math.round(Number(e.target.value) || 0)) })} />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Altura chão</Label>
+          <Input type="number" className="h-7 text-xs" value={placement.altura_chao_mm} onChange={(e) => onChange({ altura_chao_mm: Math.max(0, Math.round(Number(e.target.value) || 0)) })} />
+        </div>
+      </div>
+      {excede && (
+        <div className="flex items-center gap-1 text-xs text-destructive">
+          <AlertTriangle className="h-3 w-3" /> Excede comprimento da parede
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function SliderField({
   label, value, min, max, step, onChange,
