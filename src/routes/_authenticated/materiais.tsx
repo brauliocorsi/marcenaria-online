@@ -19,16 +19,22 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
-import { listMaterials, upsertMaterial, deleteMaterial, seedFundosPadrao } from "@/lib/catalog.functions";
+import { listMaterials, upsertMaterial, deleteMaterial, seedFundosPadrao, seedDecoresPadrao, ACABAMENTOS } from "@/lib/catalog.functions";
 import { ALLOWED_THICKNESSES_MM } from "@/lib/constants";
 import { fmtCurrency } from "@/lib/format";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/materiais")({ component: MateriaisPage });
 
 const schema = z.object({
   name: z.string().min(1, "Obrigatório"),
   brand: z.string().min(1),
+  fabricante: z.string().optional(),
+  decor_nome: z.string().optional(),
   decor_code: z.string().optional(),
+  acabamento: z.enum(ACABAMENTOS as unknown as [string, ...string[]]),
+  cor_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida"),
+  textura_url: z.string().optional(),
   thickness_mm: z.coerce.number().min(0.1).max(100),
   sheet_width_mm: z.coerce.number().int().min(100),
   sheet_height_mm: z.coerce.number().int().min(100),
@@ -56,20 +62,28 @@ function MateriaisPage() {
     );
   }, [data, search]);
 
-  const form = useForm<FormVals>({
-    resolver: zodResolver(schema) as any,
-    defaultValues: { name: "", brand: "Kronospan", decor_code: "", thickness_mm: 19, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: "" as any, has_grain: false },
-  });
+  const defaults: FormVals = {
+    name: "", brand: "Kronospan", fabricante: "Kronospan", decor_nome: "", decor_code: "",
+    acabamento: "mate", cor_hex: "#E8E2D5", textura_url: "",
+    thickness_mm: 19, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: "" as any, has_grain: false,
+  };
+  const form = useForm<FormVals>({ resolver: zodResolver(schema) as any, defaultValues: defaults });
 
   function openNew() {
     setEditing(null);
-    form.reset({ name: "", brand: "Kronospan", decor_code: "", thickness_mm: 19, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: "" as any, has_grain: false });
+    form.reset(defaults);
     setOpen(true);
   }
   function openEdit(m: any) {
     setEditing(m);
     form.reset({
-      name: m.name, brand: m.brand, decor_code: m.decor_code ?? "",
+      name: m.name, brand: m.brand,
+      fabricante: m.fabricante ?? m.brand ?? "",
+      decor_nome: m.decor_nome ?? "",
+      decor_code: m.decor_code ?? "",
+      acabamento: m.acabamento ?? "mate",
+      cor_hex: m.cor_hex ?? "#E8E2D5",
+      textura_url: m.textura_url ?? "",
       thickness_mm: m.thickness_mm, sheet_width_mm: m.sheet_width_mm, sheet_height_mm: m.sheet_height_mm,
       price_per_sheet: m.price_per_sheet ?? ("" as any), has_grain: m.has_grain,
     });
@@ -79,12 +93,17 @@ function MateriaisPage() {
   const mut = useMutation({
     mutationFn: async (v: FormVals) => save({ data: { id: editing?.id, values: {
       name: v.name, brand: v.brand,
+      fabricante: v.fabricante || null,
+      decor_nome: v.decor_nome || null,
       decor_code: v.decor_code || null,
+      acabamento: v.acabamento as any,
+      cor_hex: v.cor_hex,
+      textura_url: v.textura_url || null,
       thickness_mm: v.thickness_mm,
       sheet_width_mm: v.sheet_width_mm, sheet_height_mm: v.sheet_height_mm,
       price_per_sheet: v.price_per_sheet === "" || v.price_per_sheet == null ? null : Number(v.price_per_sheet),
       has_grain: v.has_grain,
-    } } }),
+    } as any } }),
     onSuccess: () => { toast.success(editing ? "Material atualizado" : "Material criado"); setOpen(false); qc.invalidateQueries({ queryKey: ["materials"] }); },
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
@@ -105,11 +124,24 @@ function MateriaisPage() {
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
 
+  const seedDecores = useServerFn(seedDecoresPadrao);
+  const seedDecMut = useMutation({
+    mutationFn: async () => seedDecores(),
+    onSuccess: (r: any) => {
+      toast.success(r.inserted > 0 ? `Adicionados ${r.inserted} decores Kronospan/Finsa` : "Decores já existiam");
+      qc.invalidateQueries({ queryKey: ["materials"] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => seedDecMut.mutate()} disabled={seedDecMut.isPending}>
+          <Sparkles className="mr-2 h-3.5 w-3.5" /> Decores Kronospan/Finsa
+        </Button>
         <Button variant="outline" size="sm" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
-          <Sparkles className="mr-2 h-3.5 w-3.5" /> Adicionar fundos padrão
+          <Sparkles className="mr-2 h-3.5 w-3.5" /> Fundos padrão
         </Button>
       </div>
       <CatalogShell
@@ -124,26 +156,28 @@ function MateriaisPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">Cor</TableHead>
               <TableHead>Nome</TableHead>
-              <TableHead>Marca</TableHead>
-              <TableHead>Código decor</TableHead>
+              <TableHead>Fabricante</TableHead>
+              <TableHead>Decor / Cód.</TableHead>
+              <TableHead>Acabamento</TableHead>
               <TableHead className="text-right">Espessura</TableHead>
-              <TableHead className="text-right">Dimensão chapa</TableHead>
               <TableHead className="text-right">Preço/chapa</TableHead>
-              <TableHead>Veio</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((m: any) => (
               <TableRow key={m.id}>
+                <TableCell>
+                  <span className="inline-block h-5 w-5 rounded border border-border" style={{ background: m.cor_hex ?? "#E8E2D5" }} />
+                </TableCell>
                 <TableCell className="font-medium">{m.name}</TableCell>
-                <TableCell>{m.brand}</TableCell>
-                <TableCell>{m.decor_code ?? "—"}</TableCell>
+                <TableCell>{m.fabricante ?? m.brand ?? "—"}</TableCell>
+                <TableCell className="text-xs">{m.decor_nome ? `${m.decor_nome} · ` : ""}{m.decor_code ?? "—"}</TableCell>
+                <TableCell className="text-xs capitalize">{m.acabamento ?? "mate"}</TableCell>
                 <TableCell className="text-right tabular">{m.thickness_mm} mm</TableCell>
-                <TableCell className="text-right tabular">{m.sheet_width_mm} × {m.sheet_height_mm} mm</TableCell>
                 <TableCell className="text-right tabular">{fmtCurrency(m.price_per_sheet)}</TableCell>
-                <TableCell>{m.has_grain ? "Sim" : "Não"}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => setDelId(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -165,8 +199,32 @@ function MateriaisPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Marca</Label><Input {...form.register("brand")} /></div>
-              <div className="space-y-1.5"><Label>Código decor</Label><Input {...form.register("decor_code")} placeholder="K001 PE" /></div>
+              <div className="space-y-1.5"><Label>Fabricante</Label><Input {...form.register("fabricante")} placeholder="Kronospan / Finsa" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Nome do decor</Label><Input {...form.register("decor_nome")} placeholder="Carvalho Nebraska Natural" /></div>
+              <div className="space-y-1.5"><Label>Código decor</Label><Input {...form.register("decor_code")} placeholder="K003" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Acabamento</Label>
+                <Select value={form.watch("acabamento")} onValueChange={(v) => form.setValue("acabamento", v as any, { shouldDirty: true })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ACABAMENTOS.map((a) => <SelectItem key={a} value={a} className="capitalize">{a}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cor</Label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={form.watch("cor_hex")} onChange={(e) => form.setValue("cor_hex", e.target.value, { shouldDirty: true })} className="h-9 w-12 rounded border border-input bg-background" />
+                  <Input {...form.register("cor_hex")} className="tabular" />
+                </div>
+                {form.formState.errors.cor_hex && <p className="text-xs text-destructive">{form.formState.errors.cor_hex.message as string}</p>}
+              </div>
+            </div>
+            <div className="space-y-1.5"><Label>URL da textura (opcional)</Label><Input {...form.register("textura_url")} placeholder="https://…/textura-madeira.jpg" /></div>
             <div className="space-y-1.5">
               <Label>Espessura (mm)</Label>
               <Input

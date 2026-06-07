@@ -49,6 +49,8 @@ export interface FundoConfig {
   espacamentoParafusoFundo?: number; // mm (default 250)
 }
 
+export type TipoPorta = "melamina" | "aluminio_espelho";
+
 export interface PortasConfig {
   nPortas: 0 | 1 | 2;
   modo: PortaModo;
@@ -56,6 +58,12 @@ export interface PortasConfig {
   espessura: number | null;   // null = espessuraPadrao
   folga: number;
   folgaCentral: number;
+  /** Tipo construtivo da porta. Default 'melamina' (comportamento clássico). */
+  tipoPorta?: TipoPorta;
+  /** Largura do perfil de alumínio (mm), só usado em aluminio_espelho. Default 25. */
+  perfilLarguraMm?: number;
+  /** Espessura do perfil/painel (mm) na porta de alumínio. Default 20. */
+  perfilEspessuraMm?: number;
 }
 
 export type CorredicaTipo = "telescopica" | "oculta" | "roldanas";
@@ -126,6 +134,10 @@ export interface ModuleConfig {
   pes: PesConfig;
   tamponamento: TamponamentoConfig;
   sistema32: Sistema32Config;
+  /** ID do material aplicado à carcaça (laterais/tampo/base/prateleiras/fundo). */
+  materialCorpoId?: string | null;
+  /** ID do material aplicado às frentes (portas + frentes de gaveta). Fallback = materialCorpoId. */
+  materialFrenteId?: string | null;
 }
 
 
@@ -220,12 +232,39 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
   }
 
   // Portas como peças reais (apenas se não houver gavetas)
+  const tipoPortaCfg = config.portas.tipoPorta ?? "melamina";
   for (const pp of dimensoesPortas(config)) {
-    pecas.push({
-      tipo: "porta", descricao: pp.descricao,
-      qtd: 1, comprimento_mm: r(pp.altura), largura_mm: r(pp.largura), espessura_mm: r(pp.espessura),
-      veio: "comprimento",
-    });
+    if (tipoPortaCfg === "aluminio_espelho") {
+      // Porta alumínio + espelho: emite perfil (mm lineares) + área de espelho (m²)
+      const perfilW = config.portas.perfilLarguraMm ?? 25;
+      const perfilE = config.portas.perfilEspessuraMm ?? 20;
+      const perimetro_mm = 2 * (pp.largura + pp.altura);
+      const espW = Math.max(0, pp.largura - 2 * perfilW);
+      const espH = Math.max(0, pp.altura - 2 * perfilW);
+      const area_m2 = (espW * espH) / 1_000_000;
+      pecas.push({
+        tipo: "porta", descricao: `${pp.descricao} — Perfil alumínio`,
+        qtd: 1, comprimento_mm: r(perimetro_mm), largura_mm: r(perfilW), espessura_mm: r(perfilE),
+        veio: "sem",
+      });
+      pecas.push({
+        tipo: "porta", descricao: `${pp.descricao} — Espelho/vidro`,
+        qtd: 1, comprimento_mm: r(espH), largura_mm: r(espW),
+        espessura_mm: 4, // espelho típico 4mm
+        veio: "sem",
+      });
+      // anotação informativa para o utilizador (área em m²)
+      pecas.push({
+        tipo: "porta", descricao: `${pp.descricao} — Espelho (área m²) = ${area_m2.toFixed(3)}`,
+        qtd: 1, comprimento_mm: 0, largura_mm: 0, espessura_mm: 0, veio: "sem",
+      });
+    } else {
+      pecas.push({
+        tipo: "porta", descricao: pp.descricao,
+        qtd: 1, comprimento_mm: r(pp.altura), largura_mm: r(pp.largura), espessura_mm: r(pp.espessura),
+        veio: "comprimento",
+      });
+    }
   }
 
   // Gavetas — frentes + caixas
@@ -590,6 +629,27 @@ export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
     }
   }
   return out;
+}
+
+// ─── Porta alumínio + espelho: geometria das peças do caixilho + painel ───
+export interface AluPortaPiece {
+  kind: "perfil_topo" | "perfil_base" | "perfil_esq" | "perfil_dir" | "espelho";
+  size: [number, number, number];   // [W, H, espessura]
+  center: [number, number, number]; // relativo à porta (origem no canto inferior-esq da porta)
+}
+export function pecasPortaAluminio(W: number, H: number, perfilW = 25, perfilE = 20): AluPortaPiece[] {
+  const espW = Math.max(1, W - 2 * perfilW);
+  const espH = Math.max(1, H - 2 * perfilW);
+  const ez = perfilE; // ambos no mesmo plano Z
+  return [
+    // 4 perfis (caixilho)
+    { kind: "perfil_topo", size: [W, perfilW, ez], center: [W / 2, H - perfilW / 2, ez / 2] },
+    { kind: "perfil_base", size: [W, perfilW, ez], center: [W / 2, perfilW / 2, ez / 2] },
+    { kind: "perfil_esq",  size: [perfilW, espH, ez], center: [perfilW / 2, H / 2, ez / 2] },
+    { kind: "perfil_dir",  size: [perfilW, espH, ez], center: [W - perfilW / 2, H / 2, ez / 2] },
+    // espelho recuado 2mm para trás
+    { kind: "espelho", size: [espW, espH, 4], center: [W / 2, H / 2, ez / 2 - 2] },
+  ];
 }
 
 export function nDobradicasPorAltura(h: number): number {
