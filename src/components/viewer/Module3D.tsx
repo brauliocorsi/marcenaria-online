@@ -311,6 +311,11 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         doorAngleDeg={doorAngleDeg}
         drawerPct={drawerPct}
         showCotas={showCotas}
+        tipoPorta={config.portas.tipoPorta ?? "melamina"}
+        perfilLarguraMm={config.portas.perfilLarguraMm ?? 25}
+        perfilEspessuraMm={config.portas.perfilEspessuraMm ?? 20}
+        materialCorpo={materialCorpo}
+        materialFrente={materialFrente}
       />
 
       <Grid
