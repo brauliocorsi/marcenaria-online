@@ -513,6 +513,14 @@ function ModulosPage() {
                     onChange={(e) => updPorta("perfilEspessuraMm", Math.max(6, Number(e.target.value) || 20))} />
                 </div>
               </div>
+              <PuxadorSelects
+                puxadores={(puxadores ?? []) as any}
+                value={config.portas.puxador ?? null}
+                pos={config.portas.puxadorPos}
+                disabled={config.portas.nPortas === 0}
+                onChange={(snap) => updPorta("puxador", snap as any)}
+                onChangePos={(p) => updPorta("puxadorPos", p)}
+              />
             </CardContent>
           </Card>
 
