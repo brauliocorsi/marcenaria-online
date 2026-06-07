@@ -140,13 +140,14 @@ function ModulosPage() {
         ...calcularCorredicas(config, templateConfig, bits),
         ...calcularSistema32(config, templateConfig, bits),
         ...calcularParafusosFundo(config, templateConfig, bits),
+        ...calcularPuxadores(config, templateConfig, bits),
       ];
     } catch { return []; }
   }, [config, templateConfig, invalid, drillBits]);
 
   const rasgos: Rasgo[] = useMemo(() => {
     if (invalid) return [];
-    try { return calcularRasgos(config); } catch { return []; }
+    try { return [...calcularRasgos(config), ...calcularPuxadoresRasgos(config)]; } catch { return []; }
   }, [config, invalid]);
 
   const totals = useMemo(() => {
