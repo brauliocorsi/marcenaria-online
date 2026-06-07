@@ -213,16 +213,23 @@ export function runGavetaTemplateAsserts() {
   const okLG = ilLG.largura === 90 && lg.alturaCaixa === 90 &&
     lg.alturaFrenteDecorativa === 200 && lg.desenhaFrenteCaixa === false;
 
+  const okRenderFI = fi.pecas.length === cla.pecas.length - 1;
+  const okRenderLG = lg.alturaCaixa === DEFAULT_LEGRABOX.alturaIlharga && lg.alturaCaixa === 90;
+  const okRenderCla = cla.alturaCaixa === dims.boxHeight;
+
   const tests: Array<[string, boolean]> = [
     ["[novo] classica: ilharga 500×200×16, frente 730×200×16, fundo 746×484, 4 rasgos", okC],
     ["[novo] frente_integrada: ZERO frente, ilharga.depth=500, 4 furos Ø5 (2/ilharga)", okFI],
     ["[novo] legrabox: ilharga.height=90, frente_decorativa=vão (boxHeight)", okLG],
+    ["[novo-render] frente_integrada: mesh count caixa = classica − 1 (sem frente caixa)", okRenderFI],
+    ["[novo-render] legrabox: boxGroupHeight === config.alturaIlharga (90)", okRenderLG],
+    ["[regressão] classica render: boxGroupHeight === alturaCaixa DEFAULT (sem mudança visual)", okRenderCla],
   ];
   let ok = true;
   for (const [label, pass] of tests) {
     console.assert(pass, `[gaveta-template.assert] FALHOU: ${label}`);
     if (!pass) ok = false;
   }
-  if (ok) console.info("[gaveta-template.assert] ✓ 3 templates produzem peças/rasgos/furos corretos.");
+  if (ok) console.info("[gaveta-template.assert] ✓ 6 testes (3 motor + 3 render) passam.");
   return ok;
 }

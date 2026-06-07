@@ -12,6 +12,9 @@ import {
   CavilhaModel, CorredicaCarcaca, CorredicaGaveta, DobradicaCaneco, DobradicaChapa,
   MinifixCorpo, MinifixPerno, PinoPrateleiraModel, liftYUndermount,
 } from "./hardware/HardwareMeshes";
+import {
+  pecasGavetaPorTemplate, DEFAULT_CLASSICA, type GavetaTemplate,
+} from "@/lib/engines/gaveta-template";
 
 const MM_TO_M = 0.001;
 const COR_MELAMINA = "#E8E2D5";
@@ -34,6 +37,38 @@ interface Module3DProps {
   doorAngleDeg?: number;
   drawerPct?: number;
   showCotas?: boolean;
+  gavetaTemplates?: Array<{ id: string; nome: string; tipo: string; config: any }>;
+}
+
+// Resolve template ativo da gaveta — fallback DEFAULT_CLASSICA.
+const FALLBACK_TPL: GavetaTemplate = { nome: "Caixa Clássica (padrão)", tipo: "classica", config: DEFAULT_CLASSICA };
+function resolveGavetaTemplate(
+  config: ModuleConfig,
+  list?: Module3DProps["gavetaTemplates"],
+): GavetaTemplate {
+  const id = (config.gavetas as any)?.gavetaTemplateId ?? null;
+  if (!id || !list) return FALLBACK_TPL;
+  const row = list.find((t) => t.id === id);
+  if (!row) return FALLBACK_TPL;
+  return { id: row.id, nome: row.nome, tipo: row.tipo as any, config: row.config as any };
+}
+
+// Aplica saída do motor de templates às peças da caixa da gaveta i:
+//  - alturaCaixa  → redefine altura das laterais/frente/traseira (legrabox encurta).
+//  - desenhaFrenteCaixa=false → remove o painel "Frente caixa" (frente_integrada).
+//  - Y reposicionado para manter a caixa apoiada no mesmo fundo.
+function applyGavetaTemplate(pecas: PecaGeo[], c: GavetaCaixa, tpl: GavetaTemplate): PecaGeo[] {
+  const r = pecasGavetaPorTemplate(tpl, { boxWidth: c.boxWidth, boxHeight: c.boxHeight, boxDepth: c.boxDepth });
+  if (r.alturaCaixa === c.boxHeight && r.desenhaFrenteCaixa) return pecas; // classica → sem alteração
+  const yBottom = c.center[1] - c.boxHeight / 2;
+  const newCy = yBottom + r.alturaCaixa / 2;
+  return pecas.flatMap((p) => {
+    if (p.tipo === "gaveta_lateral" || p.tipo === "gaveta_frenteCaixa") {
+      if (!r.desenhaFrenteCaixa && p.tipo === "gaveta_frenteCaixa" && /^Frente caixa/i.test(p.descricao)) return [];
+      return [{ ...p, size: [p.size[0], r.alturaCaixa, p.size[2]] as [number, number, number], center: [p.center[0], newCy, p.center[2]] as [number, number, number] }];
+    }
+    return [p];
+  });
 }
 
 function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; center3D: [number, number, number] }) {
@@ -99,12 +134,13 @@ function isDrawerPiece(p: PecaGeo, idx: number): boolean {
   return new RegExp(`gaveta\\s+${idx + 1}\\b`, "i").test(p.descricao);
 }
 
-export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false }: Module3DProps) {
+export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
   const pes = useMemo(() => calcularPes(config), [config]);
   const portas = useMemo(() => dimensoesPortas(config), [config]);
   const gavetas = useMemo(() => dimensoesGavetas(config), [config]);
   const eRes = useMemo(() => resolverEspessuras(config.espessuraPadrao, config.espessuras), [config]);
+  const gavetaTpl = useMemo(() => resolveGavetaTemplate(config, gavetaTemplates), [config, gavetaTemplates]);
 
   const { W, H, D } = useMemo(
     () => ({ W: config.dims.width, H: config.dims.height, D: config.dims.depth }),
@@ -247,9 +283,10 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         const ext = extensaoFromTipo(c.tipoCorredica);
         const openZ = aberturaGaveta(c.boxDepth, ext, drawerPct);
         const liftY = liftYUndermount(c.tipoCorredica);
+        const pecasGav = applyGavetaTemplate(bucket.drawerPecas[i], c, gavetaTpl);
         return (
           <group key={`drawer-${i}`} position={[0, liftY * MM_TO_M, openZ * MM_TO_M]}>
-            {bucket.drawerPecas[i].map((p, j) => (
+            {pecasGav.map((p, j) => (
               <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} />
             ))}
             {showHardware && <CorredicaGaveta caixa={c} />}
