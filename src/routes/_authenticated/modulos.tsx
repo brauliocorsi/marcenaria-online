@@ -661,6 +661,10 @@ function ModulosPage() {
                     <Switch id="show-hw" checked={showHardware} onCheckedChange={setShowHardware} />
                     <Label htmlFor="show-hw" className="text-xs text-muted-foreground cursor-pointer">Ferragens</Label>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Switch id="show-cotas" checked={showCotas} onCheckedChange={setShowCotas} />
+                    <Label htmlFor="show-cotas" className="text-xs text-muted-foreground cursor-pointer">Cotas</Label>
+                  </div>
 
                   <div className="flex items-center gap-2 pl-3 border-l">
                     <Label className="text-xs text-muted-foreground shrink-0">Abrir portas</Label>
@@ -689,6 +693,7 @@ function ModulosPage() {
                     showHardware={showHardware}
                     doorAngleDeg={doorAngleDeg}
                     drawerPct={drawerPct}
+                    showCotas={showCotas}
                   />
                 </div>
                 {showFuros && templateConfig && <FurosLegend />}
