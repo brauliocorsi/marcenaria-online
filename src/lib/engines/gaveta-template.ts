@@ -230,6 +230,17 @@ export function runGavetaTemplateAsserts() {
   const okRenderLG = lg.alturaCaixa === DEFAULT_LEGRABOX.alturaIlharga && lg.alturaCaixa === 90;
   const okRenderCla = cla.alturaCaixa === dims.boxHeight;
 
+  // Frente decorativa em z=541 (face traseira = 541 - 19/2 = 531.5);
+  // box em center z=266, depth=500 → front box = 516. Shift = 531.5 - 516 = 15.5.
+  const shift = calcShiftZFrenteIntegrada(266, 500, 541, 19);
+  const okShiftFI = Math.abs(shift - 15.5) < 0.01;
+  // Garante que após shift a face frontal da ilharga toca a face traseira da frente.
+  const newFrontBox = 266 + shift + 500 / 2;
+  const backFrente = 541 - 19 / 2;
+  const okTouchFI = Math.abs(newFrontBox - backFrente) < 0.01;
+  // ilharga depth e altura inalteradas (engine garante)
+  const okIlhargaFI = ilFI.comprimento === dims.boxDepth && ilFI.largura === dims.boxHeight;
+
   const tests: Array<[string, boolean]> = [
     ["[novo] classica: ilharga 500×200×16, frente 730×200×16, fundo 746×484, 4 rasgos", okC],
     ["[novo] frente_integrada: ZERO frente, ilharga.depth=500, 4 furos Ø5 (2/ilharga)", okFI],
