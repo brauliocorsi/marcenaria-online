@@ -85,46 +85,44 @@ function resolverFerramenta(
   templateBrocas: TemplateConfig["brocas"],
 ): { id: string | null; nome: string | null; tool_type: string | null } {
   const purpose = purposeFor(t);
-  const passanteExpected = false; // todas as ops atuais são não-passantes
-  const eq = (a: number, b: number) => Math.abs(a - b) < 0.001;
+  const passanteExpected = false;
+  const eq = (a: number, b: number) => Math.abs(Number(a) - Number(b)) < 0.001;
+
+  // CRITÉRIO PRIMÁRIO: diâmetro exato + tool_type='broca'. Sem match → "(em falta)".
   if (bits && bits.length > 0) {
-    // 1) match exato
-    const exact = bits.find(b =>
-      b.purpose === purpose &&
-      eq(Number(b.diameter_mm), diametro) &&
-      (b.tool_type ?? "broca") === "broca" &&
-      Boolean(b.passante) === passanteExpected
-    );
-    if (exact) return { id: exact.id, nome: exact.name, tool_type: exact.tool_type ?? "broca" };
-    // 2) match purpose+diâmetro
-    const looser = bits.find(b => b.purpose === purpose && eq(Number(b.diameter_mm), diametro));
-    if (looser) return { id: looser.id, nome: looser.name, tool_type: looser.tool_type ?? "broca" };
-    // 3) match purpose
-    const purposeOnly = bits.find(b => b.purpose === purpose);
-    if (purposeOnly) return { id: purposeOnly.id, nome: purposeOnly.name, tool_type: purposeOnly.tool_type ?? "broca" };
+    const sameDiam = bits.filter(b => eq(Number(b.diameter_mm), diametro) && (b.tool_type ?? "broca") === "broca");
+    if (sameDiam.length > 0) {
+      const exact = sameDiam.find(b => b.purpose === purpose && Boolean(b.passante) === passanteExpected);
+      if (exact) return { id: exact.id, nome: exact.name, tool_type: exact.tool_type ?? "broca" };
+      const byPurpose = sameDiam.find(b => b.purpose === purpose);
+      if (byPurpose) return { id: byPurpose.id, nome: byPurpose.name, tool_type: byPurpose.tool_type ?? "broca" };
+      const any = sameDiam[0];
+      return { id: any.id, nome: any.name, tool_type: any.tool_type ?? "broca" };
+    }
+    const tplKey: keyof TemplateConfig["brocas"] | null =
+      t === "cavilha" ? "cavilha" :
+      t === "minifix_corpo" ? "minifix_corpo" :
+      t === "minifix_perno" ? "minifix_perno" :
+      t === "parafuso" ? "parafuso" :
+      t === "dobradica" ? "dobradica" : null;
+    const tplId = tplKey ? (templateBrocas?.[tplKey] ?? null) : null;
+    if (tplId) {
+      const tb = bits.find(b => b.id === tplId && eq(Number(b.diameter_mm), diametro));
+      if (tb) return { id: tb.id, nome: tb.name, tool_type: tb.tool_type ?? "broca" };
+    }
+    return { id: null, nome: `(em falta: Ø${diametro}mm)`, tool_type: "broca" };
   }
-  // 4) fallback ao template (apenas para tipos com slot no template)
-  const tplKey: keyof TemplateConfig["brocas"] | null =
-    t === "cavilha" ? "cavilha" :
-    t === "minifix_corpo" ? "minifix_corpo" :
-    t === "minifix_perno" ? "minifix_perno" :
-    t === "parafuso" ? "parafuso" :
-    t === "dobradica" ? "dobradica" : null;
-  const tplId = tplKey ? (templateBrocas?.[tplKey] ?? null) : null;
-  if (tplId && bits) {
-    const tb = bits.find(b => b.id === tplId);
-    if (tb) return { id: tb.id, nome: tb.name, tool_type: tb.tool_type ?? "broca" };
-  }
-  // 5) último recurso: nome sintético
+
   const nome =
     t === "cavilha" ? `Broca cavilha Ø${diametro}` :
     t === "minifix_corpo" ? `Broca minifix corpo Ø${diametro}` :
     t === "minifix_perno" ? `Broca minifix perno Ø${diametro}` :
     t === "parafuso" ? `Broca pré-furo Ø${diametro}` :
     t === "dobradica" ? `Broca dobradiça Ø${diametro}` :
+    t === "pino" ? `Broca pino Ø${diametro}` :
     t === "marcacao" ? `Broca ${diametro} mm` :
     `Broca ${diametro} mm`;
-  return { id: tplId ?? null, nome, tool_type: "broca" };
+  return { id: null, nome, tool_type: "broca" };
 }
 
 function makeFuro(

@@ -7,7 +7,7 @@ import type { Furo } from "@/lib/engines/drilling";
 import type { GavetaCaixa } from "@/lib/engines/module";
 
 const MM = 0.001;
-const COLOR_METAL = "#9AA0A6";
+const COLOR_METAL = "#6B7280";
 const COLOR_WOOD = "#C9A66B";
 const UP = new Vector3(0, 1, 0);
 
@@ -27,23 +27,23 @@ function shiftedPos(f: Furo, len: number): [number, number, number] {
 }
 
 export function MinifixCorpo({ f }: { f: Furo }) {
-  const h = 12, r = 7.5;
+  const h = 12, r = 8;
   const q = useDirQuat(f.dir);
   return (
     <mesh position={shiftedPos(f, h)} quaternion={q}>
       <cylinderGeometry args={[r * MM, r * MM, h * MM, 24]} />
-      <meshStandardMaterial color={COLOR_METAL} metalness={0.85} roughness={0.25} />
+      <meshStandardMaterial color="#3F4651" metalness={0.95} roughness={0.2} />
     </mesh>
   );
 }
 
 export function MinifixPerno({ f }: { f: Furo }) {
-  const len = 32, r = 3;
+  const len = 32, r = 4;
   const q = useDirQuat(f.dir);
   return (
     <mesh position={shiftedPos(f, len)} quaternion={q}>
       <cylinderGeometry args={[r * MM, r * MM, len * MM, 14]} />
-      <meshStandardMaterial color={COLOR_METAL} metalness={0.8} roughness={0.3} />
+      <meshStandardMaterial color="#3B82F6" metalness={0.7} roughness={0.35} />
     </mesh>
   );
 }
