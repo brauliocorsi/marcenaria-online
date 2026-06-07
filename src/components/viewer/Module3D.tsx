@@ -222,13 +222,138 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
       <directionalLight position={[-3, 2, -2]} intensity={0.25} />
       <Suspense fallback={null}><Environment preset="apartment" /></Suspense>
 
-      {/* ── Estrutura (estática) ── */}
+      <ModuleSceneInner
+        bucket={bucket}
+        chapasByPorta={chapasByPorta}
+        portas={portas}
+        gavetas={gavetas}
+        gavetaTpl={gavetaTpl}
+        eRes={eRes}
+        pes={pes}
+        explode={explode}
+        center3D={center3D}
+        W={W} H={H} D={D}
+        showHardware={showHardware}
+        doorAngleDeg={doorAngleDeg}
+        drawerPct={drawerPct}
+        showCotas={showCotas}
+      />
+
+      <Grid
+        position={[target[0], 0, target[2]]}
+        args={[10, 10]} cellSize={0.1} cellThickness={0.6} sectionSize={1} sectionThickness={1}
+        sectionColor="#7a7367" cellColor="#b5afa3" fadeDistance={15} fadeStrength={1} infiniteGrid
+      />
+
+      <OrbitControls target={target} enableDamping makeDefault />
+      <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
+        <GizmoViewport axisColors={["#d94a4a", "#4ab06a", "#4a7fd9"]} labelColor="white" />
+      </GizmoHelper>
+    </Canvas>
+  );
+}
+
+// ── Cena reusável (sem Canvas/lights/controls). Usar dentro de um Canvas pai
+// (ex.: Room3D) para colocar várias instâncias de módulo na mesma sala.
+export function ModuleScene({
+  config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates,
+}: Module3DProps) {
+  const pecas = useMemo(() => calcularGeometria(config), [config]);
+  const pes = useMemo(() => calcularPes(config), [config]);
+  const portas = useMemo(() => dimensoesPortas(config), [config]);
+  const gavetas = useMemo(() => dimensoesGavetas(config), [config]);
+  const eRes = useMemo(() => resolverEspessuras(config.espessuraPadrao, config.espessuras), [config]);
+  const gavetaTpl = useMemo(() => resolveGavetaTemplate(config, gavetaTemplates), [config, gavetaTemplates]);
+
+  const { W, H, D } = { W: config.dims.width, H: config.dims.height, D: config.dims.depth };
+  const center3D: [number, number, number] = [W / 2, H / 2, D / 2];
+
+  const portaDescr = new Set(portas.map((p) => p.descricao));
+  const drawerCount = gavetas.caixas.length;
+
+  const bucket: Bucket = {
+    structPecas: [],
+    structFuros: [],
+    portaPecas: new Map(),
+    portaFuros: new Map(portas.map((p) => [p.descricao, [] as Furo[]])),
+    drawerPecas: Array.from({ length: drawerCount }, () => []),
+    drawerFuros: Array.from({ length: drawerCount }, () => []),
+  };
+  for (const p of pecas) {
+    if (p.tipo === "porta" && portaDescr.has(p.descricao)) { bucket.portaPecas.set(p.descricao, p); continue; }
+    let placed = false;
+    for (let i = 0; i < drawerCount; i++) {
+      if (isDrawerPiece(p, i)) { bucket.drawerPecas[i].push(p); placed = true; break; }
+    }
+    if (!placed) bucket.structPecas.push(p);
+  }
+  for (const f of furos) {
+    if (f.tipo_furo === "dobradica") {
+      for (const pd of portas) {
+        if (f.junta === `dobradica_${pd.descricao}`) { bucket.portaFuros.get(pd.descricao)?.push(f); break; }
+      }
+      continue;
+    }
+    bucket.structFuros.push(f);
+  }
+
+  const chapasByPorta = new Map<string, Array<{ centro: [number, number, number]; dir: [number, number, number] }>>();
+  for (const pd of portas) {
+    const screws = furos.filter((f) => f.tipo_furo === "parafuso" && f.junta === `dobradica_chapa_${pd.descricao}`);
+    const pairs: Array<{ centro: [number, number, number]; dir: [number, number, number] }> = [];
+    for (let i = 0; i < screws.length; i += 2) {
+      const a = screws[i], b = screws[i + 1] ?? screws[i];
+      pairs.push({ centro: [(a.pos[0] + b.pos[0]) / 2, (a.pos[1] + b.pos[1]) / 2, (a.pos[2] + b.pos[2]) / 2], dir: a.dir });
+    }
+    chapasByPorta.set(pd.descricao, pairs);
+  }
+
+  return (
+    <ModuleSceneInner
+      bucket={bucket} chapasByPorta={chapasByPorta} portas={portas} gavetas={gavetas}
+      gavetaTpl={gavetaTpl} eRes={eRes} pes={pes} explode={explode} center3D={center3D}
+      W={W} H={H} D={D} showHardware={showHardware} doorAngleDeg={doorAngleDeg}
+      drawerPct={drawerPct} showCotas={showCotas}
+    />
+  );
+}
+
+// ── Núcleo de render (peças/furos/ferragens/portas/gavetas/cotas/pés) ──
+type Bucket = {
+  structPecas: PecaGeo[];
+  structFuros: Furo[];
+  portaPecas: Map<string, PecaGeo>;
+  portaFuros: Map<string, Furo[]>;
+  drawerPecas: PecaGeo[][];
+  drawerFuros: Furo[][];
+};
+
+function ModuleSceneInner({
+  bucket, chapasByPorta, portas, gavetas, gavetaTpl, eRes, pes,
+  explode, center3D, W, H, D, showHardware, doorAngleDeg, drawerPct, showCotas,
+}: {
+  bucket: Bucket;
+  chapasByPorta: Map<string, Array<{ centro: [number, number, number]; dir: [number, number, number] }>>;
+  portas: PortaDim[];
+  gavetas: ReturnType<typeof dimensoesGavetas>;
+  gavetaTpl: GavetaTemplate;
+  eRes: ReturnType<typeof resolverEspessuras>;
+  pes: ReturnType<typeof calcularPes>;
+  explode: number;
+  center3D: [number, number, number];
+  W: number; H: number; D: number;
+  showHardware: boolean;
+  doorAngleDeg: number;
+  drawerPct: number;
+  showCotas: boolean;
+}) {
+  return (
+    <>
       {bucket.structPecas.map((p, i) => (
         <PecaMesh key={`s-${i}`} p={p} explode={explode} center3D={center3D} />
       ))}
       {bucket.structFuros.map((f, i) => <FuroMesh key={`sf-${i}`} f={f} />)}
 
-      {/* Ferragens estruturais: cavilhas (1× por junta), minifix corpo/perno, pinos, chapas */}
       {showHardware && bucket.structFuros.map((f, i) => {
         if (f.tipo_furo === "cavilha" && f.peca === "lateral") return <CavilhaModel key={`hw-cav-${i}`} f={f} />;
         if (f.tipo_furo === "minifix_corpo") return <MinifixCorpo key={`hw-mc-${i}`} f={f} />;
@@ -240,12 +365,10 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         pairs.map((c, j) => <DobradicaChapa key={`chapa-${desc}-${j}`} centro={c.centro} dir={c.dir} />)
       )}
 
-      {/* Corrediças (carcaça fixa) */}
       {showHardware && gavetas.caixas.map((c, i) => (
         <CorredicaCarcaca key={`crc-c-${i}`} caixa={c} ladoXmin={eRes.lateral} ladoXmax={W - eRes.lateral} />
       ))}
 
-      {/* ── Portas (animadas) ── */}
       {portas.map((pd, i) => {
         const pivotX = pivotPorta(pd);
         const pivotZ = pd.zBack;
@@ -263,7 +386,6 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
             )}
             {canecos.map((f, j) => <FuroMesh key={`df-${j}`} f={translateFuro(f, pivotX, 0, pivotZ)} />)}
             {showHardware && canecos.map((f, j) => <DobradicaCaneco key={`dc-${j}`} f={translateFuro(f, pivotX, 0, pivotZ)} />)}
-            {/* puxador segue a porta */}
             {(() => {
               const xPux = pd.ladoDobradicas === "esquerda" ? pd.xMax : pd.xMin;
               const pos: [number, number, number] = [(xPux - pivotX) * MM_TO_M, pd.cy * MM_TO_M, (pd.zFront - pivotZ) * MM_TO_M + 0.005];
@@ -278,7 +400,6 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         );
       })}
 
-      {/* ── Gavetas (animadas — translação em +Z; lift Y para undermount) ── */}
       {gavetas.caixas.map((c: GavetaCaixa, i) => {
         const ext = extensaoFromTipo(c.tipoCorredica);
         const openZ = aberturaGaveta(c.boxDepth, ext, drawerPct);
@@ -294,11 +415,8 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         );
       })}
 
-      {/* ── Cotas (L/A/P) ── */}
       {showCotas && <CotasModulo W={W} H={H} D={D} />}
 
-
-      {/* Pés */}
       {pes.posicoes.map((p, i) => {
         const pos: [number, number, number] = [p[0] * MM_TO_M, p[1] * MM_TO_M, p[2] * MM_TO_M];
         return (
@@ -308,18 +426,7 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
           </mesh>
         );
       })}
-
-      <Grid
-        position={[target[0], 0, target[2]]}
-        args={[10, 10]} cellSize={0.1} cellThickness={0.6} sectionSize={1} sectionThickness={1}
-        sectionColor="#7a7367" cellColor="#b5afa3" fadeDistance={15} fadeStrength={1} infiniteGrid
-      />
-
-      <OrbitControls target={target} enableDamping makeDefault />
-      <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
-        <GizmoViewport axisColors={["#d94a4a", "#4ab06a", "#4a7fd9"]} labelColor="white" />
-      </GizmoHelper>
-    </Canvas>
+    </>
   );
 }
 
