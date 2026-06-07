@@ -534,3 +534,150 @@ export function calcularParafusosFundo(
   }
   return out;
 }
+
+// ───────────────────────────────────────────────────────────────
+// Puxadores — furos (barra/botão) na frente + furos de fixação
+// do perfil de gola na carcaça. Fresagens (cava) ficam em
+// calcularPuxadoresRasgos abaixo.
+// ───────────────────────────────────────────────────────────────
+import { maquinarPuxador, type PuxadorSnapshot, type PuxadorPosicao, type FrenteAlvo } from "./puxadores";
+import type { Rasgo } from "./module";
+
+export function calcularPuxadores(
+  config: ModuleConfig,
+  template: TemplateConfig,
+  bits?: DrillBitLike[],
+): Furo[] {
+  const out: Furo[] = [];
+  const Wmod = config.dims.width;
+
+  // ── Portas
+  for (const p of dimensoesPortas(config)) {
+    const pux = (config.portas.puxador ?? null) as PuxadorSnapshot | null;
+    if (!pux) continue;
+    const pos = (config.portas.puxadorPos ?? "superior") as PuxadorPosicao;
+    const frente: FrenteAlvo = {
+      xMin: p.xMin, xMax: p.xMax, yMin: p.yMin, yMax: p.yMax,
+      zBack: p.zBack, zFront: p.zFront,
+      cx: p.cx, cy: p.cy, cz: p.cz,
+      largura: p.largura, altura: p.altura, espessura: p.espessura,
+      descricao: p.descricao,
+    };
+    const m = maquinarPuxador(pux, frente, pos, Wmod);
+    for (const f of m.furos) {
+      out.push(makeFuro({
+        junta: `puxador_${p.descricao}_${f.ref}`, tipo_furo: "parafuso",
+        pos: f.pos, dir: f.dir, diametro: f.diametro, profundidade: f.profundidade,
+        peca: "porta",
+      }, bits, template.brocas));
+    }
+    for (const perfil of m.perfis) {
+      const peca: PieceType = pos === "lateral" ? "lateral" : (pos === "superior" ? "tampo" : "base");
+      const dir: Vec3 = pos === "lateral" ? [1, 0, 0] : (pos === "superior" ? [0, -1, 0] : [0, 1, 0]);
+      for (const fx of perfil.furosFixacao) {
+        out.push(makeFuro({
+          junta: `gola_fix_${perfil.ref}`, tipo_furo: "parafuso",
+          pos: fx.pos, dir, diametro: fx.diametro, profundidade: fx.profundidade,
+          peca,
+        }, bits, template.brocas));
+      }
+    }
+  }
+
+  // ── Gavetas — uma chamada por frente; perfil de gola emitido só na 1ª frente.
+  const g = config.gavetas;
+  const puxG = (g?.puxador ?? null) as PuxadorSnapshot | null;
+  if (puxG && g && g.nGavetas > 0) {
+    const pos = (g.puxadorPos ?? "superior") as PuxadorPosicao;
+    const { frentes } = dimensoesGavetas(config);
+    frentes.forEach((fr, idx) => {
+      const [Wf, Hf, Ef] = fr.size;
+      const [cx, cy, cz] = fr.center;
+      const frente: FrenteAlvo = {
+        xMin: cx - Wf / 2, xMax: cx + Wf / 2,
+        yMin: cy - Hf / 2, yMax: cy + Hf / 2,
+        zBack: cz - Ef / 2, zFront: cz + Ef / 2,
+        cx, cy, cz, largura: Wf, altura: Hf, espessura: Ef,
+        descricao: fr.descricao,
+      };
+      const m = maquinarPuxador(puxG, frente, pos, Wmod);
+      for (const f of m.furos) {
+        out.push(makeFuro({
+          junta: `puxador_${fr.descricao}_${f.ref}`, tipo_furo: "parafuso",
+          pos: f.pos, dir: f.dir, diametro: f.diametro, profundidade: f.profundidade,
+          peca: "gaveta_frente",
+        }, bits, template.brocas));
+      }
+      if (idx === 0) {
+        for (const perfil of m.perfis) {
+          const peca: PieceType = pos === "lateral" ? "lateral" : (pos === "superior" ? "tampo" : "base");
+          const dir: Vec3 = pos === "lateral" ? [1, 0, 0] : (pos === "superior" ? [0, -1, 0] : [0, 1, 0]);
+          for (const fx of perfil.furosFixacao) {
+            out.push(makeFuro({
+              junta: `gola_fix_${perfil.ref}`, tipo_furo: "parafuso",
+              pos: fx.pos, dir, diametro: fx.diametro, profundidade: fx.profundidade,
+              peca,
+            }, bits, template.brocas));
+          }
+        }
+      }
+    });
+  }
+
+  return out;
+}
+
+/** Fresagens (cava) geradas pelo puxador, em coords do módulo. */
+export function calcularPuxadoresRasgos(config: ModuleConfig): Rasgo[] {
+  const out: Rasgo[] = [];
+  const Wmod = config.dims.width;
+
+  const emit = (
+    pux: PuxadorSnapshot | null,
+    posicao: PuxadorPosicao,
+    frente: FrenteAlvo,
+    peca: PieceType,
+  ) => {
+    if (!pux || pux.tipo !== "cava") return;
+    const m = maquinarPuxador(pux, frente, posicao, Wmod);
+    for (const fres of m.fresagens) {
+      // bordo superior/inferior → fresagem ao longo de X (eixo "X")
+      // bordo lateral → eixo "Y"
+      const eixo: "X" | "Y" | "Z" = posicao === "lateral" ? "Y" : "X";
+      const yPos = posicao === "superior" ? frente.yMax - fres.largura
+                 : posicao === "inferior" ? frente.yMin
+                 : frente.cy - fres.comprimento / 2;
+      const xPos = posicao === "lateral" ? frente.cx - fres.largura / 2 : frente.xMin;
+      out.push({
+        ref: `${fres.ref}_${frente.descricao}`, peca, eixo,
+        pos: [xPos, yPos, frente.zBack],
+        comprimento: fres.comprimento, largura: fres.largura, profundidade: fres.profundidade,
+      });
+    }
+  };
+
+  for (const p of dimensoesPortas(config)) {
+    const pux = (config.portas.puxador ?? null) as PuxadorSnapshot | null;
+    const pos = (config.portas.puxadorPos ?? "superior") as PuxadorPosicao;
+    emit(pux, pos, {
+      xMin: p.xMin, xMax: p.xMax, yMin: p.yMin, yMax: p.yMax,
+      zBack: p.zBack, zFront: p.zFront, cx: p.cx, cy: p.cy, cz: p.cz,
+      largura: p.largura, altura: p.altura, espessura: p.espessura, descricao: p.descricao,
+    }, "porta");
+  }
+  const g = config.gavetas;
+  if (g && g.nGavetas > 0) {
+    const puxG = (g.puxador ?? null) as PuxadorSnapshot | null;
+    const posG = (g.puxadorPos ?? "superior") as PuxadorPosicao;
+    for (const fr of dimensoesGavetas(config).frentes) {
+      const [Wf, Hf, Ef] = fr.size; const [cx, cy, cz] = fr.center;
+      emit(puxG, posG, {
+        xMin: cx - Wf / 2, xMax: cx + Wf / 2,
+        yMin: cy - Hf / 2, yMax: cy + Hf / 2,
+        zBack: cz - Ef / 2, zFront: cz + Ef / 2,
+        cx, cy, cz, largura: Wf, altura: Hf, espessura: Ef, descricao: fr.descricao,
+      }, "gaveta_frente");
+    }
+  }
+  return out;
+}
