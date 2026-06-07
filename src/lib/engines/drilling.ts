@@ -387,23 +387,60 @@ export function calcularCorredicas(
   const out: Furo[] = [];
 
   for (const c of caixas) {
+    const tipo = c.tipoCorredica ?? "telescopica";
+    const y = c.center[1];
+
+    if (tipo === "oculta") {
+      // Undermount: clip frontal na frente da caixa + suporte traseiro nas ilhargas.
+      const halfW = c.boxWidth / 2;
+      const yBaixo = y - c.boxHeight / 2 + 6;
+      // Clip frontal (centro da frente da caixa)
+      out.push(makeFuro({
+        junta: `corredica_gaveta${c.idx + 1}_clip_frente`,
+        tipo_furo: "marcacao",
+        pos: [c.center[0], yBaixo, c.zFront],
+        dir: [0, 0, 1],
+        diametro: diam, profundidade: prof, peca: "gaveta_frenteCaixa",
+      }, bits, brocas));
+      // Suporte traseiro (2 pontos, um por ilharga)
+      for (const lado of ["esq", "dir"] as const) {
+        const xIl = lado === "esq" ? c.center[0] - halfW : c.center[0] + halfW;
+        out.push(makeFuro({
+          junta: `corredica_gaveta${c.idx + 1}_suporte_tras_${lado}`,
+          tipo_furo: "marcacao",
+          pos: [xIl, yBaixo, c.zBack + regras.recuo_frontal],
+          dir: [0, -1, 0],
+          diametro: diam, profundidade: prof, peca: "gaveta_lateral",
+        }, bits, brocas));
+      }
+      continue;
+    }
+
+    // Telescópica / Roldanas: marcas na lateral (3 pontos) + ilharga (3 pontos)
     const zF = c.zFront - regras.recuo_frontal;
     const zB = c.zBack + regras.recuo_frontal;
     const zM = (c.zBack + c.zFront) / 2;
     const zs = [zB, zM, zF];
-    const y = c.center[1];
+    const halfW = c.boxWidth / 2;
     for (const lado of ["esq", "dir"] as const) {
       const xFace = lado === "esq" ? e.lateral : W - e.lateral;
-      const dir: Vec3 = lado === "esq" ? [-1, 0, 0] : [1, 0, 0];
+      const dirLat: Vec3 = lado === "esq" ? [-1, 0, 0] : [1, 0, 0];
+      const xIl = lado === "esq" ? c.center[0] - halfW : c.center[0] + halfW;
+      const dirIl: Vec3 = lado === "esq" ? [1, 0, 0] : [-1, 0, 0];
       for (const z of zs) {
+        // lateral do módulo
         out.push(makeFuro({
-          junta: `corredica_gaveta${c.idx + 1}_${lado}`,
+          junta: `corredica_gaveta${c.idx + 1}_lateral_${lado}`,
           tipo_furo: "marcacao",
-          pos: [xFace, y, z],
-          dir,
-          diametro: diam,
-          profundidade: prof,
-          peca: "lateral",
+          pos: [xFace, y, z], dir: dirLat,
+          diametro: diam, profundidade: prof, peca: "lateral",
+        }, bits, brocas));
+        // ilharga da gaveta
+        out.push(makeFuro({
+          junta: `corredica_gaveta${c.idx + 1}_ilharga_${lado}`,
+          tipo_furo: "marcacao",
+          pos: [xIl, y, z], dir: dirIl,
+          diametro: diam, profundidade: prof, peca: "gaveta_lateral",
         }, bits, brocas));
       }
     }
