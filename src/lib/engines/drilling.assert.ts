@@ -118,6 +118,8 @@ export function runDrillingAsserts() {
     ["[novo] Fundo rasgo: 778×698 + 4 rasgos", fundoRasgoOk],
     ["[novo] Fundo sobreposto 800×720 + 14 parafusos perímetro (4+4+3+3)", sobOk],
     ["[novo] Fundo gaveta rasgo: dim correta + 4 rasgos", gavOk],
+    ["[novo 3/5] Puxador barra: 2 furos Ø5 na porta", barraOk],
+    ["[novo 3/5] Puxador cava: 1 fresagem prof=11mm na porta", cavaOk],
   ];
   let ok = true;
   for (const [label, pass] of tests) {
