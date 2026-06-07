@@ -1,14 +1,17 @@
-// Modelos 3D simplificados de ferragens (Fase 4H + 5C corrediças fiéis por tipo).
+// Modelos 3D simplificados de ferragens (Fase 4H + 5C corrediças fiéis por tipo
+// + 4/5 puxadores: barra, botão, cava, perfil gola J/C).
 import { useMemo } from "react";
 import { Quaternion, Vector3 } from "three";
 import type { Furo } from "@/lib/engines/drilling";
 import type { GavetaCaixa } from "@/lib/engines/module";
+import type { PuxadorSnapshot, PuxadorPosicao, PuxadorBarraCfg, PuxadorBotaoCfg, PuxadorCavaCfg, PuxadorGolaCfg } from "@/lib/engines/puxadores";
 
 const MM = 0.001;
 const COLOR_METAL = "#6B7280";
 const COLOR_SLIDE = "#9CA3AF";
 const COLOR_SLIDE_INNER = "#7a8089";
 const COLOR_WOOD = "#C9A66B";
+const COLOR_PUXADOR = "#B8BCC0";
 const UP = new Vector3(0, 1, 0);
 
 function useDirQuat(d: [number, number, number]) {
