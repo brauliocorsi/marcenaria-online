@@ -283,9 +283,10 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         const ext = extensaoFromTipo(c.tipoCorredica);
         const openZ = aberturaGaveta(c.boxDepth, ext, drawerPct);
         const liftY = liftYUndermount(c.tipoCorredica);
+        const pecasGav = applyGavetaTemplate(bucket.drawerPecas[i], c, gavetaTpl);
         return (
           <group key={`drawer-${i}`} position={[0, liftY * MM_TO_M, openZ * MM_TO_M]}>
-            {bucket.drawerPecas[i].map((p, j) => (
+            {pecasGav.map((p, j) => (
               <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} />
             ))}
             {showHardware && <CorredicaGaveta caixa={c} />}
