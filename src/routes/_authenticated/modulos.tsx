@@ -24,7 +24,7 @@ import { listPuxadores } from "@/lib/puxadores.functions";
 import { PUXADOR_TIPO_LABEL, type PuxadorTipo } from "@/lib/engines/puxadores";
 import { TIPO_LABEL as GAVETA_TIPO_LABEL, type GavetaTipo } from "@/lib/engines/gaveta-template";
 import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo } from "@/lib/engines/module";
-import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
+import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, calcularPuxadores, calcularPuxadoresRasgos, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
@@ -140,13 +140,14 @@ function ModulosPage() {
         ...calcularCorredicas(config, templateConfig, bits),
         ...calcularSistema32(config, templateConfig, bits),
         ...calcularParafusosFundo(config, templateConfig, bits),
+        ...calcularPuxadores(config, templateConfig, bits),
       ];
     } catch { return []; }
   }, [config, templateConfig, invalid, drillBits]);
 
   const rasgos: Rasgo[] = useMemo(() => {
     if (invalid) return [];
-    try { return calcularRasgos(config); } catch { return []; }
+    try { return [...calcularRasgos(config), ...calcularPuxadoresRasgos(config)]; } catch { return []; }
   }, [config, invalid]);
 
   const totals = useMemo(() => {

@@ -1,4 +1,4 @@
-import { calcularFuros, calcularCorredicas, calcularSistema32, calcularParafusosFundo } from "./drilling";
+import { calcularFuros, calcularCorredicas, calcularSistema32, calcularParafusosFundo, calcularPuxadores, calcularPuxadoresRasgos } from "./drilling";
 import { DEFAULT_MODULE_CONFIG, dimensoesFundoCarcaca, dimensoesFundoGaveta, calcularRasgos, dimensoesGavetas, type ModuleConfig } from "./module";
 import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
 import { cotasLabels } from "@/components/viewer/Module3D";
@@ -86,6 +86,23 @@ export function runDrillingAsserts() {
   const rGav = calcularRasgos(cfgG).filter(r => /^gaveta1_/.test(r.ref));
   const gavOk = Math.round(fg.wFundo) === Math.round(expW) && Math.round(fg.dFundo) === Math.round(expD) && rGav.length === 4;
 
+  // ─── NOVO 3/5: puxadores integrados em furação/rasgos ───
+  const cfgBarra: ModuleConfig = { ...DEFAULT_MODULE_CONFIG,
+    gavetas: { ...DEFAULT_MODULE_CONFIG.gavetas, nGavetas: 0 },
+    portas: { ...DEFAULT_MODULE_CONFIG.portas, nPortas: 1,
+      puxador: { tipo: "convencional", config: { subtipo: "barra", entreEixo: 128, furoØ: 5, alturaDoBordo: 50 } } as any,
+      puxadorPos: "superior" } };
+  const fBarra = calcularPuxadores(cfgBarra, DEFAULT_TEMPLATE_CONFIG).filter(f => /^puxador_/.test(f.junta));
+  const barraOk = fBarra.length === 2 && fBarra.every(f => f.peca === "porta" && Math.abs(f.diametro - 5) < 0.01);
+
+  const cfgCava: ModuleConfig = { ...DEFAULT_MODULE_CONFIG,
+    gavetas: { ...DEFAULT_MODULE_CONFIG.gavetas, nGavetas: 0 },
+    portas: { ...DEFAULT_MODULE_CONFIG.portas, nPortas: 1,
+      puxador: { tipo: "cava", config: { cavaLargura: 30, deixarEspessura: 8 } } as any,
+      puxadorPos: "superior" } };
+  const rCava = calcularPuxadoresRasgos(cfgCava);
+  const cavaOk = rCava.length === 1 && rCava[0].peca === "porta" && Math.abs(rCava[0].profundidade - 11) < 0.01;
+
   const tests: Array<[string, boolean]> = [
     ["[regressão] laterais_cobrem: relógio SÓ nas laterais", relogioSoNasLaterais],
     ["[regressão] laterais_cobrem: perno SÓ em tampo/base", pernoSoEmTampoBase],
@@ -101,6 +118,8 @@ export function runDrillingAsserts() {
     ["[novo] Fundo rasgo: 778×698 + 4 rasgos", fundoRasgoOk],
     ["[novo] Fundo sobreposto 800×720 + 14 parafusos perímetro (4+4+3+3)", sobOk],
     ["[novo] Fundo gaveta rasgo: dim correta + 4 rasgos", gavOk],
+    ["[novo 3/5] Puxador barra: 2 furos Ø5 na porta", barraOk],
+    ["[novo 3/5] Puxador cava: 1 fresagem prof=11mm na porta", cavaOk],
   ];
   let ok = true;
   for (const [label, pass] of tests) {
