@@ -1,6 +1,7 @@
 // Motor paramétrico do módulo (caixa). Função pura, determinística.
 // Todas as medidas em mm. Cálculos internos podem ser decimais; resultados
 // arredondados a inteiro.
+import { revealOfPuxador, type PuxadorSnapshot } from "./puxadores";
 
 export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | "porta" | "gaveta_frente" | "gaveta_lateral" | "gaveta_frenteCaixa" | "gaveta_fundo" | "tamponamento" | "puxador";
 export type PortaModo = "sobreposta" | "embutida";
