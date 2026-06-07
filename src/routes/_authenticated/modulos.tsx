@@ -664,6 +664,14 @@ function ModulosPage() {
                   </>
                 );
               })()}
+              <PuxadorSelects
+                puxadores={(puxadores ?? []) as any}
+                value={config.gavetas.puxador ?? null}
+                pos={config.gavetas.puxadorPos}
+                disabled={config.gavetas.nGavetas === 0}
+                onChange={(snap) => updGav("puxador", snap as any)}
+                onChangePos={(p) => updGav("puxadorPos", p)}
+              />
             </CardContent>
           </Card>
 
