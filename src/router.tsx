@@ -11,6 +11,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/hardware-anim.assert").then((m) => m.runHardwareAnimAsserts()).catch(() => {});
   import("./lib/engines/ambiente.assert").then((m) => m.runAmbienteAsserts()).catch(() => {});
   import("./lib/engines/gaveta-template").then((m) => m.runGavetaTemplateAsserts()).catch(() => {});
+  import("./lib/engines/ambiente-modulos.assert").then((m) => m.runAmbienteModulosAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {
