@@ -125,6 +125,14 @@ function ModulosPage() {
   const [doorAngleDeg, setDoorAngleDeg] = useState(0);
   const [drawerPct, setDrawerPct] = useState(0);
 
+  const search = Route.useSearch() as { openId?: string };
+  useEffect(() => {
+    if (!search.openId || !modules) return;
+    const m = (modules as any[]).find((x) => x.id === search.openId);
+    if (m && editingId !== m.id) loadModule(m);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.openId, modules]);
+
 
   const pecas = useMemo(() => {
     try { return calcularPecas(config); } catch { return []; }
@@ -231,6 +239,9 @@ function ModulosPage() {
           <p className="mt-1 text-sm text-muted-foreground">Bancada paramétrica — recálculo instantâneo das peças.</p>
         </div>
         <div className="flex gap-2">
+          <Link to="/biblioteca">
+            <Button variant="outline"><LibraryBig className="mr-2 h-4 w-4" /> Novo a partir de modelo</Button>
+          </Link>
           <Button variant="outline" onClick={novoModulo}><Plus className="mr-2 h-4 w-4" /> Novo</Button>
           <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending || invalid}>
             <Save className="mr-2 h-4 w-4" /> {saveMut.isPending ? "A guardar…" : "Guardar módulo"}
