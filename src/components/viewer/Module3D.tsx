@@ -414,6 +414,7 @@ type Bucket = {
 function ModuleSceneInner({
   bucket, chapasByPorta, portas, gavetas, gavetaTpl, eRes, pes,
   explode, center3D, W, H, D, showHardware, doorAngleDeg, drawerPct, showCotas,
+  tipoPorta, perfilLarguraMm, perfilEspessuraMm, materialCorpo, materialFrente,
 }: {
   bucket: Bucket;
   chapasByPorta: Map<string, Array<{ centro: [number, number, number]; dir: [number, number, number] }>>;
@@ -429,11 +430,16 @@ function ModuleSceneInner({
   doorAngleDeg: number;
   drawerPct: number;
   showCotas: boolean;
+  tipoPorta: "melamina" | "aluminio_espelho";
+  perfilLarguraMm: number;
+  perfilEspessuraMm: number;
+  materialCorpo?: MatDef;
+  materialFrente?: MatDef;
 }) {
   return (
     <>
       {bucket.structPecas.map((p, i) => (
-        <PecaMesh key={`s-${i}`} p={p} explode={explode} center3D={center3D} />
+        <PecaMesh key={`s-${i}`} p={p} explode={explode} center3D={center3D} matCorpo={materialCorpo} matFrente={materialFrente} />
       ))}
       {bucket.structFuros.map((f, i) => <FuroMesh key={`sf-${i}`} f={f} />)}
 
@@ -458,14 +464,23 @@ function ModuleSceneInner({
         const angle = anguloPortaRad(pd.ladoDobradicas, doorAngleDeg);
         const peca = bucket.portaPecas.get(pd.descricao);
         const canecos = bucket.portaFuros.get(pd.descricao) ?? [];
+        // Coordenadas locais ao group (com pivot trasladado)
+        const pdLocal: PortaDim = { ...pd,
+          xMin: pd.xMin - pivotX, xMax: pd.xMax - pivotX,
+          cx: pd.cx - pivotX, zBack: pd.zBack - pivotZ, zFront: pd.zFront - pivotZ };
         return (
           <group key={`door-${i}`} position={[pivotX * MM_TO_M, 0, pivotZ * MM_TO_M]} rotation={[0, angle, 0]}>
-            {peca && (
+            {peca && tipoPorta === "melamina" && (
               <PecaMesh
                 p={translatePeca(peca, pivotX, 0, pivotZ)}
                 explode={explode}
                 center3D={[center3D[0] - pivotX, center3D[1], center3D[2] - pivotZ]}
+                matCorpo={materialCorpo}
+                matFrente={materialFrente}
               />
+            )}
+            {tipoPorta === "aluminio_espelho" && (
+              <PortaAluminioMesh pd={pdLocal} perfilW={perfilLarguraMm} perfilE={perfilEspessuraMm} />
             )}
             {canecos.map((f, j) => <FuroMesh key={`df-${j}`} f={translateFuro(f, pivotX, 0, pivotZ)} />)}
             {showHardware && canecos.map((f, j) => <DobradicaCaneco key={`dc-${j}`} f={translateFuro(f, pivotX, 0, pivotZ)} />)}
@@ -491,7 +506,7 @@ function ModuleSceneInner({
         return (
           <group key={`drawer-${i}`} position={[0, liftY * MM_TO_M, openZ * MM_TO_M]}>
             {pecasGav.map((p, j) => (
-              <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} />
+              <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} matCorpo={materialCorpo} matFrente={materialFrente} />
             ))}
             {showHardware && <CorredicaGaveta caixa={c} />}
           </group>
