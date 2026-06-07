@@ -315,8 +315,8 @@ function ModulosPage() {
                   <Select value={config.fundo.modo} onValueChange={(v) => updFundo("modo", v as any)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sobreposto">Sobreposto</SelectItem>
-                      <SelectItem value="ranhura">Em ranhura</SelectItem>
+                      <SelectItem value="sobreposto">Sobreposto (aparafusado)</SelectItem>
+                      <SelectItem value="ranhura">Em rasgo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
