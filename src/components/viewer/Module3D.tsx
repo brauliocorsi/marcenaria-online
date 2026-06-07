@@ -425,6 +425,7 @@ function ModuleSceneInner({
   bucket, chapasByPorta, portas, gavetas, gavetaTpl, eRes, pes,
   explode, center3D, W, H, D, showHardware, doorAngleDeg, drawerPct, showCotas,
   tipoPorta, perfilLarguraMm, perfilEspessuraMm, materialCorpo, materialFrente,
+  puxadorPortas, puxadorPortasPos, puxadorGavetas, puxadorGavetasPos,
 }: {
   bucket: Bucket;
   chapasByPorta: Map<string, Array<{ centro: [number, number, number]; dir: [number, number, number] }>>;
@@ -445,6 +446,10 @@ function ModuleSceneInner({
   perfilEspessuraMm: number;
   materialCorpo?: MatDef;
   materialFrente?: MatDef;
+  puxadorPortas: PuxadorSnapshot | null;
+  puxadorPortasPos: PuxadorPosicao;
+  puxadorGavetas: PuxadorSnapshot | null;
+  puxadorGavetasPos: PuxadorPosicao;
 }) {
   return (
     <>
