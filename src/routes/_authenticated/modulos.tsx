@@ -19,8 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { listMaterials, listHardware, listDrillBits } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
-import { calcularPecas, dimensoesGavetas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo } from "@/lib/engines/module";
-import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
+import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo } from "@/lib/engines/module";
+import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
