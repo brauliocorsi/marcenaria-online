@@ -62,20 +62,28 @@ function MateriaisPage() {
     );
   }, [data, search]);
 
-  const form = useForm<FormVals>({
-    resolver: zodResolver(schema) as any,
-    defaultValues: { name: "", brand: "Kronospan", decor_code: "", thickness_mm: 19, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: "" as any, has_grain: false },
-  });
+  const defaults: FormVals = {
+    name: "", brand: "Kronospan", fabricante: "Kronospan", decor_nome: "", decor_code: "",
+    acabamento: "mate", cor_hex: "#E8E2D5", textura_url: "",
+    thickness_mm: 19, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: "" as any, has_grain: false,
+  };
+  const form = useForm<FormVals>({ resolver: zodResolver(schema) as any, defaultValues: defaults });
 
   function openNew() {
     setEditing(null);
-    form.reset({ name: "", brand: "Kronospan", decor_code: "", thickness_mm: 19, sheet_width_mm: 2750, sheet_height_mm: 2070, price_per_sheet: "" as any, has_grain: false });
+    form.reset(defaults);
     setOpen(true);
   }
   function openEdit(m: any) {
     setEditing(m);
     form.reset({
-      name: m.name, brand: m.brand, decor_code: m.decor_code ?? "",
+      name: m.name, brand: m.brand,
+      fabricante: m.fabricante ?? m.brand ?? "",
+      decor_nome: m.decor_nome ?? "",
+      decor_code: m.decor_code ?? "",
+      acabamento: m.acabamento ?? "mate",
+      cor_hex: m.cor_hex ?? "#E8E2D5",
+      textura_url: m.textura_url ?? "",
       thickness_mm: m.thickness_mm, sheet_width_mm: m.sheet_width_mm, sheet_height_mm: m.sheet_height_mm,
       price_per_sheet: m.price_per_sheet ?? ("" as any), has_grain: m.has_grain,
     });
@@ -85,12 +93,17 @@ function MateriaisPage() {
   const mut = useMutation({
     mutationFn: async (v: FormVals) => save({ data: { id: editing?.id, values: {
       name: v.name, brand: v.brand,
+      fabricante: v.fabricante || null,
+      decor_nome: v.decor_nome || null,
       decor_code: v.decor_code || null,
+      acabamento: v.acabamento as any,
+      cor_hex: v.cor_hex,
+      textura_url: v.textura_url || null,
       thickness_mm: v.thickness_mm,
       sheet_width_mm: v.sheet_width_mm, sheet_height_mm: v.sheet_height_mm,
       price_per_sheet: v.price_per_sheet === "" || v.price_per_sheet == null ? null : Number(v.price_per_sheet),
       has_grain: v.has_grain,
-    } } }),
+    } as any } }),
     onSuccess: () => { toast.success(editing ? "Material atualizado" : "Material criado"); setOpen(false); qc.invalidateQueries({ queryKey: ["materials"] }); },
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
