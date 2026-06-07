@@ -393,6 +393,10 @@ export function ModuleScene({
       gavetaTpl={gavetaTpl} eRes={eRes} pes={pes} explode={explode} center3D={center3D}
       W={W} H={H} D={D} showHardware={showHardware} doorAngleDeg={doorAngleDeg}
       drawerPct={drawerPct} showCotas={showCotas}
+      tipoPorta={config.portas.tipoPorta ?? "melamina"}
+      perfilLarguraMm={config.portas.perfilLarguraMm ?? 25}
+      perfilEspessuraMm={config.portas.perfilEspessuraMm ?? 20}
+      materialCorpo={materialCorpo} materialFrente={materialFrente}
     />
   );
 }
