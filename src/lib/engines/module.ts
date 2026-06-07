@@ -248,9 +248,10 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
       qtd: 2, comprimento_mm: r(c.boxWidth - 2 * c.espessuraCaixa), largura_mm: r(c.boxHeight), espessura_mm: r(c.espessuraCaixa),
       veio: "comprimento",
     });
+    const fg = dimensoesFundoGaveta(c, config);
     pecas.push({
       tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`,
-      qtd: 1, comprimento_mm: r(c.boxWidth), largura_mm: r(c.boxDepth), espessura_mm: r(c.espessuraFundo),
+      qtd: 1, comprimento_mm: r(fg.wFundo), largura_mm: r(fg.dFundo), espessura_mm: r(c.espessuraFundo),
       veio: "largura",
     });
   }
