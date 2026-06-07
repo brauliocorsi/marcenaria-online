@@ -983,7 +983,13 @@ function FerragensBOM({ furos, rasgos, nGavetas, corredicaNome }: { furos: Furo[
     }
   }
 
-  if (rows.length === 0) {
+  // Parafusos de fundo (modo sobreposto) — perímetro traseiro
+  const parafFundo = furos.filter(f => /^fundo_parafuso_/.test(f.junta)).length;
+  if (parafFundo > 0) {
+    rows.push({ ferragem: `Parafuso fundo Ø${furos.find(f=>/^fundo_parafuso_/.test(f.junta))?.diametro ?? 5}`, qtd: parafFundo, localizacao: "Perímetro traseiro (tampo/base/laterais)" });
+  }
+
+  if (rows.length === 0 && rasgos.length === 0) {
     return (
       <Card><CardContent className="py-6 text-sm text-muted-foreground">Sem ferragens neste módulo.</CardContent></Card>
     );
