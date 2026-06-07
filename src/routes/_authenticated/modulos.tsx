@@ -887,3 +887,106 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
   );
 }
 
+// ───────────────── BOM de Ferragens (FIX 4) ─────────────────
+function FerragensBOM({ furos, nGavetas, corredicaNome }: { furos: Furo[]; nGavetas: number; corredicaNome: string | null }) {
+  // Cada minifix = 1 par (corpo + perno) na mesma junta. Conta por junta.
+  const minifixPorJunta = new Map<string, number>();
+  for (const f of furos) {
+    if (f.tipo_furo === "minifix_corpo") minifixPorJunta.set(f.junta, (minifixPorJunta.get(f.junta) ?? 0) + 1);
+  }
+  // Cavilha: 2 furos por pino (um em cada peça). Conta por junta / 2.
+  const cavPorJunta = new Map<string, number>();
+  for (const f of furos) {
+    if (f.tipo_furo === "cavilha") cavPorJunta.set(f.junta, (cavPorJunta.get(f.junta) ?? 0) + 1);
+  }
+  const cavCountPorJunta = new Map<string, number>();
+  for (const [k, v] of cavPorJunta) cavCountPorJunta.set(k, Math.round(v / 2));
+
+  // Pinos prateleira: agrupa por prateleira (junta começa com "prateleiraN_")
+  const pinosPorPrat = new Map<string, number>();
+  for (const f of furos) {
+    if (f.tipo_furo === "pino" && /^prateleira\d+_/.test(f.junta)) {
+      const key = f.junta.split("_")[0];
+      pinosPorPrat.set(key, (pinosPorPrat.get(key) ?? 0) + 1);
+    }
+  }
+  // Pinos sistema 32
+  const pinosS32 = furos.filter(f => f.tipo_furo === "pino" && /^sistema32_/.test(f.junta)).length;
+
+  // Dobradiças (1 caneco = 1 dobradiça)
+  const dobPorPorta = new Map<string, number>();
+  for (const f of furos) {
+    if (f.tipo_furo === "dobradica") {
+      const k = f.junta.replace(/^dobradica_/, "");
+      dobPorPorta.set(k, (dobPorPorta.get(k) ?? 0) + 1);
+    }
+  }
+
+  type Row = { ferragem: string; qtd: number; localizacao: string };
+  const rows: Row[] = [];
+
+  const totalMinifix = Array.from(minifixPorJunta.values()).reduce((a, b) => a + b, 0);
+  if (totalMinifix > 0) {
+    const loc = Array.from(minifixPorJunta.entries()).map(([j, n]) => `${j} (${n})`).join("; ");
+    rows.push({ ferragem: "Minifix (corpo Ø15 + perno Ø8)", qtd: totalMinifix, localizacao: loc });
+  }
+  const totalCav = Array.from(cavCountPorJunta.values()).reduce((a, b) => a + b, 0);
+  if (totalCav > 0) {
+    const loc = Array.from(cavCountPorJunta.entries()).map(([j, n]) => `${j} (${n})`).join("; ");
+    rows.push({ ferragem: "Cavilha Ø8", qtd: totalCav, localizacao: loc });
+  }
+  if (pinosPorPrat.size > 0) {
+    const total = Array.from(pinosPorPrat.values()).reduce((a, b) => a + b, 0);
+    const loc = Array.from(pinosPorPrat.entries()).map(([k, n]) => `${k} (${n})`).join("; ");
+    rows.push({ ferragem: "Pino de suporte Ø5", qtd: total, localizacao: loc });
+  }
+  if (pinosS32 > 0) {
+    rows.push({ ferragem: "Pino de suporte Ø5 (sistema 32)", qtd: pinosS32, localizacao: "Furos do sistema 32 nas laterais" });
+  }
+  if (dobPorPorta.size > 0) {
+    const total = Array.from(dobPorPorta.values()).reduce((a, b) => a + b, 0);
+    const loc = Array.from(dobPorPorta.entries()).map(([k, n]) => `${k} (${n})`).join("; ");
+    rows.push({ ferragem: "Dobradiça Ø35 (caneco)", qtd: total, localizacao: loc });
+  }
+  if (nGavetas > 0) {
+    rows.push({
+      ferragem: corredicaNome ? `Corrediça — ${corredicaNome}` : "Corrediça (par)",
+      qtd: nGavetas,
+      localizacao: Array.from({ length: nGavetas }, (_, i) => `gaveta ${i + 1}`).join("; "),
+    });
+  }
+
+  if (rows.length === 0) {
+    return (
+      <Card><CardContent className="py-6 text-sm text-muted-foreground">Sem ferragens neste módulo.</CardContent></Card>
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b px-4 py-2.5 text-xs text-muted-foreground">
+        Lista de materiais (ferragens) — <span className="text-foreground font-medium">o que e onde</span>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Ferragem</TableHead>
+            <TableHead className="text-right">Qtd</TableHead>
+            <TableHead>Localização</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r, i) => (
+            <TableRow key={i}>
+              <TableCell className="font-medium">{r.ferragem}</TableCell>
+              <TableCell className="text-right tabular">{r.qtd}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">{r.localizacao}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  );
+}
+
+
