@@ -318,9 +318,103 @@ function AmbientesPage() {
 
 
       <ConfirmDelete open={!!delId} onOpenChange={(o) => !o && setDelId(null)} onConfirm={() => delId && delMut.mutate(delId)} />
+      <ConfirmDelete open={!!delPlacementId} onOpenChange={(o) => !o && setDelPlacementId(null)} onConfirm={() => delPlacementId && placementDelMut.mutate(delPlacementId)} />
     </div>
   );
 }
+
+const PAREDES_COLOC: { id: ParedeColocavel; label: string }[] = [
+  { id: "fundo", label: "Fundo" },
+  { id: "esquerda", label: "Esquerda" },
+  { id: "direita", label: "Direita" },
+];
+
+function AddPlacement({ modules, onAdd }: { modules: any[]; onAdd: (p: { module_id: string; parede: ParedeColocavel; x_offset_mm: number; altura_chao_mm: number; rotacao_deg: number }) => void }) {
+  const [moduleId, setModuleId] = useState<string>(modules[0]?.id ?? "");
+  const [parede, setParede] = useState<ParedeColocavel>("fundo");
+  const [xOffset, setXOffset] = useState(0);
+  const [altura, setAltura] = useState(0);
+  return (
+    <div className="rounded-md border p-2 space-y-2 bg-muted/30">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="col-span-2">
+          <Label className="text-[10px] text-muted-foreground">Módulo</Label>
+          <Select value={moduleId} onValueChange={setModuleId}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {modules.map((m) => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name} ({m.width_mm}×{m.height_mm}×{m.depth_mm})</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Parede</Label>
+          <Select value={parede} onValueChange={(v) => setParede(v as ParedeColocavel)}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PAREDES_COLOC.map((p) => <SelectItem key={p.id} value={p.id} className="text-xs">{p.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">x offset</Label>
+          <Input type="number" className="h-7 text-xs" value={xOffset} onChange={(e) => setXOffset(Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Altura chão</Label>
+          <Input type="number" className="h-7 text-xs" value={altura} onChange={(e) => setAltura(Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+        </div>
+      </div>
+      <Button size="sm" className="h-7 w-full" disabled={!moduleId}
+        onClick={() => onAdd({ module_id: moduleId, parede, x_offset_mm: xOffset, altura_chao_mm: altura, rotacao_deg: 0 })}>
+        <Plus className="mr-1 h-3 w-3" /> Adicionar
+      </Button>
+    </div>
+  );
+}
+
+function PlacementRow({ placement, moduleName, moduleW, excede, onChange, onRemove }: {
+  placement: any; moduleName: string; moduleW: number; excede: boolean;
+  onChange: (patch: Partial<{ parede: ParedeColocavel; x_offset_mm: number; altura_chao_mm: number; rotacao_deg: number }>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className={cn("rounded-md border p-2 space-y-2", excede && "border-destructive")}>
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium truncate">{moduleName} <span className="text-muted-foreground">({moduleW}mm)</span></div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRemove}><Trash2 className="h-3 w-3" /></Button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Parede</Label>
+          <Select value={placement.parede} onValueChange={(v) => onChange({ parede: v as ParedeColocavel })}>
+            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PAREDES_COLOC.map((p) => <SelectItem key={p.id} value={p.id} className="text-xs">{p.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Rotação °</Label>
+          <Input type="number" className="h-7 text-xs" value={placement.rotacao_deg} onChange={(e) => onChange({ rotacao_deg: Math.round(Number(e.target.value) || 0) })} />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">x offset</Label>
+          <Input type="number" className="h-7 text-xs" value={placement.x_offset_mm} onChange={(e) => onChange({ x_offset_mm: Math.max(0, Math.round(Number(e.target.value) || 0)) })} />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Altura chão</Label>
+          <Input type="number" className="h-7 text-xs" value={placement.altura_chao_mm} onChange={(e) => onChange({ altura_chao_mm: Math.max(0, Math.round(Number(e.target.value) || 0)) })} />
+        </div>
+      </div>
+      {excede && (
+        <div className="flex items-center gap-1 text-xs text-destructive">
+          <AlertTriangle className="h-3 w-3" /> Excede comprimento da parede
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function SliderField({
   label, value, min, max, step, onChange,
