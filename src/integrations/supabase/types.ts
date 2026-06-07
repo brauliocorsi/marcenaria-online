@@ -253,41 +253,56 @@ export type Database = {
       }
       materials: {
         Row: {
+          acabamento: string
           brand: string
+          cor_hex: string
           created_at: string
           decor_code: string | null
+          decor_nome: string | null
+          fabricante: string | null
           has_grain: boolean
           id: string
           name: string
           price_per_sheet: number | null
           sheet_height_mm: number
           sheet_width_mm: number
+          textura_url: string | null
           thickness_mm: number
           user_id: string
         }
         Insert: {
+          acabamento?: string
           brand?: string
+          cor_hex?: string
           created_at?: string
           decor_code?: string | null
+          decor_nome?: string | null
+          fabricante?: string | null
           has_grain?: boolean
           id?: string
           name: string
           price_per_sheet?: number | null
           sheet_height_mm?: number
           sheet_width_mm?: number
+          textura_url?: string | null
           thickness_mm: number
           user_id: string
         }
         Update: {
+          acabamento?: string
           brand?: string
+          cor_hex?: string
           created_at?: string
           decor_code?: string | null
+          decor_nome?: string | null
+          fabricante?: string | null
           has_grain?: boolean
           id?: string
           name?: string
           price_per_sheet?: number | null
           sheet_height_mm?: number
           sheet_width_mm?: number
+          textura_url?: string | null
           thickness_mm?: number
           user_id?: string
         }
