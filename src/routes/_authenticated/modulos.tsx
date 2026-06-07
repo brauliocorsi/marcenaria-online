@@ -24,7 +24,7 @@ import { listPuxadores } from "@/lib/puxadores.functions";
 import { PUXADOR_TIPO_LABEL, type PuxadorTipo } from "@/lib/engines/puxadores";
 import { TIPO_LABEL as GAVETA_TIPO_LABEL, type GavetaTipo } from "@/lib/engines/gaveta-template";
 import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo } from "@/lib/engines/module";
-import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
+import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, calcularPuxadores, calcularPuxadoresRasgos, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
