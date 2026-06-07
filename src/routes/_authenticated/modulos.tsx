@@ -52,6 +52,7 @@ function ModulosPage() {
   const [name, setName] = useState("Módulo sem nome");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [materialId, setMaterialId] = useState<string | null>(null);
+  const [materialFrenteId, setMaterialFrenteId] = useState<string | null>(null);
   const [config, setConfig] = useState<ModuleConfig>(DEFAULT_MODULE_CONFIG);
   const [showOverrides, setShowOverrides] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
@@ -108,13 +109,16 @@ function ModulosPage() {
       ? { ...DEFAULT_MODULE_CONFIG, ...m.config,
           dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } }
       : { ...DEFAULT_MODULE_CONFIG, dims: { width: m.width_mm, height: m.height_mm, depth: m.depth_mm } };
-    setConfig(normalizarConfig(cfg as ModuleConfig));
+    const normalized = normalizarConfig(cfg as ModuleConfig);
+    setMaterialFrenteId((normalized as any).materialFrenteId ?? null);
+    setConfig(normalized);
   }
 
   function novoModulo() {
     setEditingId(null);
     setName("Módulo sem nome");
     setMaterialId(null);
+    setMaterialFrenteId(null);
     setConfig(DEFAULT_MODULE_CONFIG);
   }
 
@@ -122,7 +126,8 @@ function ModulosPage() {
     mutationFn: async () => save({ data: {
       id: editingId ?? undefined,
       name, width_mm: config.dims.width, height_mm: config.dims.height, depth_mm: config.dims.depth,
-      config: config as any, pieces: pecas as any, material_id: materialId,
+      config: { ...config, materialCorpoId: materialId, materialFrenteId } as any,
+      pieces: pecas as any, material_id: materialId,
     } }),
     onSuccess: (row: any) => {
       toast.success(editingId ? "Módulo atualizado" : "Módulo guardado");
@@ -236,13 +241,35 @@ function ModulosPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Material</Label>
+                <Label>Material corpo (carcaça)</Label>
                 <Select value={materialId ?? "__none__"} onValueChange={(v) => setMaterialId(v === "__none__" ? null : v)}>
                   <SelectTrigger><SelectValue placeholder="Sem material" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— sem material —</SelectItem>
                     {(materials ?? []).map((m: any) => (
-                      <SelectItem key={m.id} value={m.id}>{m.name} · {m.thickness_mm}mm</SelectItem>
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-block h-3 w-3 rounded border" style={{ background: m.cor_hex ?? "#ccc" }} />
+                          {m.name} · {m.thickness_mm}mm
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Material frentes (portas/gavetas)</Label>
+                <Select value={materialFrenteId ?? "__same__"} onValueChange={(v) => setMaterialFrenteId(v === "__same__" ? null : v)}>
+                  <SelectTrigger><SelectValue placeholder="Igual ao corpo" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__same__">— igual ao corpo —</SelectItem>
+                    {(materials ?? []).map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-block h-3 w-3 rounded border" style={{ background: m.cor_hex ?? "#ccc" }} />
+                          {m.name} · {m.thickness_mm}mm
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -400,6 +427,36 @@ function ModulosPage() {
                     value={config.portas.folgaCentral}
                     disabled={config.portas.nPortas !== 2}
                     onChange={(e) => updPorta("folgaCentral", Number(e.target.value) || 0)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1 col-span-1">
+                  <Label className="text-xs">Tipo de porta</Label>
+                  <Select
+                    value={config.portas.tipoPorta ?? "melamina"}
+                    onValueChange={(v) => updPorta("tipoPorta", v as any)}
+                    disabled={config.portas.nPortas === 0}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="melamina">Melamina (painel)</SelectItem>
+                      <SelectItem value="aluminio_espelho">Alumínio + espelho</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Perfil largura (mm)</Label>
+                  <Input type="number" min={10} step={1} className="tabular"
+                    value={config.portas.perfilLarguraMm ?? 25}
+                    disabled={config.portas.nPortas === 0 || (config.portas.tipoPorta ?? "melamina") !== "aluminio_espelho"}
+                    onChange={(e) => updPorta("perfilLarguraMm", Math.max(10, Number(e.target.value) || 25))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Perfil espessura (mm)</Label>
+                  <Input type="number" min={6} step={1} className="tabular"
+                    value={config.portas.perfilEspessuraMm ?? 20}
+                    disabled={config.portas.nPortas === 0 || (config.portas.tipoPorta ?? "melamina") !== "aluminio_espelho"}
+                    onChange={(e) => updPorta("perfilEspessuraMm", Math.max(6, Number(e.target.value) || 20))} />
                 </div>
               </div>
             </CardContent>
@@ -723,6 +780,8 @@ function ModulosPage() {
                     drawerPct={drawerPct}
                     showCotas={showCotas}
                     gavetaTemplates={gavetaTemplates as any}
+                    materialCorpo={(materials ?? []).find((m: any) => m.id === materialId) as any}
+                    materialFrente={(materials ?? []).find((m: any) => m.id === (materialFrenteId ?? materialId)) as any}
                   />
                 </div>
                 {showFuros && templateConfig && <FurosLegend />}

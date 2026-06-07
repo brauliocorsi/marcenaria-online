@@ -5,6 +5,7 @@ import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo, PortaDim, GavetaCaixa } from "@/lib/engines/module";
 import {
   calcularGeometria, calcularPes, dimensoesPortas, dimensoesGavetas, resolverEspessuras,
+  pecasPortaAluminio,
 } from "@/lib/engines/module";
 import { aberturaGaveta, anguloPortaRad, extensaoFromTipo, pivotPorta } from "@/lib/engines/hardware-anim";
 import type { Furo } from "@/lib/engines/drilling";
@@ -29,6 +30,20 @@ const COR_POR_TIPO: Record<string, string> = {
   pino:          "#8b5cf6",
 };
 
+// ── Material da biblioteca (linha de `materials`) — só campos visuais ──
+export type MatDef = { cor_hex?: string | null; acabamento?: string | null; decor_nome?: string | null; name?: string | null } | null | undefined;
+
+// acabamento → propriedades físicas (PBR) reproduzíveis pelo render
+export function materialPhys(acab?: string | null): { roughness: number; metalness: number } {
+  switch ((acab ?? "").toLowerCase()) {
+    case "brilho":    return { roughness: 0.15, metalness: 0.05 };
+    case "mate":      return { roughness: 0.85, metalness: 0.0 };
+    case "madeira":   return { roughness: 0.7,  metalness: 0.0 };
+    case "texturado": return { roughness: 0.6,  metalness: 0.0 };
+    default:          return { roughness: 0.7,  metalness: 0.02 };
+  }
+}
+
 interface Module3DProps {
   config: ModuleConfig;
   explode?: number;
@@ -38,6 +53,8 @@ interface Module3DProps {
   drawerPct?: number;
   showCotas?: boolean;
   gavetaTemplates?: Array<{ id: string; nome: string; tipo: string; config: any }>;
+  materialCorpo?: MatDef;
+  materialFrente?: MatDef;
 }
 
 // Resolve template ativo da gaveta — fallback DEFAULT_CLASSICA.
@@ -88,7 +105,7 @@ function applyGavetaTemplate(pecas: PecaGeo[], c: GavetaCaixa, tpl: GavetaTempla
   });
 }
 
-function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; center3D: [number, number, number] }) {
+function PecaMesh({ p, explode, center3D, matCorpo, matFrente }: { p: PecaGeo; explode: number; center3D: [number, number, number]; matCorpo?: MatDef; matFrente?: MatDef }) {
   const isPorta = p.tipo === "porta";
   const isGavFrente = p.tipo === "gaveta_frente";
   const isCaixa = p.tipo === "gaveta_lateral" || p.tipo === "gaveta_frenteCaixa" || p.tipo === "gaveta_fundo";
@@ -106,14 +123,54 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
     Math.max(p.size[1], 1) * MM_TO_M,
     Math.max(p.size[2], 1) * MM_TO_M,
   ];
-  const color = isPorta || isGavFrente ? "#D8D1C0" : isCaixa ? "#B8AE96" : isTamp ? "#DCD5C4" : COR_MELAMINA;
-  const opacity = isPorta || isGavFrente ? 0.85 : isCaixa ? 0.78 : 0.92;
+  // Aplica material da biblioteca: frentes (portas + frentes de gaveta) usam
+  // materialFrente quando definido; restante usa materialCorpo. Fallback = paleta clássica.
+  const useFrente = isPorta || isGavFrente;
+  const mat = (useFrente ? (matFrente ?? matCorpo) : matCorpo) ?? null;
+  const fallback = isPorta || isGavFrente ? "#D8D1C0" : isCaixa ? "#B8AE96" : isTamp ? "#DCD5C4" : COR_MELAMINA;
+  const color = mat?.cor_hex || fallback;
+  const phys = materialPhys(mat?.acabamento);
+  const opacity = isPorta || isGavFrente ? 0.92 : isCaixa ? 0.82 : 0.95;
   return (
     <mesh position={pos} castShadow receiveShadow>
       <boxGeometry args={size} />
-      <meshStandardMaterial color={color} roughness={0.7} metalness={0.02} transparent opacity={opacity} />
+      <meshStandardMaterial color={color} roughness={phys.roughness} metalness={phys.metalness} transparent opacity={opacity} />
       <Edges threshold={15} color={COR_ARESTA} />
     </mesh>
+  );
+}
+
+// ── Porta alumínio + espelho: caixilho metálico + painel espelhado ──
+function PortaAluminioMesh({ pd, perfilW, perfilE }: { pd: PortaDim; perfilW: number; perfilE: number }) {
+  // pecas em coords locais à porta (origem canto inferior-esq).
+  const pecas = pecasPortaAluminio(pd.largura, pd.altura, perfilW, perfilE);
+  // origem da porta no espaço local do <group> (que tem rotação no pivot):
+  // a porta vive em xMin..xMax, yMin..yMax, zBack.. (espessura para a frente).
+  // Origem da peça (canto inferior-esq + zBack):
+  const ox = pd.xMin, oy = pd.yMin, oz = pd.zBack;
+  return (
+    <group>
+      {pecas.map((q, i) => {
+        const cx = (ox + q.center[0]) * MM_TO_M;
+        const cy = (oy + q.center[1]) * MM_TO_M;
+        const cz = (oz + q.center[2]) * MM_TO_M;
+        const sx = Math.max(q.size[0], 1) * MM_TO_M;
+        const sy = Math.max(q.size[1], 1) * MM_TO_M;
+        const sz = Math.max(q.size[2], 1) * MM_TO_M;
+        const isEspelho = q.kind === "espelho";
+        return (
+          <mesh key={`alu-${i}`} position={[cx, cy, cz]} castShadow receiveShadow>
+            <boxGeometry args={[sx, sy, sz]} />
+            {isEspelho ? (
+              <meshStandardMaterial color="#cfd6dc" roughness={0.05} metalness={0.95} />
+            ) : (
+              <meshStandardMaterial color="#a8aaad" roughness={0.35} metalness={0.85} />
+            )}
+            {!isEspelho && <Edges threshold={15} color="#2b2d30" />}
+          </mesh>
+        );
+      })}
+    </group>
   );
 }
 
@@ -151,7 +208,7 @@ function isDrawerPiece(p: PecaGeo, idx: number): boolean {
   return new RegExp(`gaveta\\s+${idx + 1}\\b`, "i").test(p.descricao);
 }
 
-export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates }: Module3DProps) {
+export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates, materialCorpo, materialFrente }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
   const pes = useMemo(() => calcularPes(config), [config]);
   const portas = useMemo(() => dimensoesPortas(config), [config]);
@@ -254,6 +311,11 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         doorAngleDeg={doorAngleDeg}
         drawerPct={drawerPct}
         showCotas={showCotas}
+        tipoPorta={config.portas.tipoPorta ?? "melamina"}
+        perfilLarguraMm={config.portas.perfilLarguraMm ?? 25}
+        perfilEspessuraMm={config.portas.perfilEspessuraMm ?? 20}
+        materialCorpo={materialCorpo}
+        materialFrente={materialFrente}
       />
 
       <Grid
@@ -273,7 +335,7 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
 // ── Cena reusável (sem Canvas/lights/controls). Usar dentro de um Canvas pai
 // (ex.: Room3D) para colocar várias instâncias de módulo na mesma sala.
 export function ModuleScene({
-  config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates,
+  config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates, materialCorpo, materialFrente,
 }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
   const pes = useMemo(() => calcularPes(config), [config]);
@@ -331,6 +393,10 @@ export function ModuleScene({
       gavetaTpl={gavetaTpl} eRes={eRes} pes={pes} explode={explode} center3D={center3D}
       W={W} H={H} D={D} showHardware={showHardware} doorAngleDeg={doorAngleDeg}
       drawerPct={drawerPct} showCotas={showCotas}
+      tipoPorta={config.portas.tipoPorta ?? "melamina"}
+      perfilLarguraMm={config.portas.perfilLarguraMm ?? 25}
+      perfilEspessuraMm={config.portas.perfilEspessuraMm ?? 20}
+      materialCorpo={materialCorpo} materialFrente={materialFrente}
     />
   );
 }
@@ -348,6 +414,7 @@ type Bucket = {
 function ModuleSceneInner({
   bucket, chapasByPorta, portas, gavetas, gavetaTpl, eRes, pes,
   explode, center3D, W, H, D, showHardware, doorAngleDeg, drawerPct, showCotas,
+  tipoPorta, perfilLarguraMm, perfilEspessuraMm, materialCorpo, materialFrente,
 }: {
   bucket: Bucket;
   chapasByPorta: Map<string, Array<{ centro: [number, number, number]; dir: [number, number, number] }>>;
@@ -363,11 +430,16 @@ function ModuleSceneInner({
   doorAngleDeg: number;
   drawerPct: number;
   showCotas: boolean;
+  tipoPorta: "melamina" | "aluminio_espelho";
+  perfilLarguraMm: number;
+  perfilEspessuraMm: number;
+  materialCorpo?: MatDef;
+  materialFrente?: MatDef;
 }) {
   return (
     <>
       {bucket.structPecas.map((p, i) => (
-        <PecaMesh key={`s-${i}`} p={p} explode={explode} center3D={center3D} />
+        <PecaMesh key={`s-${i}`} p={p} explode={explode} center3D={center3D} matCorpo={materialCorpo} matFrente={materialFrente} />
       ))}
       {bucket.structFuros.map((f, i) => <FuroMesh key={`sf-${i}`} f={f} />)}
 
@@ -392,14 +464,23 @@ function ModuleSceneInner({
         const angle = anguloPortaRad(pd.ladoDobradicas, doorAngleDeg);
         const peca = bucket.portaPecas.get(pd.descricao);
         const canecos = bucket.portaFuros.get(pd.descricao) ?? [];
+        // Coordenadas locais ao group (com pivot trasladado)
+        const pdLocal: PortaDim = { ...pd,
+          xMin: pd.xMin - pivotX, xMax: pd.xMax - pivotX,
+          cx: pd.cx - pivotX, zBack: pd.zBack - pivotZ, zFront: pd.zFront - pivotZ };
         return (
           <group key={`door-${i}`} position={[pivotX * MM_TO_M, 0, pivotZ * MM_TO_M]} rotation={[0, angle, 0]}>
-            {peca && (
+            {peca && tipoPorta === "melamina" && (
               <PecaMesh
                 p={translatePeca(peca, pivotX, 0, pivotZ)}
                 explode={explode}
                 center3D={[center3D[0] - pivotX, center3D[1], center3D[2] - pivotZ]}
+                matCorpo={materialCorpo}
+                matFrente={materialFrente}
               />
+            )}
+            {tipoPorta === "aluminio_espelho" && (
+              <PortaAluminioMesh pd={pdLocal} perfilW={perfilLarguraMm} perfilE={perfilEspessuraMm} />
             )}
             {canecos.map((f, j) => <FuroMesh key={`df-${j}`} f={translateFuro(f, pivotX, 0, pivotZ)} />)}
             {showHardware && canecos.map((f, j) => <DobradicaCaneco key={`dc-${j}`} f={translateFuro(f, pivotX, 0, pivotZ)} />)}
@@ -425,7 +506,7 @@ function ModuleSceneInner({
         return (
           <group key={`drawer-${i}`} position={[0, liftY * MM_TO_M, openZ * MM_TO_M]}>
             {pecasGav.map((p, j) => (
-              <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} />
+              <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} matCorpo={materialCorpo} matFrente={materialFrente} />
             ))}
             {showHardware && <CorredicaGaveta caixa={c} />}
           </group>
