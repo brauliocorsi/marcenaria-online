@@ -429,7 +429,25 @@ function ModulosPage() {
                       <SelectItem value="embutida">Embutida</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Template de construção</Label>
+                <Select
+                  value={(config.gavetas as any).gavetaTemplateId ?? "__auto__"}
+                  disabled={config.gavetas.nGavetas === 0}
+                  onValueChange={(v) => {
+                    const id = v === "__auto__" ? null : v;
+                    setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, gavetaTemplateId: id } as any }));
+                  }}>
+                  <SelectTrigger><SelectValue placeholder="Caixa Clássica (padrão)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__auto__">Caixa Clássica (padrão)</SelectItem>
+                    {(gavetaTemplates ?? []).map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>{t.nome} · {GAVETA_TIPO_LABEL[t.tipo as GavetaTipo] ?? t.tipo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">Define o método de construção da caixa (clássica · frente integrada · Legrabox).</p>
+              </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1"><Label className="text-xs">Folga</Label>
