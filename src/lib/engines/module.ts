@@ -664,6 +664,16 @@ export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
         yMin, yMax, zBack, zFront, ladoDobradicas: "direita", xCharneira: xMaxD });
     }
   }
+
+  // Encurtamento por gola (reveal) — aplicado a TODAS as portas resultantes.
+  const reveal = revealOfPuxador((portas.puxador ?? null) as PuxadorSnapshot | null);
+  if (reveal > 0) {
+    const pos = portas.puxadorPos ?? "superior";
+    for (const p of out) {
+      const adj = aplicarRevealFrente(p.yMin, p.yMax, p.altura, p.cy, reveal, pos);
+      p.yMin = adj.yMin; p.yMax = adj.yMax; p.altura = adj.altura; p.cy = adj.cy;
+    }
+  }
   return out;
 }
 
