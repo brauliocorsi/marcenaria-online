@@ -495,3 +495,42 @@ export function calcularSistema32(
   return out;
 }
 
+
+// ───── Parafusos do fundo (modo sobreposto) ─────
+import { resolverEspessuras as _re2 } from "./module";
+
+export function calcularParafusosFundo(
+  config: ModuleConfig,
+  template: TemplateConfig,
+  bits?: DrillBitLike[],
+): Furo[] {
+  if (config.fundo.modo !== "sobreposto") return [];
+  const W = config.dims.width, H = config.dims.height;
+  const espac = Math.max(50, config.fundo.espacamentoParafusoFundo ?? 250);
+  const espF = config.fundo.espessura;
+  const e = _re2(config.espessuraPadrao, config.espessuras);
+  const { regras, brocas } = template;
+  const diam = regras.diam_parafuso;
+  const prof = regras.prof_cavilha;
+  const out: Furo[] = [];
+
+  const nH = Math.max(2, Math.ceil(W / espac));
+  const nV = Math.max(2, Math.ceil(H / espac));
+  const xs = Array.from({ length: nH }, (_, i) => (W * i) / (nH - 1));
+  const ys = Array.from({ length: nV }, (_, i) => (H * i) / (nV - 1));
+  const dir: Vec3 = [0, 0, -1];
+
+  for (const x of xs) {
+    out.push(makeFuro({ junta: "fundo_parafuso_tampo", tipo_furo: "parafuso",
+      pos: [x, H - e.tampo / 2, espF], dir, diametro: diam, profundidade: prof, peca: "tampo" }, bits, brocas));
+    out.push(makeFuro({ junta: "fundo_parafuso_base", tipo_furo: "parafuso",
+      pos: [x, e.base / 2, espF], dir, diametro: diam, profundidade: prof, peca: "base" }, bits, brocas));
+  }
+  for (const y of ys) {
+    out.push(makeFuro({ junta: "fundo_parafuso_lateral_esq", tipo_furo: "parafuso",
+      pos: [e.lateral / 2, y, espF], dir, diametro: diam, profundidade: prof, peca: "lateral" }, bits, brocas));
+    out.push(makeFuro({ junta: "fundo_parafuso_lateral_dir", tipo_furo: "parafuso",
+      pos: [W - e.lateral / 2, y, espF], dir, diametro: diam, profundidade: prof, peca: "lateral" }, bits, brocas));
+  }
+  return out;
+}
