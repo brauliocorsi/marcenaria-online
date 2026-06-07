@@ -52,6 +52,7 @@ function ModulosPage() {
   const [name, setName] = useState("Módulo sem nome");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [materialId, setMaterialId] = useState<string | null>(null);
+  const [materialFrenteId, setMaterialFrenteId] = useState<string | null>(null);
   const [config, setConfig] = useState<ModuleConfig>(DEFAULT_MODULE_CONFIG);
   const [showOverrides, setShowOverrides] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
