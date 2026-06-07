@@ -1,4 +1,4 @@
-import { DEFAULT_MODULE_CONFIG, calcularPecas, dimensoesPortas, type ModuleConfig } from "./module";
+import { DEFAULT_MODULE_CONFIG, calcularPecas, dimensoesPortas, pecasPortaAluminio, type ModuleConfig } from "./module";
 import { calcularDobradicas } from "./drilling";
 import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
 
