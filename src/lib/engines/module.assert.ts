@@ -1,5 +1,5 @@
 // Testes de sanidade do motor paramétrico — corre apenas em dev.
-import { calcularPecas, calcularGeometria, DEFAULT_MODULE_CONFIG, type Peca, type PecaGeo } from "./module";
+import { calcularPecas, calcularGeometria, dimensoesPortas, DEFAULT_MODULE_CONFIG, type Peca, type PecaGeo, type ModuleConfig } from "./module";
 
 function find(ps: Peca[], tipo: string) {
   return ps.find((p) => p.tipo === tipo)!;
