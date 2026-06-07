@@ -10,6 +10,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/pes-tamponamento.assert").then((m) => m.runPesTamponamentoAsserts()).catch(() => {});
   import("./lib/engines/hardware-anim.assert").then((m) => m.runHardwareAnimAsserts()).catch(() => {});
   import("./lib/engines/ambiente.assert").then((m) => m.runAmbienteAsserts()).catch(() => {});
+  import("./lib/engines/gaveta-template").then((m) => m.runGavetaTemplateAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {
