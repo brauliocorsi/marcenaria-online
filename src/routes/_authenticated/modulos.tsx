@@ -241,13 +241,35 @@ function ModulosPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Material</Label>
+                <Label>Material corpo (carcaça)</Label>
                 <Select value={materialId ?? "__none__"} onValueChange={(v) => setMaterialId(v === "__none__" ? null : v)}>
                   <SelectTrigger><SelectValue placeholder="Sem material" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— sem material —</SelectItem>
                     {(materials ?? []).map((m: any) => (
-                      <SelectItem key={m.id} value={m.id}>{m.name} · {m.thickness_mm}mm</SelectItem>
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-block h-3 w-3 rounded border" style={{ background: m.cor_hex ?? "#ccc" }} />
+                          {m.name} · {m.thickness_mm}mm
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Material frentes (portas/gavetas)</Label>
+                <Select value={materialFrenteId ?? "__same__"} onValueChange={(v) => setMaterialFrenteId(v === "__same__" ? null : v)}>
+                  <SelectTrigger><SelectValue placeholder="Igual ao corpo" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__same__">— igual ao corpo —</SelectItem>
+                    {(materials ?? []).map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-block h-3 w-3 rounded border" style={{ background: m.cor_hex ?? "#ccc" }} />
+                          {m.name} · {m.thickness_mm}mm
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
