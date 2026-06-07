@@ -42,8 +42,11 @@ export interface EspessurasOverride {
 export interface FundoConfig {
   modo: FundoModo;
   espessura: number;
-  prof_ranhura: number; // só usado em modo 'ranhura'
-  recuo: number; // reservado para uso futuro
+  prof_ranhura: number;          // = profundidadeRasgo (default 8)
+  recuo: number;                 // reservado
+  recuoTraseiroRasgo?: number;   // mm (default 8)
+  painelComRasgo?: PainelComRasgo; // default {laterais:true, tampo:true, base:true}
+  espacamentoParafusoFundo?: number; // mm (default 250)
 }
 
 export interface PortasConfig {
