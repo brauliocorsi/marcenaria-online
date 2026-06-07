@@ -229,3 +229,106 @@ export function CorredicaGaveta({ caixa }: { caixa: GavetaCaixa }) {
 export function liftYUndermount(tipo?: GavetaCaixa["tipoCorredica"]): number {
   return tipo === "oculta" ? 16 : 0;
 }
+
+// ── 4/5 Puxadores: render por tipo (barra/botão/cava/perfil gola) ───────
+export interface PuxadorFrenteRef {
+  xMin: number; xMax: number;
+  yMin: number; yMax: number;
+  zBack: number; zFront: number;
+}
+
+/** Render do puxador SOLIDÁRIO À FRENTE (acompanha a abertura da porta/gaveta).
+ *  Cobre 'convencional' (barra/botão) e 'cava'. Coords em mm no espaço local
+ *  do <group> da porta/gaveta (caller passa coords já trasladadas). */
+export function PuxadorFrenteMesh({
+  pux, pos, frente,
+}: { pux: PuxadorSnapshot; pos: PuxadorPosicao; frente: PuxadorFrenteRef }) {
+  const yBordo =
+    pos === "superior" ? frente.yMax
+    : pos === "inferior" ? frente.yMin
+    : (frente.yMin + frente.yMax) / 2;
+  const sinal = pos === "superior" ? -1 : 1;
+  const largura = Math.max(1, frente.xMax - frente.xMin);
+  const espessura = Math.max(1, frente.zFront - frente.zBack);
+  const cxF = (frente.xMin + frente.xMax) / 2;
+  const zFace = frente.zFront;
+
+  if (pux.tipo === "convencional") {
+    const c = pux.config as PuxadorBarraCfg | PuxadorBotaoCfg;
+    const yH = yBordo + sinal * c.alturaDoBordo;
+
+    if ((c as PuxadorBarraCfg).subtipo === "barra") {
+      const cb = c as PuxadorBarraCfg;
+      const x1 = cxF - cb.entreEixo / 2;
+      const x2 = cxF + cb.entreEixo / 2;
+      const standoffLen = 14;
+      const standoffR = 5;
+      const barR = 6;
+      const barLen = cb.entreEixo + 24;
+      const zBar = zFace + standoffLen;
+      const zStandoff = zFace + standoffLen / 2;
+      return (
+        <group>
+          {[x1, x2].map((x, i) => (
+            <mesh key={`so-${i}`} position={[x * MM, yH * MM, zStandoff * MM]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[standoffR * MM, standoffR * MM, standoffLen * MM, 16]} />
+              <meshStandardMaterial color={COLOR_PUXADOR} metalness={0.9} roughness={0.2} />
+            </mesh>
+          ))}
+          <mesh position={[cxF * MM, yH * MM, zBar * MM]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[barR * MM, barR * MM, barLen * MM, 20]} />
+            <meshStandardMaterial color={COLOR_PUXADOR} metalness={0.9} roughness={0.2} />
+          </mesh>
+        </group>
+      );
+    }
+
+    // botão
+    const knobLen = 22, knobR = 12;
+    return (
+      <mesh position={[cxF * MM, yH * MM, (zFace + knobLen / 2) * MM]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[knobR * MM, knobR * MM, knobLen * MM, 24]} />
+        <meshStandardMaterial color={COLOR_PUXADOR} metalness={0.9} roughness={0.2} />
+      </mesh>
+    );
+  }
+
+  if (pux.tipo === "cava") {
+    const c = pux.config as PuxadorCavaCfg;
+    // rebaixo/notch na orla traseira do topo (ou base) da frente —
+    // representado como caixa metálica escura embebida na face traseira.
+    const prof = Math.max(1, espessura - c.deixarEspessura);
+    const cavaW = c.cavaLargura;
+    const yC = yBordo + sinal * cavaW / 2;
+    const zC = frente.zBack + prof / 2;
+    return (
+      <mesh position={[cxF * MM, yC * MM, zC * MM]}>
+        <boxGeometry args={[(largura - 4) * MM, cavaW * MM, prof * MM]} />
+        <meshStandardMaterial color="#3a3d42" metalness={0.55} roughness={0.5} />
+      </mesh>
+    );
+  }
+
+  // gola: o perfil NÃO é solidário à frente — render via PerfilGolaMesh.
+  return null;
+}
+
+/** Render do PERFIL DE ALUMÍNIO da gola, FIXO à carcaça (não roda com a porta
+ *  nem desliza com a gaveta). Coords em mm no espaço global do módulo. */
+export function PerfilGolaMesh({
+  pux, pos, frente, moduloW,
+}: { pux: PuxadorSnapshot; pos: PuxadorPosicao; frente: PuxadorFrenteRef; moduloW: number }) {
+  if (pux.tipo !== "gola_j" && pux.tipo !== "gola_c") return null;
+  const c = pux.config as PuxadorGolaCfg;
+  const yPerfil =
+    pos === "superior" ? frente.yMax + c.reveal / 2
+    : pos === "inferior" ? frente.yMin - c.reveal / 2
+    : (frente.yMin + frente.yMax) / 2;
+  const zPerfil = frente.zFront - c.perfilProf / 2;
+  return (
+    <mesh position={[(moduloW / 2) * MM, yPerfil * MM, zPerfil * MM]}>
+      <boxGeometry args={[moduloW * MM, c.perfilLargura * MM, c.perfilProf * MM]} />
+      <meshStandardMaterial color={COLOR_PUXADOR} metalness={0.85} roughness={0.25} />
+    </mesh>
+  );
+}
