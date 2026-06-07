@@ -403,6 +403,10 @@ export function ModuleScene({
       perfilLarguraMm={config.portas.perfilLarguraMm ?? 25}
       perfilEspessuraMm={config.portas.perfilEspessuraMm ?? 20}
       materialCorpo={materialCorpo} materialFrente={materialFrente}
+      puxadorPortas={(config.portas?.puxador ?? null) as PuxadorSnapshot | null}
+      puxadorPortasPos={(config.portas?.puxadorPos ?? "superior") as PuxadorPosicao}
+      puxadorGavetas={(config.gavetas?.puxador ?? null) as PuxadorSnapshot | null}
+      puxadorGavetasPos={(config.gavetas?.puxadorPos ?? "superior") as PuxadorPosicao}
     />
   );
 }
