@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Save, Plus, Trash2, Home, AlertTriangle } from "lucide-react";
+import { Save, Plus, Trash2, Home, AlertTriangle, Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,17 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
-import { Room3D } from "@/components/viewer/Room3D";
+import { Room3D, type PlacedModule } from "@/components/viewer/Room3D";
 import { listAmbientes, upsertAmbiente, deleteAmbiente } from "@/lib/ambientes.functions";
+import { listModules } from "@/lib/modules.functions";
+import {
+  listAmbienteModulos, upsertAmbienteModulo, deleteAmbienteModulo,
+} from "@/lib/ambiente-modulos.functions";
 import {
   DEFAULT_ROOM, normalizarRoom, validarAbertura, comprimentoParede,
   type RoomConfig, type ParedeId, type Abertura, type TipoAbertura,
 } from "@/lib/engines/ambiente";
+import { transformColocacao, type ParedeColocavel } from "@/lib/engines/ambiente-modulos";
 import { cn } from "@/lib/utils";
 
 
