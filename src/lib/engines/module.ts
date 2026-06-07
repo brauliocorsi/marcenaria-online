@@ -706,3 +706,96 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
 
   return { frentes, caixas };
 }
+
+// ─────────────────────────────────────────────────────────────
+// Fundo da carcaça — dimensões partilhadas (peças + geometria + rasgos)
+// ─────────────────────────────────────────────────────────────
+export function dimensoesFundoCarcaca(config: ModuleConfig) {
+  const { dims, espessuraPadrao, espessuras, fundo } = config;
+  const W = dims.width, H = dims.height;
+  const e = resolverEspessuras(espessuraPadrao, espessuras);
+  if (fundo.modo === "sobreposto") {
+    return { wF: W, hF: H, xMin: 0, xMax: W, yMin: 0, yMax: H, espF: fundo.espessura, sobreposto: true as const };
+  }
+  const pr = fundo.prof_ranhura;
+  const pc = fundo.painelComRasgo ?? { laterais: true, tampo: true, base: true };
+  const xMin = pc.laterais ? e.lateral - pr : e.lateral;
+  const xMax = pc.laterais ? W - e.lateral + pr : W - e.lateral;
+  const yMin = pc.base ? e.base - pr : e.base;
+  const yMax = pc.tampo ? H - e.tampo + pr : H - e.tampo;
+  return { wF: xMax - xMin, hF: yMax - yMin, xMin, xMax, yMin, yMax, espF: fundo.espessura, sobreposto: false as const };
+}
+
+export function dimensoesFundoGaveta(c: GavetaCaixa, config: ModuleConfig) {
+  const g = config.gavetas;
+  const espC = c.espessuraCaixa;
+  const prG = g.profundidadeRasgoGaveta ?? 8;
+  const dG = g.distanciaFundoGaveta ?? 10;
+  const larguraInt = c.boxWidth - 2 * espC;
+  const profundidadeInt = c.boxDepth - 2 * espC;
+  const wFundo = larguraInt + 2 * prG;
+  const dFundo = profundidadeInt + 2 * prG;
+  const yFundo = c.center[1] - c.boxHeight / 2 + dG + c.espessuraFundo / 2;
+  return { wFundo, dFundo, yFundo, prG, dG };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Operações de rasgo (fresa/disco) — carcaça + gavetas
+// ─────────────────────────────────────────────────────────────
+export function calcularRasgos(config: ModuleConfig): Rasgo[] {
+  const out: Rasgo[] = [];
+  const { dims, espessuraPadrao, espessuras, fundo, sistemaMontagem } = config;
+  const W = dims.width, H = dims.height;
+  const e = resolverEspessuras(espessuraPadrao, espessuras);
+
+  if (fundo.modo !== "sobreposto") {
+    const pr = fundo.prof_ranhura;
+    const recT = fundo.recuoTraseiroRasgo ?? 8;
+    const espF = fundo.espessura;
+    const pc = fundo.painelComRasgo ?? { laterais: true, tampo: true, base: true };
+    const yStartLat = sistemaMontagem === "laterais_cobrem" ? 0 : e.base;
+    const yEndLat   = sistemaMontagem === "laterais_cobrem" ? H : H - e.tampo;
+    const xStartTB  = sistemaMontagem === "tampo_base_cobrem" ? 0 : e.lateral;
+    const xEndTB    = sistemaMontagem === "tampo_base_cobrem" ? W : W - e.lateral;
+    if (pc.laterais) {
+      out.push({ ref: "fundo_lateral_esq", peca: "lateral", eixo: "Y",
+        pos: [e.lateral, yStartLat, recT], comprimento: yEndLat - yStartLat, largura: espF, profundidade: pr });
+      out.push({ ref: "fundo_lateral_dir", peca: "lateral", eixo: "Y",
+        pos: [W - e.lateral, yStartLat, recT], comprimento: yEndLat - yStartLat, largura: espF, profundidade: pr });
+    }
+    if (pc.tampo) {
+      out.push({ ref: "fundo_tampo", peca: "tampo", eixo: "X",
+        pos: [xStartTB, H - e.tampo, recT], comprimento: xEndTB - xStartTB, largura: espF, profundidade: pr });
+    }
+    if (pc.base) {
+      out.push({ ref: "fundo_base", peca: "base", eixo: "X",
+        pos: [xStartTB, e.base, recT], comprimento: xEndTB - xStartTB, largura: espF, profundidade: pr });
+    }
+  }
+
+  // Gavetas — rasgo nas 4 peças da caixa para o fundo encaixar.
+  const g = config.gavetas;
+  if (g && g.nGavetas > 0) {
+    const { caixas } = dimensoesGavetas(config);
+    const espC = g.espessuraCaixa;
+    const espFG = g.espessuraFundo;
+    for (const c of caixas) {
+      const fg = dimensoesFundoGaveta(c, config);
+      const yR = c.center[1] - c.boxHeight / 2 + fg.dG;
+      const xIL = c.center[0] - c.boxWidth / 2 + espC;
+      const xIR = c.center[0] + c.boxWidth / 2 - espC;
+      const zBackI = c.zBack + espC;
+      const zFrontI = c.zFront - espC;
+      out.push({ ref: `gaveta${c.idx + 1}_ilharga_esq`, peca: "gaveta_lateral", eixo: "Z",
+        pos: [xIL, yR, c.zBack], comprimento: c.boxDepth, largura: espFG, profundidade: fg.prG });
+      out.push({ ref: `gaveta${c.idx + 1}_ilharga_dir`, peca: "gaveta_lateral", eixo: "Z",
+        pos: [xIR, yR, c.zBack], comprimento: c.boxDepth, largura: espFG, profundidade: fg.prG });
+      out.push({ ref: `gaveta${c.idx + 1}_frente`, peca: "gaveta_frenteCaixa", eixo: "X",
+        pos: [c.center[0] - c.boxWidth / 2, yR, zFrontI], comprimento: c.boxWidth, largura: espFG, profundidade: fg.prG });
+      out.push({ ref: `gaveta${c.idx + 1}_traseira`, peca: "gaveta_frenteCaixa", eixo: "X",
+        pos: [c.center[0] - c.boxWidth / 2, yR, zBackI], comprimento: c.boxWidth, largura: espFG, profundidade: fg.prG });
+    }
+  }
+
+  return out;
+}
