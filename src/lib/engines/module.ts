@@ -96,6 +96,8 @@ export interface ModuleConfig {
   };
   fundo: FundoConfig;
   nPrateleiras: number;
+  /** true → prateleiras móveis em pinos Ø5; false → prateleiras fixas em minifix+cavilha. Default true. */
+  prateleirasMoveis?: boolean;
   portas: PortasConfig;
   // REGRA: se nGavetas>0, a frente são gavetas (portas ignoradas).
   gavetas: GavetasConfig;
@@ -103,6 +105,7 @@ export interface ModuleConfig {
   tamponamento: TamponamentoConfig;
   sistema32: Sistema32Config;
 }
+
 
 export interface Peca {
   tipo: PieceType;
