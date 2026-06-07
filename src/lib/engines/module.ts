@@ -1,8 +1,9 @@
 // Motor paramétrico do módulo (caixa). Função pura, determinística.
 // Todas as medidas em mm. Cálculos internos podem ser decimais; resultados
 // arredondados a inteiro.
+import { revealOfPuxador, type PuxadorSnapshot } from "./puxadores";
 
-export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | "porta" | "gaveta_frente" | "gaveta_lateral" | "gaveta_frenteCaixa" | "gaveta_fundo" | "tamponamento";
+export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | "porta" | "gaveta_frente" | "gaveta_lateral" | "gaveta_frenteCaixa" | "gaveta_fundo" | "tamponamento" | "puxador";
 export type PortaModo = "sobreposta" | "embutida";
 export type LadoAbertura = "esquerda" | "direita";
 export type SistemaMontagem = "laterais_cobrem" | "tampo_base_cobrem";
@@ -312,6 +313,37 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
+  // Perfis de gola (alumínio) — 1 por host (portas/gavetas) quando o puxador é gola_j/gola_c.
+  // Comprimento = largura do módulo. Quantidade = nº de frentes que partilham a gola.
+  const W_mod = dims.width;
+  const puxPortas = config.portas.puxador as PuxadorSnapshot | null | undefined;
+  if (puxPortas && (puxPortas.tipo === "gola_j" || puxPortas.tipo === "gola_c")) {
+    const cfgG = (puxPortas.config ?? {}) as any;
+    const letra = puxPortas.tipo === "gola_j" ? "J" : "C";
+    pecas.push({
+      tipo: "puxador", descricao: `Perfil gola ${letra} (portas)`,
+      qtd: 1,
+      comprimento_mm: r(W_mod),
+      largura_mm: r(cfgG.perfilLargura ?? 20),
+      espessura_mm: r(cfgG.perfilProf ?? 20),
+      veio: "sem",
+    });
+  }
+  const puxGav = config.gavetas.puxador as PuxadorSnapshot | null | undefined;
+  if (puxGav && (puxGav.tipo === "gola_j" || puxGav.tipo === "gola_c") && config.gavetas.nGavetas > 0) {
+    const cfgG = (puxGav.config ?? {}) as any;
+    const letra = puxGav.tipo === "gola_j" ? "J" : "C";
+    pecas.push({
+      tipo: "puxador", descricao: `Perfil gola ${letra} (gavetas)`,
+      qtd: config.gavetas.nGavetas,
+      comprimento_mm: r(W_mod),
+      largura_mm: r(cfgG.perfilLargura ?? 20),
+      espessura_mm: r(cfgG.perfilProf ?? 20),
+      veio: "sem",
+    });
+  }
+
+
   // Tamponamento como peças de corte
   for (const t of dimensoesTamponamentos(config)) {
     // size = [largura(X), altura(Y), prof(Z)]
@@ -582,6 +614,24 @@ export interface PortaDim {
   xCharneira: number;                    // x da aresta da porta no lado das dobradiças
 }
 
+function aplicarRevealFrente(
+  yMin: number, yMax: number, altura: number, cy: number,
+  reveal: number, pos: PuxadorPos | undefined,
+) {
+  if (reveal <= 0) return { yMin, yMax, altura, cy };
+  const p = pos ?? "superior";
+  if (p === "superior") {
+    const nyMax = yMax - reveal, nAlt = altura - reveal;
+    return { yMin, yMax: nyMax, altura: nAlt, cy: (yMin + nyMax) / 2 };
+  }
+  if (p === "inferior") {
+    const nyMin = yMin + reveal, nAlt = altura - reveal;
+    return { yMin: nyMin, yMax, altura: nAlt, cy: (nyMin + yMax) / 2 };
+  }
+  // lateral: sem alteração de altura
+  return { yMin, yMax, altura, cy };
+}
+
 export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
   const { dims, espessuraPadrao, espessuras, portas, gavetas } = config;
   if (!portas || portas.nPortas === 0) return [];
@@ -643,6 +693,16 @@ export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
       out.push({ idx: 1, descricao: "Porta direita", largura, altura, espessura: eP,
         cx: xMinD + largura / 2, cy, cz, xMin: xMinD, xMax: xMaxD,
         yMin, yMax, zBack, zFront, ladoDobradicas: "direita", xCharneira: xMaxD });
+    }
+  }
+
+  // Encurtamento por gola (reveal) — aplicado a TODAS as portas resultantes.
+  const reveal = revealOfPuxador((portas.puxador ?? null) as PuxadorSnapshot | null);
+  if (reveal > 0) {
+    const pos = portas.puxadorPos ?? "superior";
+    for (const p of out) {
+      const adj = aplicarRevealFrente(p.yMin, p.yMax, p.altura, p.cy, reveal, pos);
+      p.yMin = adj.yMin; p.yMax = adj.yMax; p.altura = adj.altura; p.cy = adj.cy;
     }
   }
   return out;
@@ -759,13 +819,24 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
   const frentes: GavetaFrente[] = [];
   const caixas: GavetaCaixa[] = [];
 
+  // Encurtamento por gola (reveal) aplicado por cada frente de gaveta.
+  const revealG = revealOfPuxador((g.puxador ?? null) as PuxadorSnapshot | null);
+  const posG = g.puxadorPos ?? "superior";
+
   for (let j = 0; j < n; j++) {
     const cyFrente = yMin + j * (alturaFrente + f) + alturaFrente / 2;
+    let altF = alturaFrente, cyF = cyFrente;
+    if (revealG > 0) {
+      const yMinF = cyFrente - alturaFrente / 2;
+      const yMaxF = cyFrente + alturaFrente / 2;
+      const adj = aplicarRevealFrente(yMinF, yMaxF, alturaFrente, cyFrente, revealG, posG);
+      altF = adj.altura; cyF = adj.cy;
+    }
     frentes.push({
       idx: j,
       descricao: `Frente gaveta ${j + 1}`,
-      size: [larguraFrente, alturaFrente, eF],
-      center: [cx, cyFrente, cz],
+      size: [larguraFrente, altF, eF],
+      center: [cx, cyF, cz],
     });
     caixas.push({
       idx: j,
