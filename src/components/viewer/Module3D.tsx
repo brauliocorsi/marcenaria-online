@@ -335,7 +335,7 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
 // ── Cena reusável (sem Canvas/lights/controls). Usar dentro de um Canvas pai
 // (ex.: Room3D) para colocar várias instâncias de módulo na mesma sala.
 export function ModuleScene({
-  config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates,
+  config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates, materialCorpo, materialFrente,
 }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
   const pes = useMemo(() => calcularPes(config), [config]);
