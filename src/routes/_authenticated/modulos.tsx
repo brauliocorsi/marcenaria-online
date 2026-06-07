@@ -80,9 +80,15 @@ function ModulosPage() {
         ...calcularDobradicas(config, templateConfig, bits),
         ...calcularCorredicas(config, templateConfig, bits),
         ...calcularSistema32(config, templateConfig, bits),
+        ...calcularParafusosFundo(config, templateConfig, bits),
       ];
     } catch { return []; }
   }, [config, templateConfig, invalid, drillBits]);
+
+  const rasgos: Rasgo[] = useMemo(() => {
+    if (invalid) return [];
+    try { return calcularRasgos(config); } catch { return []; }
+  }, [config, invalid]);
 
   const totals = useMemo(() => {
     const qtd = pecas.reduce((a, p) => a + p.qtd, 0);
