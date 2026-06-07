@@ -631,6 +631,27 @@ export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
   return out;
 }
 
+// ─── Porta alumínio + espelho: geometria das peças do caixilho + painel ───
+export interface AluPortaPiece {
+  kind: "perfil_topo" | "perfil_base" | "perfil_esq" | "perfil_dir" | "espelho";
+  size: [number, number, number];   // [W, H, espessura]
+  center: [number, number, number]; // relativo à porta (origem no canto inferior-esq da porta)
+}
+export function pecasPortaAluminio(W: number, H: number, perfilW = 25, perfilE = 20): AluPortaPiece[] {
+  const espW = Math.max(1, W - 2 * perfilW);
+  const espH = Math.max(1, H - 2 * perfilW);
+  const ez = perfilE; // ambos no mesmo plano Z
+  return [
+    // 4 perfis (caixilho)
+    { kind: "perfil_topo", size: [W, perfilW, ez], center: [W / 2, H - perfilW / 2, ez / 2] },
+    { kind: "perfil_base", size: [W, perfilW, ez], center: [W / 2, perfilW / 2, ez / 2] },
+    { kind: "perfil_esq",  size: [perfilW, espH, ez], center: [perfilW / 2, H / 2, ez / 2] },
+    { kind: "perfil_dir",  size: [perfilW, espH, ez], center: [W - perfilW / 2, H / 2, ez / 2] },
+    // espelho recuado 2mm para trás
+    { kind: "espelho", size: [espW, espH, 4], center: [W / 2, H / 2, ez / 2 - 2] },
+  ];
+}
+
 export function nDobradicasPorAltura(h: number): number {
   if (h <= 900) return 2;
   if (h <= 1600) return 3;
