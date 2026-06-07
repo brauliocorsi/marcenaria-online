@@ -12,6 +12,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/ambiente.assert").then((m) => m.runAmbienteAsserts()).catch(() => {});
   import("./lib/engines/gaveta-template").then((m) => m.runGavetaTemplateAsserts()).catch(() => {});
   import("./lib/engines/ambiente-modulos.assert").then((m) => m.runAmbienteModulosAsserts()).catch(() => {});
+  import("./lib/engines/puxadores").then((m) => m.runPuxadoresAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {
