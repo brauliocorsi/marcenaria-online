@@ -207,18 +207,13 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
-  if (fundo.modo === "sobreposto") {
+  {
+    const fd = dimensoesFundoCarcaca(config);
     pecas.push({
-      tipo: "fundo", descricao: "Fundo (sobreposto)",
-      qtd: 1, comprimento_mm: r(W), largura_mm: r(H), espessura_mm: r(fundo.espessura),
-      veio: "largura",
-    });
-  } else {
-    pecas.push({
-      tipo: "fundo", descricao: "Fundo (ranhura)",
+      tipo: "fundo", descricao: fundo.modo === "sobreposto" ? "Fundo (sobreposto)" : "Fundo (rasgo)",
       qtd: 1,
-      comprimento_mm: r(W - 2 * e.lateral + 2 * fundo.prof_ranhura),
-      largura_mm: r(H - e.tampo - e.base + 2 * fundo.prof_ranhura),
+      comprimento_mm: r(fd.wF),
+      largura_mm: r(fd.hF),
       espessura_mm: r(fundo.espessura),
       veio: "largura",
     });
