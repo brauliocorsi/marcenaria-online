@@ -32,6 +32,56 @@ export const Route = createFileRoute("/_authenticated/modulos")({ component: Mod
 
 const VEIO_LABEL: Record<Veio, string> = { comprimento: "Comprimento", largura: "Largura", sem: "Sem veio" };
 
+type PuxadorRow = { id: string; nome: string; tipo: PuxadorTipo; config: any };
+
+function PuxadorSelects({
+  puxadores, value, pos, disabled, onChange, onChangePos,
+}: {
+  puxadores: PuxadorRow[];
+  value: { id?: string | null } | null | undefined;
+  pos: "superior" | "inferior" | "lateral" | undefined;
+  disabled?: boolean;
+  onChange: (snap: { id: string; tipo: PuxadorTipo; config: any; nome?: string } | null) => void;
+  onChangePos: (p: "superior" | "inferior" | "lateral") => void;
+}) {
+  const selectedId = value?.id ?? "__none__";
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-1"><Label className="text-xs">Puxador</Label>
+        <Select
+          value={selectedId}
+          disabled={disabled}
+          onValueChange={(v) => {
+            if (v === "__none__") return onChange(null);
+            const p = puxadores.find((x) => x.id === v);
+            if (!p) return onChange(null);
+            onChange({ id: p.id, tipo: p.tipo, config: p.config, nome: p.nome });
+          }}
+        >
+          <SelectTrigger><SelectValue placeholder="— nenhum —" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">— nenhum —</SelectItem>
+            {puxadores.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.nome} · {PUXADOR_TIPO_LABEL[p.tipo]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1"><Label className="text-xs">Posição</Label>
+        <Select value={pos ?? "superior"} disabled={disabled || !value} onValueChange={(v) => onChangePos(v as any)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="superior">Superior</SelectItem>
+            <SelectItem value="inferior">Inferior</SelectItem>
+            <SelectItem value="lateral">Lateral</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+
 function ModulosPage() {
   const qc = useQueryClient();
   const fetchModules = useServerFn(listModules);
