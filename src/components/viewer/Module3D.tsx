@@ -12,7 +12,9 @@ import type { Furo } from "@/lib/engines/drilling";
 import {
   CavilhaModel, CorredicaCarcaca, CorredicaGaveta, DobradicaCaneco, DobradicaChapa,
   MinifixCorpo, MinifixPerno, PinoPrateleiraModel, liftYUndermount,
+  PuxadorFrenteMesh, PerfilGolaMesh,
 } from "./hardware/HardwareMeshes";
+import type { PuxadorSnapshot, PuxadorPosicao } from "@/lib/engines/puxadores";
 import {
   pecasGavetaPorTemplate, DEFAULT_CLASSICA, calcShiftZFrenteIntegrada, type GavetaTemplate,
 } from "@/lib/engines/gaveta-template";
