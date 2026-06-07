@@ -80,6 +80,8 @@ export interface GavetasConfig {
   espessuraCaixa: number;
   espessuraFundo: number;
   alturaCaixaFolga: number;
+  distanciaFundoGaveta?: number;     // mm do bordo inferior (default 10)
+  profundidadeRasgoGaveta?: number;  // mm (default 8)
 }
 
 export interface PesConfig {
