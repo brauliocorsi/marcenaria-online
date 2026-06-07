@@ -1,6 +1,6 @@
 import { Suspense, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment } from "@react-three/drei";
+import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment, Line, Html } from "@react-three/drei";
 import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo, PortaDim, GavetaCaixa } from "@/lib/engines/module";
 import {
@@ -10,7 +10,7 @@ import { aberturaGaveta, anguloPortaRad, extensaoFromTipo, pivotPorta } from "@/
 import type { Furo } from "@/lib/engines/drilling";
 import {
   CavilhaModel, CorredicaCarcaca, CorredicaGaveta, DobradicaCaneco, DobradicaChapa,
-  MinifixCorpo, MinifixPerno, PinoPrateleiraModel,
+  MinifixCorpo, MinifixPerno, PinoPrateleiraModel, liftYUndermount,
 } from "./hardware/HardwareMeshes";
 
 const MM_TO_M = 0.001;
