@@ -52,7 +52,7 @@ function ModulosPage() {
   const [showOverrides, setShowOverrides] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
-  const [viewTab, setViewTab] = useState<"3d" | "pecas" | "furacao">("3d");
+  const [viewTab, setViewTab] = useState<"3d" | "pecas" | "furacao" | "ferragens">("3d");
   const [showFuros, setShowFuros] = useState(true);
   const [showHardware, setShowHardware] = useState(true);
   const [doorAngleDeg, setDoorAngleDeg] = useState(0);
