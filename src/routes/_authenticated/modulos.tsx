@@ -45,6 +45,8 @@ function ModulosPage() {
   const { data: hardware } = useQuery({ queryKey: ["hardware"], queryFn: () => fetchHardware() });
   const { data: drillBits } = useQuery({ queryKey: ["drill_bits"], queryFn: () => fetchDrillBits() });
   const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
+  const fetchGavetaTpls = useServerFn(listGavetaTemplates);
+  const { data: gavetaTemplates } = useQuery({ queryKey: ["gaveta_templates"], queryFn: () => fetchGavetaTpls() });
   const corredicas = useMemo(() => (hardware ?? []).filter((h: any) => h.category === "corredica"), [hardware]);
 
   const [name, setName] = useState("Módulo sem nome");
