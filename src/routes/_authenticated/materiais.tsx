@@ -124,11 +124,24 @@ function MateriaisPage() {
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
 
+  const seedDecores = useServerFn(seedDecoresPadrao);
+  const seedDecMut = useMutation({
+    mutationFn: async () => seedDecores(),
+    onSuccess: (r: any) => {
+      toast.success(r.inserted > 0 ? `Adicionados ${r.inserted} decores Kronospan/Finsa` : "Decores já existiam");
+      qc.invalidateQueries({ queryKey: ["materials"] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex justify-end gap-2">
+        <Button variant="outline" size="sm" onClick={() => seedDecMut.mutate()} disabled={seedDecMut.isPending}>
+          <Sparkles className="mr-2 h-3.5 w-3.5" /> Decores Kronospan/Finsa
+        </Button>
         <Button variant="outline" size="sm" onClick={() => seedMut.mutate()} disabled={seedMut.isPending}>
-          <Sparkles className="mr-2 h-3.5 w-3.5" /> Adicionar fundos padrão
+          <Sparkles className="mr-2 h-3.5 w-3.5" /> Fundos padrão
         </Button>
       </div>
       <CatalogShell
