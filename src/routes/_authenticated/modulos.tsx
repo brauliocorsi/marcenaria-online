@@ -126,7 +126,8 @@ function ModulosPage() {
     mutationFn: async () => save({ data: {
       id: editingId ?? undefined,
       name, width_mm: config.dims.width, height_mm: config.dims.height, depth_mm: config.dims.depth,
-      config: config as any, pieces: pecas as any, material_id: materialId,
+      config: { ...config, materialCorpoId: materialId, materialFrenteId } as any,
+      pieces: pecas as any, material_id: materialId,
     } }),
     onSuccess: (row: any) => {
       toast.success(editingId ? "Módulo atualizado" : "Módulo guardado");
