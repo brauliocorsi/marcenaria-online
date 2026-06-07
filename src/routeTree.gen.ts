@@ -22,6 +22,7 @@ import { Route as AuthenticatedMateriaisRouteImport } from './routes/_authentica
 import { Route as AuthenticatedFerragensRouteImport } from './routes/_authenticated/ferragens'
 import { Route as AuthenticatedDefinicoesRouteImport } from './routes/_authenticated/definicoes'
 import { Route as AuthenticatedBrocasRouteImport } from './routes/_authenticated/brocas'
+import { Route as AuthenticatedBibliotecaRouteImport } from './routes/_authenticated/biblioteca'
 import { Route as AuthenticatedAmbientesRouteImport } from './routes/_authenticated/ambientes'
 
 const AuthRoute = AuthRouteImport.update({
@@ -90,6 +91,11 @@ const AuthenticatedBrocasRoute = AuthenticatedBrocasRouteImport.update({
   path: '/brocas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBibliotecaRoute = AuthenticatedBibliotecaRouteImport.update({
+  id: '/biblioteca',
+  path: '/biblioteca',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAmbientesRoute = AuthenticatedAmbientesRouteImport.update({
   id: '/ambientes',
   path: '/ambientes',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ambientes': typeof AuthenticatedAmbientesRoute
+  '/biblioteca': typeof AuthenticatedBibliotecaRoute
   '/brocas': typeof AuthenticatedBrocasRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/ferragens': typeof AuthenticatedFerragensRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ambientes': typeof AuthenticatedAmbientesRoute
+  '/biblioteca': typeof AuthenticatedBibliotecaRoute
   '/brocas': typeof AuthenticatedBrocasRoute
   '/definicoes': typeof AuthenticatedDefinicoesRoute
   '/ferragens': typeof AuthenticatedFerragensRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/ambientes': typeof AuthenticatedAmbientesRoute
+  '/_authenticated/biblioteca': typeof AuthenticatedBibliotecaRoute
   '/_authenticated/brocas': typeof AuthenticatedBrocasRoute
   '/_authenticated/definicoes': typeof AuthenticatedDefinicoesRoute
   '/_authenticated/ferragens': typeof AuthenticatedFerragensRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ambientes'
+    | '/biblioteca'
     | '/brocas'
     | '/definicoes'
     | '/ferragens'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ambientes'
+    | '/biblioteca'
     | '/brocas'
     | '/definicoes'
     | '/ferragens'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/ambientes'
+    | '/_authenticated/biblioteca'
     | '/_authenticated/brocas'
     | '/_authenticated/definicoes'
     | '/_authenticated/ferragens'
@@ -291,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBrocasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/biblioteca': {
+      id: '/_authenticated/biblioteca'
+      path: '/biblioteca'
+      fullPath: '/biblioteca'
+      preLoaderRoute: typeof AuthenticatedBibliotecaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/ambientes': {
       id: '/_authenticated/ambientes'
       path: '/ambientes'
@@ -303,6 +322,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAmbientesRoute: typeof AuthenticatedAmbientesRoute
+  AuthenticatedBibliotecaRoute: typeof AuthenticatedBibliotecaRoute
   AuthenticatedBrocasRoute: typeof AuthenticatedBrocasRoute
   AuthenticatedDefinicoesRoute: typeof AuthenticatedDefinicoesRoute
   AuthenticatedFerragensRoute: typeof AuthenticatedFerragensRoute
@@ -317,6 +337,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAmbientesRoute: AuthenticatedAmbientesRoute,
+  AuthenticatedBibliotecaRoute: AuthenticatedBibliotecaRoute,
   AuthenticatedBrocasRoute: AuthenticatedBrocasRoute,
   AuthenticatedDefinicoesRoute: AuthenticatedDefinicoesRoute,
   AuthenticatedFerragensRoute: AuthenticatedFerragensRoute,
