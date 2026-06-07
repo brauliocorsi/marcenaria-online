@@ -284,7 +284,12 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   espessuraPadrao: 19,
   espessuras: { lateral: null, tampo: null, base: null, prateleira: null },
   folgas: { prateleira_lateral: 2, prateleira_recuo: 10 },
-  fundo: { modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0 },
+  fundo: {
+    modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0,
+    recuoTraseiroRasgo: 8,
+    painelComRasgo: { laterais: true, tampo: true, base: true },
+    espacamentoParafusoFundo: 250,
+  },
   nPrateleiras: 1,
   prateleirasMoveis: true,
 
@@ -293,6 +298,7 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
     nGavetas: 0, modo: "sobreposta", folga: 3, espessuraFrente: 19,
     corredica: { hardwareId: null, comprimento: 500, folgaLateralPorLado: 13 },
     espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
+    distanciaFundoGaveta: 10, profundidadeRasgoGaveta: 8,
   },
   pes: { ativo: false, altura: 100, quantidade: 4, recuo: 50 },
   tamponamento: { esquerda: false, direita: false, topo: false, espessura: null },
