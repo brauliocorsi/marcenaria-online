@@ -299,7 +299,9 @@ export function normalizarConfig(c: ModuleConfig): ModuleConfig {
   if (!out.pes) out.pes = { ...DEFAULT_MODULE_CONFIG.pes };
   if (!out.tamponamento) out.tamponamento = { ...DEFAULT_MODULE_CONFIG.tamponamento };
   if (!out.sistema32) out.sistema32 = { ...DEFAULT_MODULE_CONFIG.sistema32, fimY: Math.max(200, out.dims.height - 100) };
+  if (typeof out.prateleirasMoveis !== "boolean") out.prateleirasMoveis = true;
   return out;
+
 }
 
 // ─────────────────────────────────────────────────────────────
