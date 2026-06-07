@@ -366,6 +366,43 @@ export const seedFundosPadrao = createServerFn({ method: "POST" })
     return { inserted: toInsert.length, skipped: FUNDOS_PADRAO.length - toInsert.length };
   });
 
+// ---------- SEED: Decores Kronospan / Finsa (cores aproximadas) ----------
+const DECORES_PADRAO = [
+  // Kronospan
+  { name: "Kronospan Branco 0110", fabricante: "Kronospan", decor_nome: "Branco", decor_code: "0110", acabamento: "mate",  cor_hex: "#F5F4F0" },
+  { name: "Kronospan Cinza Antracite 0171", fabricante: "Kronospan", decor_nome: "Cinza Antracite", decor_code: "0171", acabamento: "mate", cor_hex: "#3A3D40" },
+  { name: "Kronospan Preto 0190", fabricante: "Kronospan", decor_nome: "Preto", decor_code: "0190", acabamento: "mate", cor_hex: "#1A1A1A" },
+  { name: "Kronospan Carvalho Nebraska K003", fabricante: "Kronospan", decor_nome: "Carvalho Nebraska Natural", decor_code: "K003", acabamento: "madeira", cor_hex: "#B89870" },
+  { name: "Kronospan Cinza Pedra", fabricante: "Kronospan", decor_nome: "Cinza Pedra", decor_code: "0163", acabamento: "texturado", cor_hex: "#8F8C85" },
+  // Finsa
+  { name: "Finsa Blanco", fabricante: "Finsa", decor_nome: "Blanco", decor_code: "B001", acabamento: "mate",  cor_hex: "#F8F7F3" },
+  { name: "Finsa Roble Halifax", fabricante: "Finsa", decor_nome: "Roble Halifax", decor_code: "F505", acabamento: "madeira", cor_hex: "#C3A47A" },
+  { name: "Finsa Gris Antracita", fabricante: "Finsa", decor_nome: "Gris Antracita", decor_code: "U960", acabamento: "mate", cor_hex: "#3F4144" },
+  { name: "Finsa Negro", fabricante: "Finsa", decor_nome: "Negro", decor_code: "U999", acabamento: "brilho", cor_hex: "#0E0E0E" },
+];
+
+export const seedDecoresPadrao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: existing, error: e1 } = await supabase
+      .from("materials").select("name").eq("user_id", userId);
+    if (e1) throw new Error(e1.message);
+    const have = new Set((existing ?? []).map((r: any) => r.name));
+    const toInsert = DECORES_PADRAO
+      .filter((m) => !have.has(m.name))
+      .map((m) => ({
+        ...m, brand: m.fabricante,
+        thickness_mm: 19, sheet_width_mm: 2750, sheet_height_mm: 2070,
+        price_per_sheet: null, has_grain: m.acabamento === "madeira",
+        user_id: userId,
+      })) as any[];
+    if (toInsert.length === 0) return { inserted: 0, skipped: DECORES_PADRAO.length };
+    const { error: e2 } = await supabase.from("materials").insert(toInsert);
+    if (e2) throw new Error(e2.message);
+    return { inserted: toInsert.length, skipped: DECORES_PADRAO.length - toInsert.length };
+  });
+
 export const HARDWARE_CATEGORIES = hardwareCategories;
 export const PRICING_UNITS = pricingUnits;
 export const DRILL_PURPOSES = drillPurposes;
