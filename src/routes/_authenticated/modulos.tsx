@@ -1018,6 +1018,37 @@ function FerragensBOM({ furos, rasgos, nGavetas, corredicaNome }: { furos: Furo[
           ))}
         </TableBody>
       </Table>
+      {rasgos.length > 0 && (
+        <div className="border-t">
+          <div className="px-4 py-2.5 text-xs text-muted-foreground">
+            Operações de rasgo (fresa/disco) — <span className="text-foreground font-medium">{rasgos.length}</span>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ref</TableHead>
+                <TableHead>Peça</TableHead>
+                <TableHead>Eixo</TableHead>
+                <TableHead className="text-right">Comp. (mm)</TableHead>
+                <TableHead className="text-right">Larg. (mm)</TableHead>
+                <TableHead className="text-right">Prof. (mm)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rasgos.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium text-xs">{r.ref}</TableCell>
+                  <TableCell className="text-xs capitalize">{r.peca}</TableCell>
+                  <TableCell className="text-xs">{r.eixo}</TableCell>
+                  <TableCell className="text-right tabular">{Math.round(r.comprimento)}</TableCell>
+                  <TableCell className="text-right tabular">{r.largura}</TableCell>
+                  <TableCell className="text-right tabular">{r.profundidade}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </Card>
   );
 }
