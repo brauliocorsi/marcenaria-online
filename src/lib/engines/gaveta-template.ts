@@ -185,6 +185,19 @@ export function pecasGavetaPorTemplate(
   }
 }
 
+// ─── Helper de render: deslocamento Z para colar a caixa à frente decorativa ──
+// Em frente_integrada, a face frontal das ilhargas deve encostar à face
+// traseira da frente decorativa (sem folga). Devolve o deltaZ a aplicar ao
+// CENTRO das peças da caixa (laterais + traseira + fundo).
+export function calcShiftZFrenteIntegrada(
+  boxCenterZ: number, boxDepth: number,
+  frenteCenterZ: number, frenteEspessura: number,
+): number {
+  const backFaceFrente = frenteCenterZ - frenteEspessura / 2;
+  const currentFrontBox = boxCenterZ + boxDepth / 2;
+  return backFaceFrente - currentFrontBox;
+}
+
 // ─── Asserts ─────────────────────────────────────────────────────────────
 export function runGavetaTemplateAsserts() {
   const dims = { boxWidth: 762, boxHeight: 200, boxDepth: 500 };
@@ -217,6 +230,17 @@ export function runGavetaTemplateAsserts() {
   const okRenderLG = lg.alturaCaixa === DEFAULT_LEGRABOX.alturaIlharga && lg.alturaCaixa === 90;
   const okRenderCla = cla.alturaCaixa === dims.boxHeight;
 
+  // Frente decorativa em z=541 (face traseira = 541 - 19/2 = 531.5);
+  // box em center z=266, depth=500 → front box = 516. Shift = 531.5 - 516 = 15.5.
+  const shift = calcShiftZFrenteIntegrada(266, 500, 541, 19);
+  const okShiftFI = Math.abs(shift - 15.5) < 0.01;
+  // Garante que após shift a face frontal da ilharga toca a face traseira da frente.
+  const newFrontBox = 266 + shift + 500 / 2;
+  const backFrente = 541 - 19 / 2;
+  const okTouchFI = Math.abs(newFrontBox - backFrente) < 0.01;
+  // ilharga depth e altura inalteradas (engine garante)
+  const okIlhargaFI = ilFI.comprimento === dims.boxDepth && ilFI.largura === dims.boxHeight;
+
   const tests: Array<[string, boolean]> = [
     ["[novo] classica: ilharga 500×200×16, frente 730×200×16, fundo 746×484, 4 rasgos", okC],
     ["[novo] frente_integrada: ZERO frente, ilharga.depth=500, 4 furos Ø5 (2/ilharga)", okFI],
@@ -224,12 +248,15 @@ export function runGavetaTemplateAsserts() {
     ["[novo-render] frente_integrada: mesh count caixa = classica − 1 (sem frente caixa)", okRenderFI],
     ["[novo-render] legrabox: boxGroupHeight === config.alturaIlharga (90)", okRenderLG],
     ["[regressão] classica render: boxGroupHeight === alturaCaixa DEFAULT (sem mudança visual)", okRenderCla],
+    ["[fix-FI] shiftZ frente_integrada calculado (15.5mm para colar à frente)", okShiftFI],
+    ["[fix-FI] após shift, face frontal da ilharga toca face traseira da frente", okTouchFI],
+    ["[fix-FI] ilharga.depth===boxDepth e ilharga.height===boxHeight (não alteradas)", okIlhargaFI],
   ];
   let ok = true;
   for (const [label, pass] of tests) {
     console.assert(pass, `[gaveta-template.assert] FALHOU: ${label}`);
     if (!pass) ok = false;
   }
-  if (ok) console.info("[gaveta-template.assert] ✓ 6 testes (3 motor + 3 render) passam.");
+  if (ok) console.info("[gaveta-template.assert] ✓ 9 testes (3 motor + 3 render + 3 fix-FI) passam.");
   return ok;
 }

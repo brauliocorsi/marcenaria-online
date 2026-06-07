@@ -13,7 +13,7 @@ import {
   MinifixCorpo, MinifixPerno, PinoPrateleiraModel, liftYUndermount,
 } from "./hardware/HardwareMeshes";
 import {
-  pecasGavetaPorTemplate, DEFAULT_CLASSICA, type GavetaTemplate,
+  pecasGavetaPorTemplate, DEFAULT_CLASSICA, calcShiftZFrenteIntegrada, type GavetaTemplate,
 } from "@/lib/engines/gaveta-template";
 
 const MM_TO_M = 0.001;
@@ -56,16 +56,33 @@ function resolveGavetaTemplate(
 // Aplica saída do motor de templates às peças da caixa da gaveta i:
 //  - alturaCaixa  → redefine altura das laterais/frente/traseira (legrabox encurta).
 //  - desenhaFrenteCaixa=false → remove o painel "Frente caixa" (frente_integrada).
-//  - Y reposicionado para manter a caixa apoiada no mesmo fundo.
+//  - frente_integrada → shifta caixa em Z para colar à face traseira da frente
+//    decorativa (corpo rígido, sem folga visível ao abrir).
+//  - gaveta_frente (decorativa) fica intacta — translação rígida acontece via
+//    o group pai (drawerPct) → mesmo deltaZ para todas as peças.
 function applyGavetaTemplate(pecas: PecaGeo[], c: GavetaCaixa, tpl: GavetaTemplate): PecaGeo[] {
   const r = pecasGavetaPorTemplate(tpl, { boxWidth: c.boxWidth, boxHeight: c.boxHeight, boxDepth: c.boxDepth });
-  if (r.alturaCaixa === c.boxHeight && r.desenhaFrenteCaixa) return pecas; // classica → sem alteração
+  let shiftZ = 0;
+  if (tpl.tipo === "frente_integrada") {
+    const fd = pecas.find((p) => p.tipo === "gaveta_frente");
+    if (fd) shiftZ = calcShiftZFrenteIntegrada(c.center[2], c.boxDepth, fd.center[2], fd.size[2]);
+  }
+  const heightChanged = r.alturaCaixa !== c.boxHeight;
+  if (!heightChanged && shiftZ === 0 && r.desenhaFrenteCaixa) return pecas; // classica → sem alteração
   const yBottom = c.center[1] - c.boxHeight / 2;
   const newCy = yBottom + r.alturaCaixa / 2;
   return pecas.flatMap((p) => {
+    if (!r.desenhaFrenteCaixa && p.tipo === "gaveta_frenteCaixa" && /^Frente caixa/i.test(p.descricao)) return [];
     if (p.tipo === "gaveta_lateral" || p.tipo === "gaveta_frenteCaixa") {
-      if (!r.desenhaFrenteCaixa && p.tipo === "gaveta_frenteCaixa" && /^Frente caixa/i.test(p.descricao)) return [];
-      return [{ ...p, size: [p.size[0], r.alturaCaixa, p.size[2]] as [number, number, number], center: [p.center[0], newCy, p.center[2]] as [number, number, number] }];
+      const cy = heightChanged ? newCy : p.center[1];
+      const sy = heightChanged ? r.alturaCaixa : p.size[1];
+      return [{ ...p,
+        size: [p.size[0], sy, p.size[2]] as [number, number, number],
+        center: [p.center[0], cy, p.center[2] + shiftZ] as [number, number, number] }];
+    }
+    if (p.tipo === "gaveta_fundo") {
+      // fundo acompanha o shift Z da caixa (mantém altura e largura originais)
+      return [{ ...p, center: [p.center[0], p.center[1], p.center[2] + shiftZ] as [number, number, number] }];
     }
     return [p];
   });
