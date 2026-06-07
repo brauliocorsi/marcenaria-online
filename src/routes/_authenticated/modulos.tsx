@@ -722,6 +722,7 @@ function ModulosPage() {
                     doorAngleDeg={doorAngleDeg}
                     drawerPct={drawerPct}
                     showCotas={showCotas}
+                    gavetaTemplates={gavetaTemplates as any}
                   />
                 </div>
                 {showFuros && templateConfig && <FurosLegend />}
