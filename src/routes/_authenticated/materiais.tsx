@@ -156,26 +156,28 @@ function MateriaisPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">Cor</TableHead>
               <TableHead>Nome</TableHead>
-              <TableHead>Marca</TableHead>
-              <TableHead>Código decor</TableHead>
+              <TableHead>Fabricante</TableHead>
+              <TableHead>Decor / Cód.</TableHead>
+              <TableHead>Acabamento</TableHead>
               <TableHead className="text-right">Espessura</TableHead>
-              <TableHead className="text-right">Dimensão chapa</TableHead>
               <TableHead className="text-right">Preço/chapa</TableHead>
-              <TableHead>Veio</TableHead>
               <TableHead className="w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((m: any) => (
               <TableRow key={m.id}>
+                <TableCell>
+                  <span className="inline-block h-5 w-5 rounded border border-border" style={{ background: m.cor_hex ?? "#E8E2D5" }} />
+                </TableCell>
                 <TableCell className="font-medium">{m.name}</TableCell>
-                <TableCell>{m.brand}</TableCell>
-                <TableCell>{m.decor_code ?? "—"}</TableCell>
+                <TableCell>{m.fabricante ?? m.brand ?? "—"}</TableCell>
+                <TableCell className="text-xs">{m.decor_nome ? `${m.decor_nome} · ` : ""}{m.decor_code ?? "—"}</TableCell>
+                <TableCell className="text-xs capitalize">{m.acabamento ?? "mate"}</TableCell>
                 <TableCell className="text-right tabular">{m.thickness_mm} mm</TableCell>
-                <TableCell className="text-right tabular">{m.sheet_width_mm} × {m.sheet_height_mm} mm</TableCell>
                 <TableCell className="text-right tabular">{fmtCurrency(m.price_per_sheet)}</TableCell>
-                <TableCell>{m.has_grain ? "Sim" : "Não"}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" onClick={() => openEdit(m)}><Pencil className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => setDelId(m.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
