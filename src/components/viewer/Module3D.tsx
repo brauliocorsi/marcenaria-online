@@ -134,12 +134,13 @@ function isDrawerPiece(p: PecaGeo, idx: number): boolean {
   return new RegExp(`gaveta\\s+${idx + 1}\\b`, "i").test(p.descricao);
 }
 
-export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false }: Module3DProps) {
+export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates }: Module3DProps) {
   const pecas = useMemo(() => calcularGeometria(config), [config]);
   const pes = useMemo(() => calcularPes(config), [config]);
   const portas = useMemo(() => dimensoesPortas(config), [config]);
   const gavetas = useMemo(() => dimensoesGavetas(config), [config]);
   const eRes = useMemo(() => resolverEspessuras(config.espessuraPadrao, config.espessuras), [config]);
+  const gavetaTpl = useMemo(() => resolveGavetaTemplate(config, gavetaTemplates), [config, gavetaTemplates]);
 
   const { W, H, D } = useMemo(
     () => ({ W: config.dims.width, H: config.dims.height, D: config.dims.depth }),
