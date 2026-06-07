@@ -16,12 +16,20 @@ export function runPortasAsserts() {
   const canecos = dobr.filter((f) => f.tipo_furo === "dobradica");
   const chapaParafusos = dobr.filter((f) => f.tipo_furo === "parafuso");
 
+  // Porta alumínio + espelho: caixilho 4 perfis + 1 painel espelho
+  const alu = pecasPortaAluminio(796, 716, 25, 20);
+  const espelho = alu.find((p) => p.kind === "espelho");
+  const areaEspMM2 = espelho ? espelho.size[0] * espelho.size[1] : 0;
+  const areaEsperada = (796 - 2 * 25) * (716 - 2 * 25);
+
   const tests: Array<[string, boolean]> = [
     ["1 porta criada", !!portaPeca && portaPeca.qtd === 1],
     ["Porta 716×796×19 (alt×larg×esp)", !!portaPeca && portaPeca.comprimento_mm === 716 && portaPeca.largura_mm === 796 && portaPeca.espessura_mm === 19],
     ["Lado dobradiças = esquerda (puxador à direita)", dims.length === 1 && dims[0].ladoDobradicas === "esquerda"],
     ["2 canecos Ø35 na porta", canecos.length === 2 && canecos.every(f => f.diametro === 35 && f.peca === "porta")],
     ["4 furos parafuso (2 chapas) na lateral", chapaParafusos.length === 4 && chapaParafusos.every(f => f.peca === "lateral")],
+    ["Porta alumínio: 4 perfis + 1 espelho", alu.length === 5 && alu.filter(p => p.kind.startsWith("perfil_")).length === 4 && !!espelho],
+    ["Espelho = (W−2·perfil)×(H−2·perfil)", areaEspMM2 === areaEsperada],
   ];
 
   let ok = true;
