@@ -12,7 +12,9 @@ import type { Furo } from "@/lib/engines/drilling";
 import {
   CavilhaModel, CorredicaCarcaca, CorredicaGaveta, DobradicaCaneco, DobradicaChapa,
   MinifixCorpo, MinifixPerno, PinoPrateleiraModel, liftYUndermount,
+  PuxadorFrenteMesh, PerfilGolaMesh,
 } from "./hardware/HardwareMeshes";
+import type { PuxadorSnapshot, PuxadorPosicao } from "@/lib/engines/puxadores";
 import {
   pecasGavetaPorTemplate, DEFAULT_CLASSICA, calcShiftZFrenteIntegrada, type GavetaTemplate,
 } from "@/lib/engines/gaveta-template";
@@ -316,6 +318,10 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         perfilEspessuraMm={config.portas.perfilEspessuraMm ?? 20}
         materialCorpo={materialCorpo}
         materialFrente={materialFrente}
+        puxadorPortas={(config.portas?.puxador ?? null) as PuxadorSnapshot | null}
+        puxadorPortasPos={(config.portas?.puxadorPos ?? "superior") as PuxadorPosicao}
+        puxadorGavetas={(config.gavetas?.puxador ?? null) as PuxadorSnapshot | null}
+        puxadorGavetasPos={(config.gavetas?.puxadorPos ?? "superior") as PuxadorPosicao}
       />
 
       <Grid
@@ -397,6 +403,10 @@ export function ModuleScene({
       perfilLarguraMm={config.portas.perfilLarguraMm ?? 25}
       perfilEspessuraMm={config.portas.perfilEspessuraMm ?? 20}
       materialCorpo={materialCorpo} materialFrente={materialFrente}
+      puxadorPortas={(config.portas?.puxador ?? null) as PuxadorSnapshot | null}
+      puxadorPortasPos={(config.portas?.puxadorPos ?? "superior") as PuxadorPosicao}
+      puxadorGavetas={(config.gavetas?.puxador ?? null) as PuxadorSnapshot | null}
+      puxadorGavetasPos={(config.gavetas?.puxadorPos ?? "superior") as PuxadorPosicao}
     />
   );
 }
@@ -415,6 +425,7 @@ function ModuleSceneInner({
   bucket, chapasByPorta, portas, gavetas, gavetaTpl, eRes, pes,
   explode, center3D, W, H, D, showHardware, doorAngleDeg, drawerPct, showCotas,
   tipoPorta, perfilLarguraMm, perfilEspessuraMm, materialCorpo, materialFrente,
+  puxadorPortas, puxadorPortasPos, puxadorGavetas, puxadorGavetasPos,
 }: {
   bucket: Bucket;
   chapasByPorta: Map<string, Array<{ centro: [number, number, number]; dir: [number, number, number] }>>;
@@ -435,6 +446,10 @@ function ModuleSceneInner({
   perfilEspessuraMm: number;
   materialCorpo?: MatDef;
   materialFrente?: MatDef;
+  puxadorPortas: PuxadorSnapshot | null;
+  puxadorPortasPos: PuxadorPosicao;
+  puxadorGavetas: PuxadorSnapshot | null;
+  puxadorGavetasPos: PuxadorPosicao;
 }) {
   return (
     <>
@@ -484,32 +499,68 @@ function ModuleSceneInner({
             )}
             {canecos.map((f, j) => <FuroMesh key={`df-${j}`} f={translateFuro(f, pivotX, 0, pivotZ)} />)}
             {showHardware && canecos.map((f, j) => <DobradicaCaneco key={`dc-${j}`} f={translateFuro(f, pivotX, 0, pivotZ)} />)}
-            {(() => {
-              const xPux = pd.ladoDobradicas === "esquerda" ? pd.xMax : pd.xMin;
-              const pos: [number, number, number] = [(xPux - pivotX) * MM_TO_M, pd.cy * MM_TO_M, (pd.zFront - pivotZ) * MM_TO_M + 0.005];
-              return (
-                <mesh position={pos}>
-                  <sphereGeometry args={[0.008, 16, 16]} />
-                  <meshStandardMaterial color="#d94a4a" roughness={0.4} metalness={0.3} />
-                </mesh>
-              );
-            })()}
+            {/* 4/5: puxador convencional/cava — acompanha a porta (dentro do group rotacionado) */}
+            {puxadorPortas && (puxadorPortas.tipo === "convencional" || puxadorPortas.tipo === "cava") && (
+              <PuxadorFrenteMesh
+                pux={puxadorPortas}
+                pos={puxadorPortasPos}
+                frente={{ xMin: pdLocal.xMin, xMax: pdLocal.xMax, yMin: pdLocal.yMin, yMax: pdLocal.yMax, zBack: pdLocal.zBack, zFront: pdLocal.zFront }}
+              />
+            )}
           </group>
         );
       })}
+
+      {/* 4/5: PERFIL GOLA (alumínio) — FIXO à carcaça; não roda com a porta */}
+      {puxadorPortas && (puxadorPortas.tipo === "gola_j" || puxadorPortas.tipo === "gola_c") && portas[0] && (
+        <PerfilGolaMesh
+          pux={puxadorPortas}
+          pos={puxadorPortasPos}
+          frente={{ xMin: portas[0].xMin, xMax: portas[0].xMax, yMin: portas[0].yMin, yMax: portas[0].yMax, zBack: portas[0].zBack, zFront: portas[0].zFront }}
+          moduloW={W}
+        />
+      )}
 
       {gavetas.caixas.map((c: GavetaCaixa, i) => {
         const ext = extensaoFromTipo(c.tipoCorredica);
         const openZ = aberturaGaveta(c.boxDepth, ext, drawerPct);
         const liftY = liftYUndermount(c.tipoCorredica);
         const pecasGav = applyGavetaTemplate(bucket.drawerPecas[i], c, gavetaTpl);
+        const fr = gavetas.frentes[i];
+        const frenteRef = fr ? {
+          xMin: fr.center[0] - fr.size[0] / 2,
+          xMax: fr.center[0] + fr.size[0] / 2,
+          yMin: fr.center[1] - fr.size[1] / 2,
+          yMax: fr.center[1] + fr.size[1] / 2,
+          zBack: fr.center[2] - fr.size[2] / 2,
+          zFront: fr.center[2] + fr.size[2] / 2,
+        } : null;
         return (
           <group key={`drawer-${i}`} position={[0, liftY * MM_TO_M, openZ * MM_TO_M]}>
             {pecasGav.map((p, j) => (
               <PecaMesh key={`dp-${j}`} p={p} explode={explode} center3D={center3D} matCorpo={materialCorpo} matFrente={materialFrente} />
             ))}
             {showHardware && <CorredicaGaveta caixa={c} />}
+            {/* 4/5: puxador convencional/cava na frente da gaveta — acompanha a abertura */}
+            {frenteRef && puxadorGavetas && (puxadorGavetas.tipo === "convencional" || puxadorGavetas.tipo === "cava") && (
+              <PuxadorFrenteMesh pux={puxadorGavetas} pos={puxadorGavetasPos} frente={frenteRef} />
+            )}
           </group>
+        );
+      })}
+
+      {/* 4/5: PERFIS GOLA por gaveta — FIXOS à carcaça (fora do group animado) */}
+      {puxadorGavetas && (puxadorGavetas.tipo === "gola_j" || puxadorGavetas.tipo === "gola_c") && gavetas.frentes.map((fr, i) => {
+        const frenteRef = {
+          xMin: fr.center[0] - fr.size[0] / 2,
+          xMax: fr.center[0] + fr.size[0] / 2,
+          yMin: fr.center[1] - fr.size[1] / 2,
+          yMax: fr.center[1] + fr.size[1] / 2,
+          zBack: fr.center[2] - fr.size[2] / 2,
+          zFront: fr.center[2] + fr.size[2] / 2,
+        };
+        return (
+          <PerfilGolaMesh key={`pg-${i}`} pux={puxadorGavetas} pos={puxadorGavetasPos} frente={frenteRef} moduloW={W} />
         );
       })}
 
