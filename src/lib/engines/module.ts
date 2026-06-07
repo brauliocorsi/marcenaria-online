@@ -313,6 +313,37 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
+  // Perfis de gola (alumínio) — 1 por host (portas/gavetas) quando o puxador é gola_j/gola_c.
+  // Comprimento = largura do módulo. Quantidade = nº de frentes que partilham a gola.
+  const W_mod = dims.width;
+  const puxPortas = config.portas.puxador as PuxadorSnapshot | null | undefined;
+  if (puxPortas && (puxPortas.tipo === "gola_j" || puxPortas.tipo === "gola_c")) {
+    const cfgG = (puxPortas.config ?? {}) as any;
+    const letra = puxPortas.tipo === "gola_j" ? "J" : "C";
+    pecas.push({
+      tipo: "puxador", descricao: `Perfil gola ${letra} (portas)`,
+      qtd: 1,
+      comprimento_mm: r(W_mod),
+      largura_mm: r(cfgG.perfilLargura ?? 20),
+      espessura_mm: r(cfgG.perfilProf ?? 20),
+      veio: "sem",
+    });
+  }
+  const puxGav = config.gavetas.puxador as PuxadorSnapshot | null | undefined;
+  if (puxGav && (puxGav.tipo === "gola_j" || puxGav.tipo === "gola_c") && config.gavetas.nGavetas > 0) {
+    const cfgG = (puxGav.config ?? {}) as any;
+    const letra = puxGav.tipo === "gola_j" ? "J" : "C";
+    pecas.push({
+      tipo: "puxador", descricao: `Perfil gola ${letra} (gavetas)`,
+      qtd: config.gavetas.nGavetas,
+      comprimento_mm: r(W_mod),
+      largura_mm: r(cfgG.perfilLargura ?? 20),
+      espessura_mm: r(cfgG.perfilProf ?? 20),
+      veio: "sem",
+    });
+  }
+
+
   // Tamponamento como peças de corte
   for (const t of dimensoesTamponamentos(config)) {
     // size = [largura(X), altura(Y), prof(Z)]
