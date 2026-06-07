@@ -13,7 +13,7 @@ import {
   MinifixCorpo, MinifixPerno, PinoPrateleiraModel, liftYUndermount,
 } from "./hardware/HardwareMeshes";
 import {
-  pecasGavetaPorTemplate, DEFAULT_CLASSICA, type GavetaTemplate,
+  pecasGavetaPorTemplate, DEFAULT_CLASSICA, calcShiftZFrenteIntegrada, type GavetaTemplate,
 } from "@/lib/engines/gaveta-template";
 
 const MM_TO_M = 0.001;
