@@ -44,6 +44,28 @@ export function runModuleAsserts() {
     ["Geo fundo == peça", dimsMatch("fundo", fundo)],
   ];
 
+  // [novo 2/5] gola_j em portas: frente.altura === original − reveal + peça "Perfil gola".
+  {
+    const base = DEFAULT_MODULE_CONFIG;
+    const baseAltura = dimensoesPortas({ ...base, portas: { ...base.portas, nPortas: 1 } })[0]?.altura ?? 0;
+    const cfgGola: ModuleConfig = {
+      ...base,
+      portas: {
+        ...base.portas, nPortas: 1,
+        puxador: { tipo: "gola_j", config: { reveal: 40, perfilLargura: 20, perfilProf: 20 } },
+        puxadorPos: "superior",
+      },
+      gavetas: { ...base.gavetas, nGavetas: 0 },
+    };
+    const portasGola = dimensoesPortas(cfgGola);
+    const pecasGola = calcularPecas(cfgGola);
+    const okAltura = portasGola.length === 1 && Math.abs(portasGola[0].altura - (baseAltura - 40)) < 0.01;
+    const perfil = pecasGola.find((p) => p.tipo === "puxador" && /Perfil gola J/.test(p.descricao));
+    const okPerfil = !!perfil && perfil.comprimento_mm === base.dims.width;
+    tests.push(["[novo 2/5] gola_j encurta porta em 40mm", okAltura]);
+    tests.push(["[novo 2/5] peça 'Perfil gola J' comprimento = W", okPerfil]);
+  }
+
   let allOk = true;
   for (const [label, ok] of tests) {
     console.assert(ok, `[module.assert] FALHOU: ${label}`);
