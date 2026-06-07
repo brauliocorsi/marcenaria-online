@@ -900,7 +900,7 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
 }
 
 // ───────────────── BOM de Ferragens (FIX 4) ─────────────────
-function FerragensBOM({ furos, nGavetas, corredicaNome }: { furos: Furo[]; nGavetas: number; corredicaNome: string | null }) {
+function FerragensBOM({ furos, rasgos, nGavetas, corredicaNome }: { furos: Furo[]; rasgos: Rasgo[]; nGavetas: number; corredicaNome: string | null }) {
   // Cada minifix = 1 par (corpo + perno) na mesma junta. Conta por junta.
   const minifixPorJunta = new Map<string, number>();
   for (const f of furos) {
