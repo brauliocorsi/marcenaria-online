@@ -449,21 +449,14 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
     }
   }
 
-  if (fundo.modo === "sobreposto") {
+  {
+    const fd = dimensoesFundoCarcaca(config);
     out.push({
-      tipo: "fundo", descricao: "Fundo (sobreposto)", veio: "largura",
-      size: [W, H, fundo.espessura],
-      center: [W / 2, H / 2, fundo.espessura / 2],
-    });
-  } else {
-    out.push({
-      tipo: "fundo", descricao: "Fundo (ranhura)", veio: "largura",
-      size: [
-        W - 2 * e.lateral + 2 * fundo.prof_ranhura,
-        H - e.tampo - e.base + 2 * fundo.prof_ranhura,
-        fundo.espessura,
-      ],
-      center: [W / 2, H / 2, fundo.espessura / 2],
+      tipo: "fundo",
+      descricao: fundo.modo === "sobreposto" ? "Fundo (sobreposto)" : "Fundo (rasgo)",
+      veio: "largura",
+      size: [fd.wF, fd.hF, fundo.espessura],
+      center: [(fd.xMin + fd.xMax) / 2, (fd.yMin + fd.yMax) / 2, fundo.espessura / 2],
     });
   }
 
