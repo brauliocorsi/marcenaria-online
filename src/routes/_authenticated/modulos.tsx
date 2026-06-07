@@ -28,7 +28,14 @@ import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema3
 import { cn } from "@/lib/utils";
 
 
-export const Route = createFileRoute("/_authenticated/modulos")({ component: ModulosPage });
+import { z } from "zod";
+import { Link } from "@tanstack/react-router";
+import { LibraryBig } from "lucide-react";
+
+export const Route = createFileRoute("/_authenticated/modulos")({
+  validateSearch: z.object({ openId: z.string().uuid().optional() }).passthrough(),
+  component: ModulosPage,
+});
 
 const VEIO_LABEL: Record<Veio, string> = { comprimento: "Comprimento", largura: "Largura", sem: "Sem veio" };
 
