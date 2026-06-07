@@ -8,6 +8,7 @@ import {
   Grid3x3,
   Box,
   Home,
+  PackageOpen,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
@@ -20,6 +21,7 @@ const items = [
   { to: "/materiais", label: "Materiais", icon: Layers },
   { to: "/orlas", label: "Orlas", icon: Minus },
   { to: "/ferragens", label: "Ferragens", icon: Wrench },
+  { to: "/templates-gaveta", label: "Templates de Gaveta", icon: PackageOpen },
   { to: "/brocas", label: "Brocas", icon: Drill },
   { to: "/templates-furacao", label: "Templates de Furação", icon: Grid3x3 },
   { to: "/definicoes", label: "Definições", icon: SettingsIcon },
