@@ -156,6 +156,8 @@ export interface ModuleConfig {
   materialCorpoId?: string | null;
   /** ID do material aplicado às frentes (portas + frentes de gaveta). Fallback = materialCorpoId. */
   materialFrenteId?: string | null;
+  /** [novo A1] Categoria do módulo. Opcional → módulos antigos inalterados. */
+  categoria?: "base" | "superior" | "coluna" | "gaveteiro" | "canto" | "ilha" | "roupeiro" | "nicho";
 }
 
 

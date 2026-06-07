@@ -10,12 +10,14 @@ import {
   Home,
   PackageOpen,
   Hand,
+  LibraryBig,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 const items = [
+  { to: "/biblioteca", label: "Biblioteca", icon: LibraryBig },
   { to: "/projetos", label: "Projetos", icon: FolderKanban },
   { to: "/ambientes", label: "Ambientes", icon: Home },
   { to: "/modulos", label: "Módulos", icon: Box },
