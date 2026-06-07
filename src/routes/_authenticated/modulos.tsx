@@ -626,17 +626,19 @@ function ModulosPage() {
 
         {/* ─────────── RIGHT: Vista 3D / Peças (Tabs) ─────────── */}
         <div className="space-y-3">
-          <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as "3d" | "pecas" | "furacao")}>
+          <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as "3d" | "pecas" | "furacao" | "ferragens")}>
             <div className="flex items-center justify-between gap-3">
               <TabsList>
                 <TabsTrigger value="3d">Vista 3D</TabsTrigger>
                 <TabsTrigger value="pecas">Peças</TabsTrigger>
                 <TabsTrigger value="furacao">Furação</TabsTrigger>
+                <TabsTrigger value="ferragens">Ferragens</TabsTrigger>
               </TabsList>
               <div className="text-xs text-muted-foreground tabular">
                 {totals.qtd} peças · {totals.areaM2.toFixed(3)} m² {templateConfig ? `· ${furos.length} furos` : ""}
               </div>
             </div>
+
 
             <TabsContent value="3d" className="mt-3">
               <Card className="overflow-hidden">
