@@ -105,7 +105,7 @@ function applyGavetaTemplate(pecas: PecaGeo[], c: GavetaCaixa, tpl: GavetaTempla
   });
 }
 
-function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; center3D: [number, number, number] }) {
+function PecaMesh({ p, explode, center3D, matCorpo, matFrente }: { p: PecaGeo; explode: number; center3D: [number, number, number]; matCorpo?: MatDef; matFrente?: MatDef }) {
   const isPorta = p.tipo === "porta";
   const isGavFrente = p.tipo === "gaveta_frente";
   const isCaixa = p.tipo === "gaveta_lateral" || p.tipo === "gaveta_frenteCaixa" || p.tipo === "gaveta_fundo";
@@ -123,14 +123,54 @@ function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; cente
     Math.max(p.size[1], 1) * MM_TO_M,
     Math.max(p.size[2], 1) * MM_TO_M,
   ];
-  const color = isPorta || isGavFrente ? "#D8D1C0" : isCaixa ? "#B8AE96" : isTamp ? "#DCD5C4" : COR_MELAMINA;
-  const opacity = isPorta || isGavFrente ? 0.85 : isCaixa ? 0.78 : 0.92;
+  // Aplica material da biblioteca: frentes (portas + frentes de gaveta) usam
+  // materialFrente quando definido; restante usa materialCorpo. Fallback = paleta clássica.
+  const useFrente = isPorta || isGavFrente;
+  const mat = (useFrente ? (matFrente ?? matCorpo) : matCorpo) ?? null;
+  const fallback = isPorta || isGavFrente ? "#D8D1C0" : isCaixa ? "#B8AE96" : isTamp ? "#DCD5C4" : COR_MELAMINA;
+  const color = mat?.cor_hex || fallback;
+  const phys = materialPhys(mat?.acabamento);
+  const opacity = isPorta || isGavFrente ? 0.92 : isCaixa ? 0.82 : 0.95;
   return (
     <mesh position={pos} castShadow receiveShadow>
       <boxGeometry args={size} />
-      <meshStandardMaterial color={color} roughness={0.7} metalness={0.02} transparent opacity={opacity} />
+      <meshStandardMaterial color={color} roughness={phys.roughness} metalness={phys.metalness} transparent opacity={opacity} />
       <Edges threshold={15} color={COR_ARESTA} />
     </mesh>
+  );
+}
+
+// ── Porta alumínio + espelho: caixilho metálico + painel espelhado ──
+function PortaAluminioMesh({ pd, perfilW, perfilE }: { pd: PortaDim; perfilW: number; perfilE: number }) {
+  // pecas em coords locais à porta (origem canto inferior-esq).
+  const pecas = pecasPortaAluminio(pd.largura, pd.altura, perfilW, perfilE);
+  // origem da porta no espaço local do <group> (que tem rotação no pivot):
+  // a porta vive em xMin..xMax, yMin..yMax, zBack.. (espessura para a frente).
+  // Origem da peça (canto inferior-esq + zBack):
+  const ox = pd.xMin, oy = pd.yMin, oz = pd.zBack;
+  return (
+    <group>
+      {pecas.map((q, i) => {
+        const cx = (ox + q.center[0]) * MM_TO_M;
+        const cy = (oy + q.center[1]) * MM_TO_M;
+        const cz = (oz + q.center[2]) * MM_TO_M;
+        const sx = Math.max(q.size[0], 1) * MM_TO_M;
+        const sy = Math.max(q.size[1], 1) * MM_TO_M;
+        const sz = Math.max(q.size[2], 1) * MM_TO_M;
+        const isEspelho = q.kind === "espelho";
+        return (
+          <mesh key={`alu-${i}`} position={[cx, cy, cz]} castShadow receiveShadow>
+            <boxGeometry args={[sx, sy, sz]} />
+            {isEspelho ? (
+              <meshStandardMaterial color="#cfd6dc" roughness={0.05} metalness={0.95} />
+            ) : (
+              <meshStandardMaterial color="#a8aaad" roughness={0.35} metalness={0.85} />
+            )}
+            {!isEspelho && <Edges threshold={15} color="#2b2d30" />}
+          </mesh>
+        );
+      })}
+    </group>
   );
 }
 
