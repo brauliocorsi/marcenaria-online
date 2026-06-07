@@ -19,6 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { listMaterials, listHardware, listDrillBits } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
+import { listGavetaTemplates } from "@/lib/gaveta-templates.functions";
+import { TIPO_LABEL as GAVETA_TIPO_LABEL, type GavetaTipo } from "@/lib/engines/gaveta-template";
 import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo } from "@/lib/engines/module";
 import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
@@ -43,6 +45,8 @@ function ModulosPage() {
   const { data: hardware } = useQuery({ queryKey: ["hardware"], queryFn: () => fetchHardware() });
   const { data: drillBits } = useQuery({ queryKey: ["drill_bits"], queryFn: () => fetchDrillBits() });
   const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
+  const fetchGavetaTpls = useServerFn(listGavetaTemplates);
+  const { data: gavetaTemplates } = useQuery({ queryKey: ["gaveta_templates"], queryFn: () => fetchGavetaTpls() });
   const corredicas = useMemo(() => (hardware ?? []).filter((h: any) => h.category === "corredica"), [hardware]);
 
   const [name, setName] = useState("Módulo sem nome");
@@ -425,7 +429,25 @@ function ModulosPage() {
                       <SelectItem value="embutida">Embutida</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Template de construção</Label>
+                <Select
+                  value={(config.gavetas as any).gavetaTemplateId ?? "__auto__"}
+                  disabled={config.gavetas.nGavetas === 0}
+                  onValueChange={(v) => {
+                    const id = v === "__auto__" ? null : v;
+                    setConfig((c) => ({ ...c, gavetas: { ...c.gavetas, gavetaTemplateId: id } as any }));
+                  }}>
+                  <SelectTrigger><SelectValue placeholder="Caixa Clássica (padrão)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__auto__">Caixa Clássica (padrão)</SelectItem>
+                    {(gavetaTemplates ?? []).map((t: any) => (
+                      <SelectItem key={t.id} value={t.id}>{t.nome} · {GAVETA_TIPO_LABEL[t.tipo as GavetaTipo] ?? t.tipo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">Define o método de construção da caixa (clássica · frente integrada · Legrabox).</p>
+              </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1"><Label className="text-xs">Folga</Label>

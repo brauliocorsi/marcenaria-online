@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedTemplatesGavetaRouteImport } from './routes/_authenticated/templates-gaveta'
 import { Route as AuthenticatedTemplatesFuracaoRouteImport } from './routes/_authenticated/templates-furacao'
 import { Route as AuthenticatedProjetosRouteImport } from './routes/_authenticated/projetos'
 import { Route as AuthenticatedOrlasRouteImport } from './routes/_authenticated/orlas'
@@ -36,6 +37,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedTemplatesGavetaRoute =
+  AuthenticatedTemplatesGavetaRouteImport.update({
+    id: '/templates-gaveta',
+    path: '/templates-gaveta',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedTemplatesFuracaoRoute =
   AuthenticatedTemplatesFuracaoRouteImport.update({
     id: '/templates-furacao',
@@ -95,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/orlas': typeof AuthenticatedOrlasRoute
   '/projetos': typeof AuthenticatedProjetosRoute
   '/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
+  '/templates-gaveta': typeof AuthenticatedTemplatesGavetaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,6 +116,7 @@ export interface FileRoutesByTo {
   '/orlas': typeof AuthenticatedOrlasRoute
   '/projetos': typeof AuthenticatedProjetosRoute
   '/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
+  '/templates-gaveta': typeof AuthenticatedTemplatesGavetaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,6 +132,7 @@ export interface FileRoutesById {
   '/_authenticated/orlas': typeof AuthenticatedOrlasRoute
   '/_authenticated/projetos': typeof AuthenticatedProjetosRoute
   '/_authenticated/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
+  '/_authenticated/templates-gaveta': typeof AuthenticatedTemplatesGavetaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/orlas'
     | '/projetos'
     | '/templates-furacao'
+    | '/templates-gaveta'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/orlas'
     | '/projetos'
     | '/templates-furacao'
+    | '/templates-gaveta'
   id:
     | '__root__'
     | '/'
@@ -165,6 +177,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orlas'
     | '/_authenticated/projetos'
     | '/_authenticated/templates-furacao'
+    | '/_authenticated/templates-gaveta'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -195,6 +208,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/templates-gaveta': {
+      id: '/_authenticated/templates-gaveta'
+      path: '/templates-gaveta'
+      fullPath: '/templates-gaveta'
+      preLoaderRoute: typeof AuthenticatedTemplatesGavetaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/templates-furacao': {
       id: '/_authenticated/templates-furacao'
@@ -272,6 +292,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOrlasRoute: typeof AuthenticatedOrlasRoute
   AuthenticatedProjetosRoute: typeof AuthenticatedProjetosRoute
   AuthenticatedTemplatesFuracaoRoute: typeof AuthenticatedTemplatesFuracaoRoute
+  AuthenticatedTemplatesGavetaRoute: typeof AuthenticatedTemplatesGavetaRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -284,6 +305,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOrlasRoute: AuthenticatedOrlasRoute,
   AuthenticatedProjetosRoute: AuthenticatedProjetosRoute,
   AuthenticatedTemplatesFuracaoRoute: AuthenticatedTemplatesFuracaoRoute,
+  AuthenticatedTemplatesGavetaRoute: AuthenticatedTemplatesGavetaRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
