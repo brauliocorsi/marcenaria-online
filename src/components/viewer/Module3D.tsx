@@ -33,6 +33,7 @@ interface Module3DProps {
   showHardware?: boolean;
   doorAngleDeg?: number;
   drawerPct?: number;
+  showCotas?: boolean;
 }
 
 function PecaMesh({ p, explode, center3D }: { p: PecaGeo; explode: number; center3D: [number, number, number] }) {
