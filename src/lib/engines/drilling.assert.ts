@@ -1,5 +1,5 @@
-import { calcularFuros, calcularCorredicas, calcularSistema32 } from "./drilling";
-import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "./module";
+import { calcularFuros, calcularCorredicas, calcularSistema32, calcularParafusosFundo } from "./drilling";
+import { DEFAULT_MODULE_CONFIG, dimensoesFundoCarcaca, dimensoesFundoGaveta, calcularRasgos, dimensoesGavetas, type ModuleConfig } from "./module";
 import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
 import { cotasLabels } from "@/components/viewer/Module3D";
 
@@ -60,6 +60,32 @@ export function runDrillingAsserts() {
   };
   const s32 = calcularSistema32(cfgS32, DEFAULT_TEMPLATE_CONFIG);
 
+  // ─── NOVO: Fundo em rasgo ───
+  const cfgRasgo: ModuleConfig = { ...DEFAULT_MODULE_CONFIG,
+    fundo: { ...DEFAULT_MODULE_CONFIG.fundo, modo: "ranhura", prof_ranhura: 8, recuoTraseiroRasgo: 8,
+      painelComRasgo: { laterais: true, tampo: true, base: true } } };
+  const fdR = dimensoesFundoCarcaca(cfgRasgo);
+  const rasgosR = calcularRasgos(cfgRasgo);
+  const fundoRasgoOk = Math.round(fdR.wF) === 778 && Math.round(fdR.hF) === 698 && rasgosR.length === 4;
+
+  // ─── NOVO: Fundo sobreposto + parafusos perímetro ───
+  const cfgSob: ModuleConfig = { ...DEFAULT_MODULE_CONFIG,
+    fundo: { ...DEFAULT_MODULE_CONFIG.fundo, modo: "sobreposto", espacamentoParafusoFundo: 250 } };
+  const fdS = dimensoesFundoCarcaca(cfgSob);
+  const parS = calcularParafusosFundo(cfgSob, DEFAULT_TEMPLATE_CONFIG);
+  const sobOk = fdS.wF === 800 && fdS.hF === 720 && parS.length === 14; // 4+4+3+3
+
+  // ─── NOVO: Fundo gaveta em rasgo ───
+  const cfgG: ModuleConfig = { ...DEFAULT_MODULE_CONFIG,
+    gavetas: { ...DEFAULT_MODULE_CONFIG.gavetas, nGavetas: 1, distanciaFundoGaveta: 10, profundidadeRasgoGaveta: 8 } };
+  const cx = dimensoesGavetas(cfgG).caixas[0];
+  const fg = dimensoesFundoGaveta(cx, cfgG);
+  const espC = cfgG.gavetas.espessuraCaixa;
+  const expW = (cx.boxWidth - 2 * espC) + 16;
+  const expD = (cx.boxDepth - 2 * espC) + 16;
+  const rGav = calcularRasgos(cfgG).filter(r => /^gaveta1_/.test(r.ref));
+  const gavOk = Math.round(fg.wFundo) === Math.round(expW) && Math.round(fg.dFundo) === Math.round(expD) && rGav.length === 4;
+
   const tests: Array<[string, boolean]> = [
     ["[regressão] laterais_cobrem: relógio SÓ nas laterais", relogioSoNasLaterais],
     ["[regressão] laterais_cobrem: perno SÓ em tampo/base", pernoSoEmTampoBase],
@@ -68,10 +94,13 @@ export function runDrillingAsserts() {
     ["[regressão] tampo_base_cobrem inverte: relógio em tampo/base", invRelogio],
     ["[regressão] tampo_base_cobrem inverte: perno em laterais", invPerno],
     ["[regressão] tampo_base_cobrem renderiza ferragens (furos>0)", f2.length > 0],
-    ["[novo] Telescópica: ≥3 marcas/lado em lateral + ilharga", teleOk],
-    ["[novo] Undermount: clip frontal + 2 suportes traseiros", undOk],
-    ["[novo] Cotas: 3 labels L/A/P corretos", cotasOk],
+    ["[regressão] Telescópica: ≥3 marcas/lado em lateral + ilharga", teleOk],
+    ["[regressão] Undermount: clip frontal + 2 suportes traseiros", undOk],
+    ["[regressão] Cotas: 3 labels L/A/P corretos", cotasOk],
     ["[4G.2] Sistema 32: 204 furos Ø5", s32.length === 204 && s32.every(f => f.diametro === 5)],
+    ["[novo] Fundo rasgo: 778×698 + 4 rasgos", fundoRasgoOk],
+    ["[novo] Fundo sobreposto 800×720 + 14 parafusos perímetro (4+4+3+3)", sobOk],
+    ["[novo] Fundo gaveta rasgo: dim correta + 4 rasgos", gavOk],
   ];
   let ok = true;
   for (const [label, pass] of tests) {

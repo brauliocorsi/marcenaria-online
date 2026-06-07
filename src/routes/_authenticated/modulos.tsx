@@ -19,8 +19,8 @@ import { Switch } from "@/components/ui/switch";
 import { listMaterials, listHardware, listDrillBits } from "@/lib/catalog.functions";
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
-import { calcularPecas, dimensoesGavetas, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo } from "@/lib/engines/module";
-import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
+import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo } from "@/lib/engines/module";
+import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
 
@@ -80,9 +80,15 @@ function ModulosPage() {
         ...calcularDobradicas(config, templateConfig, bits),
         ...calcularCorredicas(config, templateConfig, bits),
         ...calcularSistema32(config, templateConfig, bits),
+        ...calcularParafusosFundo(config, templateConfig, bits),
       ];
     } catch { return []; }
   }, [config, templateConfig, invalid, drillBits]);
+
+  const rasgos: Rasgo[] = useMemo(() => {
+    if (invalid) return [];
+    try { return calcularRasgos(config); } catch { return []; }
+  }, [config, invalid]);
 
   const totals = useMemo(() => {
     const qtd = pecas.reduce((a, p) => a + p.qtd, 0);
@@ -309,8 +315,8 @@ function ModulosPage() {
                   <Select value={config.fundo.modo} onValueChange={(v) => updFundo("modo", v as any)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sobreposto">Sobreposto</SelectItem>
-                      <SelectItem value="ranhura">Em ranhura</SelectItem>
+                      <SelectItem value="sobreposto">Sobreposto (aparafusado)</SelectItem>
+                      <SelectItem value="ranhura">Em rasgo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -748,7 +754,7 @@ function ModulosPage() {
             </TabsContent>
 
             <TabsContent value="ferragens" className="mt-3">
-              <FerragensBOM furos={furos} nGavetas={config.gavetas.nGavetas} corredicaNome={(hardware ?? []).find((h: any) => h.id === config.gavetas.corredica.hardwareId)?.name ?? null} />
+              <FerragensBOM furos={furos} rasgos={rasgos} nGavetas={config.gavetas.nGavetas} corredicaNome={(hardware ?? []).find((h: any) => h.id === config.gavetas.corredica.hardwareId)?.name ?? null} />
             </TabsContent>
           </Tabs>
 
@@ -894,7 +900,7 @@ function FuracaoPanel({ furos, hasTemplate }: { furos: Furo[]; hasTemplate: bool
 }
 
 // ───────────────── BOM de Ferragens (FIX 4) ─────────────────
-function FerragensBOM({ furos, nGavetas, corredicaNome }: { furos: Furo[]; nGavetas: number; corredicaNome: string | null }) {
+function FerragensBOM({ furos, rasgos, nGavetas, corredicaNome }: { furos: Furo[]; rasgos: Rasgo[]; nGavetas: number; corredicaNome: string | null }) {
   // Cada minifix = 1 par (corpo + perno) na mesma junta. Conta por junta.
   const minifixPorJunta = new Map<string, number>();
   for (const f of furos) {
@@ -977,7 +983,13 @@ function FerragensBOM({ furos, nGavetas, corredicaNome }: { furos: Furo[]; nGave
     }
   }
 
-  if (rows.length === 0) {
+  // Parafusos de fundo (modo sobreposto) — perímetro traseiro
+  const parafFundo = furos.filter(f => /^fundo_parafuso_/.test(f.junta)).length;
+  if (parafFundo > 0) {
+    rows.push({ ferragem: `Parafuso fundo Ø${furos.find(f=>/^fundo_parafuso_/.test(f.junta))?.diametro ?? 5}`, qtd: parafFundo, localizacao: "Perímetro traseiro (tampo/base/laterais)" });
+  }
+
+  if (rows.length === 0 && rasgos.length === 0) {
     return (
       <Card><CardContent className="py-6 text-sm text-muted-foreground">Sem ferragens neste módulo.</CardContent></Card>
     );
@@ -1006,6 +1018,37 @@ function FerragensBOM({ furos, nGavetas, corredicaNome }: { furos: Furo[]; nGave
           ))}
         </TableBody>
       </Table>
+      {rasgos.length > 0 && (
+        <div className="border-t">
+          <div className="px-4 py-2.5 text-xs text-muted-foreground">
+            Operações de rasgo (fresa/disco) — <span className="text-foreground font-medium">{rasgos.length}</span>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Ref</TableHead>
+                <TableHead>Peça</TableHead>
+                <TableHead>Eixo</TableHead>
+                <TableHead className="text-right">Comp. (mm)</TableHead>
+                <TableHead className="text-right">Larg. (mm)</TableHead>
+                <TableHead className="text-right">Prof. (mm)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rasgos.map((r, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium text-xs">{r.ref}</TableCell>
+                  <TableCell className="text-xs capitalize">{r.peca}</TableCell>
+                  <TableCell className="text-xs">{r.eixo}</TableCell>
+                  <TableCell className="text-right tabular">{Math.round(r.comprimento)}</TableCell>
+                  <TableCell className="text-right tabular">{r.largura}</TableCell>
+                  <TableCell className="text-right tabular">{r.profundidade}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </Card>
   );
 }

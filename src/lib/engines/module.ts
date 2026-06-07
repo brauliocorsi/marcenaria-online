@@ -6,8 +6,25 @@ export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | 
 export type PortaModo = "sobreposta" | "embutida";
 export type LadoAbertura = "esquerda" | "direita";
 export type SistemaMontagem = "laterais_cobrem" | "tampo_base_cobrem";
-export type FundoModo = "sobreposto" | "ranhura";
+export type FundoModo = "sobreposto" | "ranhura" | "rasgo";
 export type Veio = "comprimento" | "largura" | "sem";
+
+export interface PainelComRasgo {
+  laterais: boolean;
+  tampo: boolean;
+  base: boolean;
+}
+
+// Operação "Rasgo" (fresa/disco) — distinta de furação.
+export interface Rasgo {
+  ref: string;
+  peca: PieceType;
+  eixo: "X" | "Y" | "Z";
+  pos: [number, number, number]; // canto inicial em coords do módulo (gaveta inclusa)
+  comprimento: number;
+  largura: number;       // = espessura do painel encaixado
+  profundidade: number;
+}
 
 export interface Dimensoes {
   width: number;
@@ -25,8 +42,11 @@ export interface EspessurasOverride {
 export interface FundoConfig {
   modo: FundoModo;
   espessura: number;
-  prof_ranhura: number; // só usado em modo 'ranhura'
-  recuo: number; // reservado para uso futuro
+  prof_ranhura: number;          // = profundidadeRasgo (default 8)
+  recuo: number;                 // reservado
+  recuoTraseiroRasgo?: number;   // mm (default 8)
+  painelComRasgo?: PainelComRasgo; // default {laterais:true, tampo:true, base:true}
+  espacamentoParafusoFundo?: number; // mm (default 250)
 }
 
 export interface PortasConfig {
@@ -60,6 +80,8 @@ export interface GavetasConfig {
   espessuraCaixa: number;
   espessuraFundo: number;
   alturaCaixaFolga: number;
+  distanciaFundoGaveta?: number;     // mm do bordo inferior (default 10)
+  profundidadeRasgoGaveta?: number;  // mm (default 8)
 }
 
 export interface PesConfig {
@@ -185,18 +207,13 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
-  if (fundo.modo === "sobreposto") {
+  {
+    const fd = dimensoesFundoCarcaca(config);
     pecas.push({
-      tipo: "fundo", descricao: "Fundo (sobreposto)",
-      qtd: 1, comprimento_mm: r(W), largura_mm: r(H), espessura_mm: r(fundo.espessura),
-      veio: "largura",
-    });
-  } else {
-    pecas.push({
-      tipo: "fundo", descricao: "Fundo (ranhura)",
+      tipo: "fundo", descricao: fundo.modo === "sobreposto" ? "Fundo (sobreposto)" : "Fundo (rasgo)",
       qtd: 1,
-      comprimento_mm: r(W - 2 * e.lateral + 2 * fundo.prof_ranhura),
-      largura_mm: r(H - e.tampo - e.base + 2 * fundo.prof_ranhura),
+      comprimento_mm: r(fd.wF),
+      largura_mm: r(fd.hF),
       espessura_mm: r(fundo.espessura),
       veio: "largura",
     });
@@ -231,9 +248,10 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
       qtd: 2, comprimento_mm: r(c.boxWidth - 2 * c.espessuraCaixa), largura_mm: r(c.boxHeight), espessura_mm: r(c.espessuraCaixa),
       veio: "comprimento",
     });
+    const fg = dimensoesFundoGaveta(c, config);
     pecas.push({
       tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`,
-      qtd: 1, comprimento_mm: r(c.boxWidth), largura_mm: r(c.boxDepth), espessura_mm: r(c.espessuraFundo),
+      qtd: 1, comprimento_mm: r(fg.wFundo), largura_mm: r(fg.dFundo), espessura_mm: r(c.espessuraFundo),
       veio: "largura",
     });
   }
@@ -262,7 +280,12 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
   espessuraPadrao: 19,
   espessuras: { lateral: null, tampo: null, base: null, prateleira: null },
   folgas: { prateleira_lateral: 2, prateleira_recuo: 10 },
-  fundo: { modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0 },
+  fundo: {
+    modo: "sobreposto", espessura: 4, prof_ranhura: 8, recuo: 0,
+    recuoTraseiroRasgo: 8,
+    painelComRasgo: { laterais: true, tampo: true, base: true },
+    espacamentoParafusoFundo: 250,
+  },
   nPrateleiras: 1,
   prateleirasMoveis: true,
 
@@ -271,6 +294,7 @@ export const DEFAULT_MODULE_CONFIG: ModuleConfig = {
     nGavetas: 0, modo: "sobreposta", folga: 3, espessuraFrente: 19,
     corredica: { hardwareId: null, comprimento: 500, folgaLateralPorLado: 13 },
     espessuraCaixa: 16, espessuraFundo: 4, alturaCaixaFolga: 30,
+    distanciaFundoGaveta: 10, profundidadeRasgoGaveta: 8,
   },
   pes: { ativo: false, altura: 100, quantidade: 4, recuo: 50 },
   tamponamento: { esquerda: false, direita: false, topo: false, espessura: null },
@@ -300,6 +324,18 @@ export function normalizarConfig(c: ModuleConfig): ModuleConfig {
   if (!out.tamponamento) out.tamponamento = { ...DEFAULT_MODULE_CONFIG.tamponamento };
   if (!out.sistema32) out.sistema32 = { ...DEFAULT_MODULE_CONFIG.sistema32, fimY: Math.max(200, out.dims.height - 100) };
   if (typeof out.prateleirasMoveis !== "boolean") out.prateleirasMoveis = true;
+  // Fundo — backfill novos campos
+  out.fundo = {
+    ...DEFAULT_MODULE_CONFIG.fundo,
+    ...out.fundo,
+    painelComRasgo: out.fundo?.painelComRasgo ?? { laterais: true, tampo: true, base: true },
+  };
+  // Gavetas — backfill rasgo
+  out.gavetas = {
+    ...out.gavetas,
+    distanciaFundoGaveta: out.gavetas.distanciaFundoGaveta ?? 10,
+    profundidadeRasgoGaveta: out.gavetas.profundidadeRasgoGaveta ?? 8,
+  };
   return out;
 
 }
@@ -413,21 +449,14 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
     }
   }
 
-  if (fundo.modo === "sobreposto") {
+  {
+    const fd = dimensoesFundoCarcaca(config);
     out.push({
-      tipo: "fundo", descricao: "Fundo (sobreposto)", veio: "largura",
-      size: [W, H, fundo.espessura],
-      center: [W / 2, H / 2, fundo.espessura / 2],
-    });
-  } else {
-    out.push({
-      tipo: "fundo", descricao: "Fundo (ranhura)", veio: "largura",
-      size: [
-        W - 2 * e.lateral + 2 * fundo.prof_ranhura,
-        H - e.tampo - e.base + 2 * fundo.prof_ranhura,
-        fundo.espessura,
-      ],
-      center: [W / 2, H / 2, fundo.espessura / 2],
+      tipo: "fundo",
+      descricao: fundo.modo === "sobreposto" ? "Fundo (sobreposto)" : "Fundo (rasgo)",
+      veio: "largura",
+      size: [fd.wF, fd.hF, fundo.espessura],
+      center: [(fd.xMin + fd.xMax) / 2, (fd.yMin + fd.yMax) / 2, fundo.espessura / 2],
     });
   }
 
@@ -462,10 +491,10 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
       size: [innerW, c.boxHeight, c.espessuraCaixa], center: [c.center[0], c.center[1], zFront] });
     out.push({ tipo: "gaveta_frenteCaixa", descricao: `Traseira caixa gaveta ${c.idx + 1}`, veio: "comprimento",
       size: [innerW, c.boxHeight, c.espessuraCaixa], center: [c.center[0], c.center[1], zBack] });
-    // fundo (assente em baixo)
-    const yFundo = c.center[1] - c.boxHeight / 2 + c.espessuraFundo / 2;
+    // fundo da gaveta (rasgo) — encaixado nas 4 peças da caixa
+    const fg = dimensoesFundoGaveta(c, config);
     out.push({ tipo: "gaveta_fundo", descricao: `Fundo gaveta ${c.idx + 1}`, veio: "largura",
-      size: [c.boxWidth, c.espessuraFundo, c.boxDepth], center: [c.center[0], yFundo, c.center[2]] });
+      size: [fg.wFundo, c.espessuraFundo, fg.dFundo], center: [c.center[0], fg.yFundo, c.center[2]] });
   }
 
   // Tamponamentos
@@ -676,4 +705,97 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
   }
 
   return { frentes, caixas };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Fundo da carcaça — dimensões partilhadas (peças + geometria + rasgos)
+// ─────────────────────────────────────────────────────────────
+export function dimensoesFundoCarcaca(config: ModuleConfig) {
+  const { dims, espessuraPadrao, espessuras, fundo } = config;
+  const W = dims.width, H = dims.height;
+  const e = resolverEspessuras(espessuraPadrao, espessuras);
+  if (fundo.modo === "sobreposto") {
+    return { wF: W, hF: H, xMin: 0, xMax: W, yMin: 0, yMax: H, espF: fundo.espessura, sobreposto: true as const };
+  }
+  const pr = fundo.prof_ranhura;
+  const pc = fundo.painelComRasgo ?? { laterais: true, tampo: true, base: true };
+  const xMin = pc.laterais ? e.lateral - pr : e.lateral;
+  const xMax = pc.laterais ? W - e.lateral + pr : W - e.lateral;
+  const yMin = pc.base ? e.base - pr : e.base;
+  const yMax = pc.tampo ? H - e.tampo + pr : H - e.tampo;
+  return { wF: xMax - xMin, hF: yMax - yMin, xMin, xMax, yMin, yMax, espF: fundo.espessura, sobreposto: false as const };
+}
+
+export function dimensoesFundoGaveta(c: GavetaCaixa, config: ModuleConfig) {
+  const g = config.gavetas;
+  const espC = c.espessuraCaixa;
+  const prG = g.profundidadeRasgoGaveta ?? 8;
+  const dG = g.distanciaFundoGaveta ?? 10;
+  const larguraInt = c.boxWidth - 2 * espC;
+  const profundidadeInt = c.boxDepth - 2 * espC;
+  const wFundo = larguraInt + 2 * prG;
+  const dFundo = profundidadeInt + 2 * prG;
+  const yFundo = c.center[1] - c.boxHeight / 2 + dG + c.espessuraFundo / 2;
+  return { wFundo, dFundo, yFundo, prG, dG };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Operações de rasgo (fresa/disco) — carcaça + gavetas
+// ─────────────────────────────────────────────────────────────
+export function calcularRasgos(config: ModuleConfig): Rasgo[] {
+  const out: Rasgo[] = [];
+  const { dims, espessuraPadrao, espessuras, fundo, sistemaMontagem } = config;
+  const W = dims.width, H = dims.height;
+  const e = resolverEspessuras(espessuraPadrao, espessuras);
+
+  if (fundo.modo !== "sobreposto") {
+    const pr = fundo.prof_ranhura;
+    const recT = fundo.recuoTraseiroRasgo ?? 8;
+    const espF = fundo.espessura;
+    const pc = fundo.painelComRasgo ?? { laterais: true, tampo: true, base: true };
+    const yStartLat = sistemaMontagem === "laterais_cobrem" ? 0 : e.base;
+    const yEndLat   = sistemaMontagem === "laterais_cobrem" ? H : H - e.tampo;
+    const xStartTB  = sistemaMontagem === "tampo_base_cobrem" ? 0 : e.lateral;
+    const xEndTB    = sistemaMontagem === "tampo_base_cobrem" ? W : W - e.lateral;
+    if (pc.laterais) {
+      out.push({ ref: "fundo_lateral_esq", peca: "lateral", eixo: "Y",
+        pos: [e.lateral, yStartLat, recT], comprimento: yEndLat - yStartLat, largura: espF, profundidade: pr });
+      out.push({ ref: "fundo_lateral_dir", peca: "lateral", eixo: "Y",
+        pos: [W - e.lateral, yStartLat, recT], comprimento: yEndLat - yStartLat, largura: espF, profundidade: pr });
+    }
+    if (pc.tampo) {
+      out.push({ ref: "fundo_tampo", peca: "tampo", eixo: "X",
+        pos: [xStartTB, H - e.tampo, recT], comprimento: xEndTB - xStartTB, largura: espF, profundidade: pr });
+    }
+    if (pc.base) {
+      out.push({ ref: "fundo_base", peca: "base", eixo: "X",
+        pos: [xStartTB, e.base, recT], comprimento: xEndTB - xStartTB, largura: espF, profundidade: pr });
+    }
+  }
+
+  // Gavetas — rasgo nas 4 peças da caixa para o fundo encaixar.
+  const g = config.gavetas;
+  if (g && g.nGavetas > 0) {
+    const { caixas } = dimensoesGavetas(config);
+    const espC = g.espessuraCaixa;
+    const espFG = g.espessuraFundo;
+    for (const c of caixas) {
+      const fg = dimensoesFundoGaveta(c, config);
+      const yR = c.center[1] - c.boxHeight / 2 + fg.dG;
+      const xIL = c.center[0] - c.boxWidth / 2 + espC;
+      const xIR = c.center[0] + c.boxWidth / 2 - espC;
+      const zBackI = c.zBack + espC;
+      const zFrontI = c.zFront - espC;
+      out.push({ ref: `gaveta${c.idx + 1}_ilharga_esq`, peca: "gaveta_lateral", eixo: "Z",
+        pos: [xIL, yR, c.zBack], comprimento: c.boxDepth, largura: espFG, profundidade: fg.prG });
+      out.push({ ref: `gaveta${c.idx + 1}_ilharga_dir`, peca: "gaveta_lateral", eixo: "Z",
+        pos: [xIR, yR, c.zBack], comprimento: c.boxDepth, largura: espFG, profundidade: fg.prG });
+      out.push({ ref: `gaveta${c.idx + 1}_frente`, peca: "gaveta_frenteCaixa", eixo: "X",
+        pos: [c.center[0] - c.boxWidth / 2, yR, zFrontI], comprimento: c.boxWidth, largura: espFG, profundidade: fg.prG });
+      out.push({ ref: `gaveta${c.idx + 1}_traseira`, peca: "gaveta_frenteCaixa", eixo: "X",
+        pos: [c.center[0] - c.boxWidth / 2, yR, zBackI], comprimento: c.boxWidth, largura: espFG, profundidade: fg.prG });
+    }
+  }
+
+  return out;
 }
