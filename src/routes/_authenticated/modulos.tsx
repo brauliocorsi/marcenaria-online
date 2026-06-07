@@ -20,6 +20,8 @@ import { listMaterials, listHardware, listDrillBits } from "@/lib/catalog.functi
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
 import { listGavetaTemplates } from "@/lib/gaveta-templates.functions";
+import { listPuxadores } from "@/lib/puxadores.functions";
+import { PUXADOR_TIPO_LABEL, type PuxadorTipo } from "@/lib/engines/puxadores";
 import { TIPO_LABEL as GAVETA_TIPO_LABEL, type GavetaTipo } from "@/lib/engines/gaveta-template";
 import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo } from "@/lib/engines/module";
 import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
@@ -29,6 +31,56 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/modulos")({ component: ModulosPage });
 
 const VEIO_LABEL: Record<Veio, string> = { comprimento: "Comprimento", largura: "Largura", sem: "Sem veio" };
+
+type PuxadorRow = { id: string; nome: string; tipo: PuxadorTipo; config: any };
+
+function PuxadorSelects({
+  puxadores, value, pos, disabled, onChange, onChangePos,
+}: {
+  puxadores: PuxadorRow[];
+  value: { id?: string | null } | null | undefined;
+  pos: "superior" | "inferior" | "lateral" | undefined;
+  disabled?: boolean;
+  onChange: (snap: { id: string; tipo: PuxadorTipo; config: any; nome?: string } | null) => void;
+  onChangePos: (p: "superior" | "inferior" | "lateral") => void;
+}) {
+  const selectedId = value?.id ?? "__none__";
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-1"><Label className="text-xs">Puxador</Label>
+        <Select
+          value={selectedId}
+          disabled={disabled}
+          onValueChange={(v) => {
+            if (v === "__none__") return onChange(null);
+            const p = puxadores.find((x) => x.id === v);
+            if (!p) return onChange(null);
+            onChange({ id: p.id, tipo: p.tipo, config: p.config, nome: p.nome });
+          }}
+        >
+          <SelectTrigger><SelectValue placeholder="— nenhum —" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">— nenhum —</SelectItem>
+            {puxadores.map((p) => (
+              <SelectItem key={p.id} value={p.id}>{p.nome} · {PUXADOR_TIPO_LABEL[p.tipo]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1"><Label className="text-xs">Posição</Label>
+        <Select value={pos ?? "superior"} disabled={disabled || !value} onValueChange={(v) => onChangePos(v as any)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="superior">Superior</SelectItem>
+            <SelectItem value="inferior">Inferior</SelectItem>
+            <SelectItem value="lateral">Lateral</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
 
 function ModulosPage() {
   const qc = useQueryClient();
@@ -47,6 +99,8 @@ function ModulosPage() {
   const { data: defaultTpl } = useQuery({ queryKey: ["drilling-templates", "default"], queryFn: () => fetchDefaultTemplate() });
   const fetchGavetaTpls = useServerFn(listGavetaTemplates);
   const { data: gavetaTemplates } = useQuery({ queryKey: ["gaveta_templates"], queryFn: () => fetchGavetaTpls() });
+  const fetchPuxadores = useServerFn(listPuxadores);
+  const { data: puxadores } = useQuery({ queryKey: ["puxadores"], queryFn: () => fetchPuxadores() });
   const corredicas = useMemo(() => (hardware ?? []).filter((h: any) => h.category === "corredica"), [hardware]);
 
   const [name, setName] = useState("Módulo sem nome");
@@ -459,6 +513,14 @@ function ModulosPage() {
                     onChange={(e) => updPorta("perfilEspessuraMm", Math.max(6, Number(e.target.value) || 20))} />
                 </div>
               </div>
+              <PuxadorSelects
+                puxadores={(puxadores ?? []) as any}
+                value={config.portas.puxador ?? null}
+                pos={config.portas.puxadorPos}
+                disabled={config.portas.nPortas === 0}
+                onChange={(snap) => updPorta("puxador", snap as any)}
+                onChangePos={(p) => updPorta("puxadorPos", p)}
+              />
             </CardContent>
           </Card>
 
@@ -602,6 +664,14 @@ function ModulosPage() {
                   </>
                 );
               })()}
+              <PuxadorSelects
+                puxadores={(puxadores ?? []) as any}
+                value={config.gavetas.puxador ?? null}
+                pos={config.gavetas.puxadorPos}
+                disabled={config.gavetas.nGavetas === 0}
+                onChange={(snap) => updGav("puxador", snap as any)}
+                onChangePos={(p) => updGav("puxadorPos", p)}
+              />
             </CardContent>
           </Card>
 
