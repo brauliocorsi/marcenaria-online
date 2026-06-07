@@ -20,6 +20,8 @@ import { listMaterials, listHardware, listDrillBits } from "@/lib/catalog.functi
 import { listModules, upsertModule, deleteModule } from "@/lib/modules.functions";
 import { getDefaultTemplate, DEFAULT_TEMPLATE_CONFIG, type TemplateConfig } from "@/lib/drilling.functions";
 import { listGavetaTemplates } from "@/lib/gaveta-templates.functions";
+import { listPuxadores } from "@/lib/puxadores.functions";
+import { PUXADOR_TIPO_LABEL, type PuxadorTipo } from "@/lib/engines/puxadores";
 import { TIPO_LABEL as GAVETA_TIPO_LABEL, type GavetaTipo } from "@/lib/engines/gaveta-template";
 import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo } from "@/lib/engines/module";
 import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
