@@ -6,8 +6,25 @@ export type PieceType = "lateral" | "tampo" | "base" | "prateleira" | "fundo" | 
 export type PortaModo = "sobreposta" | "embutida";
 export type LadoAbertura = "esquerda" | "direita";
 export type SistemaMontagem = "laterais_cobrem" | "tampo_base_cobrem";
-export type FundoModo = "sobreposto" | "ranhura";
+export type FundoModo = "sobreposto" | "ranhura" | "rasgo";
 export type Veio = "comprimento" | "largura" | "sem";
+
+export interface PainelComRasgo {
+  laterais: boolean;
+  tampo: boolean;
+  base: boolean;
+}
+
+// Operação "Rasgo" (fresa/disco) — distinta de furação.
+export interface Rasgo {
+  ref: string;
+  peca: PieceType;
+  eixo: "X" | "Y" | "Z";
+  pos: [number, number, number]; // canto inicial em coords do módulo (gaveta inclusa)
+  comprimento: number;
+  largura: number;       // = espessura do painel encaixado
+  profundidade: number;
+}
 
 export interface Dimensoes {
   width: number;
