@@ -199,8 +199,32 @@ function MateriaisPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Marca</Label><Input {...form.register("brand")} /></div>
-              <div className="space-y-1.5"><Label>Código decor</Label><Input {...form.register("decor_code")} placeholder="K001 PE" /></div>
+              <div className="space-y-1.5"><Label>Fabricante</Label><Input {...form.register("fabricante")} placeholder="Kronospan / Finsa" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Nome do decor</Label><Input {...form.register("decor_nome")} placeholder="Carvalho Nebraska Natural" /></div>
+              <div className="space-y-1.5"><Label>Código decor</Label><Input {...form.register("decor_code")} placeholder="K003" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Acabamento</Label>
+                <Select value={form.watch("acabamento")} onValueChange={(v) => form.setValue("acabamento", v as any, { shouldDirty: true })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ACABAMENTOS.map((a) => <SelectItem key={a} value={a} className="capitalize">{a}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cor</Label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={form.watch("cor_hex")} onChange={(e) => form.setValue("cor_hex", e.target.value, { shouldDirty: true })} className="h-9 w-12 rounded border border-input bg-background" />
+                  <Input {...form.register("cor_hex")} className="tabular" />
+                </div>
+                {form.formState.errors.cor_hex && <p className="text-xs text-destructive">{form.formState.errors.cor_hex.message as string}</p>}
+              </div>
+            </div>
+            <div className="space-y-1.5"><Label>URL da textura (opcional)</Label><Input {...form.register("textura_url")} placeholder="https://…/textura-madeira.jpg" /></div>
             <div className="space-y-1.5">
               <Label>Espessura (mm)</Label>
               <Input
