@@ -1,5 +1,6 @@
 // Motor de furação — função pura e determinística.
-// X=W, Y=H, Z=D. Sistema 'laterais_cobrem' apenas.
+// X=W, Y=H, Z=D. Suporta ambos sistemas: 'laterais_cobrem' e 'tampo_base_cobrem'.
+
 
 import { resolverEspessuras, dimensoesPortas, posicoesDobradicasY, type ModuleConfig, type PieceType, type Vec3 } from "./module";
 import type { TemplateConfig } from "@/lib/drilling.functions";
