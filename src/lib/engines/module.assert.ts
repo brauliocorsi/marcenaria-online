@@ -62,8 +62,17 @@ export function runModuleAsserts() {
     const okAltura = portasGola.length === 1 && Math.abs(portasGola[0].altura - (baseAltura - 40)) < 0.01;
     const perfil = pecasGola.find((p) => p.tipo === "puxador" && /Perfil gola J/.test(p.descricao));
     const okPerfil = !!perfil && perfil.comprimento_mm === base.dims.width;
-    tests.push(["[novo 2/5] gola_j encurta porta em 40mm", okAltura]);
-    tests.push(["[novo 2/5] peça 'Perfil gola J' comprimento = W", okPerfil]);
+    tests.push(["[novo 5/5] gola_j: porta.altura === alturaOriginal − reveal", okAltura]);
+    tests.push(["[novo 5/5] perfil gola: comprimento === larguraModulo", okPerfil]);
+
+    // [novo 5/5] regressão: frente sem puxador inalterada
+    const cfgSem: ModuleConfig = { ...base, portas: { ...base.portas, nPortas: 1 }, gavetas: { ...base.gavetas, nGavetas: 0 } };
+    const portasSem = dimensoesPortas(cfgSem);
+    const pecasSem = calcularPecas(cfgSem);
+    const okSemAltura = portasSem.length === 1 && Math.abs(portasSem[0].altura - baseAltura) < 0.01;
+    const okSemPerfil = !pecasSem.some((p) => p.tipo === "puxador");
+    tests.push(["[novo 5/5] sem puxador: porta inalterada (regressão)", okSemAltura]);
+    tests.push(["[novo 5/5] sem puxador: zero peças 'puxador' (regressão)", okSemPerfil]);
   }
 
   let allOk = true;
