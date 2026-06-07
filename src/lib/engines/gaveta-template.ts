@@ -248,12 +248,15 @@ export function runGavetaTemplateAsserts() {
     ["[novo-render] frente_integrada: mesh count caixa = classica − 1 (sem frente caixa)", okRenderFI],
     ["[novo-render] legrabox: boxGroupHeight === config.alturaIlharga (90)", okRenderLG],
     ["[regressão] classica render: boxGroupHeight === alturaCaixa DEFAULT (sem mudança visual)", okRenderCla],
+    ["[fix-FI] shiftZ frente_integrada calculado (15.5mm para colar à frente)", okShiftFI],
+    ["[fix-FI] após shift, face frontal da ilharga toca face traseira da frente", okTouchFI],
+    ["[fix-FI] ilharga.depth===boxDepth e ilharga.height===boxHeight (não alteradas)", okIlhargaFI],
   ];
   let ok = true;
   for (const [label, pass] of tests) {
     console.assert(pass, `[gaveta-template.assert] FALHOU: ${label}`);
     if (!pass) ok = false;
   }
-  if (ok) console.info("[gaveta-template.assert] ✓ 6 testes (3 motor + 3 render) passam.");
+  if (ok) console.info("[gaveta-template.assert] ✓ 9 testes (3 motor + 3 render + 3 fix-FI) passam.");
   return ok;
 }
