@@ -19,16 +19,22 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { ConfirmDelete } from "@/components/catalog/ConfirmDelete";
-import { listMaterials, upsertMaterial, deleteMaterial, seedFundosPadrao } from "@/lib/catalog.functions";
+import { listMaterials, upsertMaterial, deleteMaterial, seedFundosPadrao, seedDecoresPadrao, ACABAMENTOS } from "@/lib/catalog.functions";
 import { ALLOWED_THICKNESSES_MM } from "@/lib/constants";
 import { fmtCurrency } from "@/lib/format";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/materiais")({ component: MateriaisPage });
 
 const schema = z.object({
   name: z.string().min(1, "Obrigatório"),
   brand: z.string().min(1),
+  fabricante: z.string().optional(),
+  decor_nome: z.string().optional(),
   decor_code: z.string().optional(),
+  acabamento: z.enum(ACABAMENTOS as unknown as [string, ...string[]]),
+  cor_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida"),
+  textura_url: z.string().optional(),
   thickness_mm: z.coerce.number().min(0.1).max(100),
   sheet_width_mm: z.coerce.number().int().min(100),
   sheet_height_mm: z.coerce.number().int().min(100),
