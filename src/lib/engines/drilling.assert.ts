@@ -86,6 +86,23 @@ export function runDrillingAsserts() {
   const rGav = calcularRasgos(cfgG).filter(r => /^gaveta1_/.test(r.ref));
   const gavOk = Math.round(fg.wFundo) === Math.round(expW) && Math.round(fg.dFundo) === Math.round(expD) && rGav.length === 4;
 
+  // ─── NOVO 3/5: puxadores integrados em furação/rasgos ───
+  const cfgBarra: ModuleConfig = { ...DEFAULT_MODULE_CONFIG,
+    gavetas: { ...DEFAULT_MODULE_CONFIG.gavetas, nGavetas: 0 },
+    portas: { ...DEFAULT_MODULE_CONFIG.portas, nPortas: 1,
+      puxador: { tipo: "convencional", config: { subtipo: "barra", entreEixo: 128, furoØ: 5, alturaDoBordo: 50 } } as any,
+      puxadorPos: "superior" } };
+  const fBarra = calcularPuxadores(cfgBarra, DEFAULT_TEMPLATE_CONFIG).filter(f => /^puxador_/.test(f.junta));
+  const barraOk = fBarra.length === 2 && fBarra.every(f => f.peca === "porta" && Math.abs(f.diametro - 5) < 0.01);
+
+  const cfgCava: ModuleConfig = { ...DEFAULT_MODULE_CONFIG,
+    gavetas: { ...DEFAULT_MODULE_CONFIG.gavetas, nGavetas: 0 },
+    portas: { ...DEFAULT_MODULE_CONFIG.portas, nPortas: 1,
+      puxador: { tipo: "cava", config: { cavaLargura: 30, deixarEspessura: 8 } } as any,
+      puxadorPos: "superior" } };
+  const rCava = calcularPuxadoresRasgos(cfgCava);
+  const cavaOk = rCava.length === 1 && rCava[0].peca === "porta" && Math.abs(rCava[0].profundidade - 11) < 0.01;
+
   const tests: Array<[string, boolean]> = [
     ["[regressão] laterais_cobrem: relógio SÓ nas laterais", relogioSoNasLaterais],
     ["[regressão] laterais_cobrem: perno SÓ em tampo/base", pernoSoEmTampoBase],
