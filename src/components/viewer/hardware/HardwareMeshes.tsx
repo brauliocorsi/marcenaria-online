@@ -7,7 +7,7 @@ import type { Furo } from "@/lib/engines/drilling";
 import type { GavetaCaixa } from "@/lib/engines/module";
 
 const MM = 0.001;
-const COLOR_METAL = "#9AA0A6";
+const COLOR_METAL = "#6B7280";
 const COLOR_WOOD = "#C9A66B";
 const UP = new Vector3(0, 1, 0);
 
