@@ -41,13 +41,42 @@ function AmbientesPage() {
   const fetchAmbientes = useServerFn(listAmbientes);
   const save = useServerFn(upsertAmbiente);
   const del = useServerFn(deleteAmbiente);
+  const fetchModules = useServerFn(listModules);
+  const fetchPlacements = useServerFn(listAmbienteModulos);
+  const upsertPlacement = useServerFn(upsertAmbienteModulo);
+  const deletePlacement = useServerFn(deleteAmbienteModulo);
 
   const { data: ambientes } = useQuery({ queryKey: ["ambientes"], queryFn: () => fetchAmbientes() });
+  const { data: modules } = useQuery({ queryKey: ["modules"], queryFn: () => fetchModules() });
 
   const [name, setName] = useState("Ambiente sem nome");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [room, setRoom] = useState<RoomConfig>(DEFAULT_ROOM);
   const [delId, setDelId] = useState<string | null>(null);
+  const [showHardware, setShowHardware] = useState(false);
+  const [delPlacementId, setDelPlacementId] = useState<string | null>(null);
+
+  const { data: placements } = useQuery({
+    queryKey: ["ambiente_modulos", editingId],
+    queryFn: () => editingId ? fetchPlacements({ data: { ambienteId: editingId } }) : Promise.resolve([]),
+    enabled: !!editingId,
+  });
+
+  const placementsForRender: PlacedModule[] = useMemo(() => {
+    if (!placements || !modules) return [];
+    return (placements as any[]).flatMap((p) => {
+      const m = (modules as any[]).find((x) => x.id === p.module_id);
+      if (!m) return [];
+      return [{
+        id: p.id,
+        module: m,
+        parede: p.parede,
+        x_offset_mm: p.x_offset_mm,
+        altura_chao_mm: p.altura_chao_mm,
+        rotacao_deg: p.rotacao_deg,
+      }];
+    });
+  }, [placements, modules]);
 
   function loadAmbiente(a: any) {
     setEditingId(a.id);
@@ -78,6 +107,25 @@ function AmbientesPage() {
       if (editingId === delId) novo();
       setDelId(null);
       qc.invalidateQueries({ queryKey: ["ambientes"] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
+  const placementMut = useMutation({
+    mutationFn: async (payload: any) => upsertPlacement({ data: payload }),
+    onSuccess: () => {
+      toast.success("Colocação guardada");
+      qc.invalidateQueries({ queryKey: ["ambiente_modulos", editingId] });
+    },
+    onError: (e: Error) => toast.error("Erro", { description: e.message }),
+  });
+
+  const placementDelMut = useMutation({
+    mutationFn: async (id: string) => deletePlacement({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Colocação removida");
+      setDelPlacementId(null);
+      qc.invalidateQueries({ queryKey: ["ambiente_modulos", editingId] });
     },
     onError: (e: Error) => toast.error("Erro", { description: e.message }),
   });
@@ -118,7 +166,11 @@ function AmbientesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Ambientes</h1>
           <p className="mt-1 text-sm text-muted-foreground">Define a sala (paredes + chão) para depois colocar módulos.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs">
+            <Switch id="show-hw" checked={showHardware} onCheckedChange={setShowHardware} />
+            <Label htmlFor="show-hw" className="cursor-pointer">Furação/ferragens</Label>
+          </div>
           <Button variant="outline" onClick={novo}><Plus className="mr-2 h-4 w-4" /> Novo</Button>
           <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
             <Save className="mr-2 h-4 w-4" /> {saveMut.isPending ? "A guardar…" : "Guardar ambiente"}
@@ -208,15 +260,62 @@ function AmbientesPage() {
               ))}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-4 w-4" /> Módulos no ambiente
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!editingId && (
+                <p className="text-xs text-muted-foreground">
+                  Guarda o ambiente primeiro para poderes colocar módulos.
+                </p>
+              )}
+              {editingId && (modules ?? []).length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Sem módulos guardados. Cria um em "Módulos" primeiro.
+                </p>
+              )}
+              {editingId && (modules ?? []).length > 0 && (
+                <AddPlacement
+                  modules={modules as any[]}
+                  onAdd={(payload) => placementMut.mutate({ ambiente_id: editingId, ...payload })}
+                />
+              )}
+              {(placements as any[] | undefined ?? []).map((p) => {
+                const m = (modules as any[] | undefined ?? []).find((x) => x.id === p.module_id);
+                if (!m) return null;
+                const t = transformColocacao(
+                  { parede: p.parede, x_offset_mm: p.x_offset_mm, altura_chao_mm: p.altura_chao_mm, rotacao_deg: p.rotacao_deg },
+                  { width: m.width_mm, height: m.height_mm, depth: m.depth_mm },
+                  { largura: room.largura, profundidade: room.profundidade, altura: room.altura },
+                );
+                return (
+                  <PlacementRow
+                    key={p.id}
+                    placement={p}
+                    moduleName={m.name}
+                    moduleW={m.width_mm}
+                    excede={t.excede}
+                    onChange={(patch) => placementMut.mutate({ id: p.id, ambiente_id: editingId, module_id: p.module_id, parede: p.parede, x_offset_mm: p.x_offset_mm, altura_chao_mm: p.altura_chao_mm, rotacao_deg: p.rotacao_deg, ...patch })}
+                    onRemove={() => setDelPlacementId(p.id)}
+                  />
+                );
+              })}
+            </CardContent>
+          </Card>
         </div>
 
 
         <Card className="overflow-hidden">
           <div className="h-[640px] w-full bg-muted">
-            <Room3D room={room} />
+            <Room3D room={room} placements={placementsForRender} showHardware={showHardware} />
           </div>
         </Card>
       </div>
+
 
       <ConfirmDelete open={!!delId} onOpenChange={(o) => !o && setDelId(null)} onConfirm={() => delId && delMut.mutate(delId)} />
     </div>
