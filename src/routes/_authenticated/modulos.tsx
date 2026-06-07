@@ -754,7 +754,7 @@ function ModulosPage() {
             </TabsContent>
 
             <TabsContent value="ferragens" className="mt-3">
-              <FerragensBOM furos={furos} nGavetas={config.gavetas.nGavetas} corredicaNome={(hardware ?? []).find((h: any) => h.id === config.gavetas.corredica.hardwareId)?.name ?? null} />
+              <FerragensBOM furos={furos} rasgos={rasgos} nGavetas={config.gavetas.nGavetas} corredicaNome={(hardware ?? []).find((h: any) => h.id === config.gavetas.corredica.hardwareId)?.name ?? null} />
             </TabsContent>
           </Tabs>
 
