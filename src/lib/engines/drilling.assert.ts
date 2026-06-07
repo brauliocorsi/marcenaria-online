@@ -1,5 +1,5 @@
-import { calcularFuros, calcularCorredicas, calcularSistema32 } from "./drilling";
-import { DEFAULT_MODULE_CONFIG, type ModuleConfig } from "./module";
+import { calcularFuros, calcularCorredicas, calcularSistema32, calcularParafusosFundo } from "./drilling";
+import { DEFAULT_MODULE_CONFIG, dimensoesFundoCarcaca, dimensoesFundoGaveta, calcularRasgos, dimensoesGavetas, type ModuleConfig } from "./module";
 import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
 import { cotasLabels } from "@/components/viewer/Module3D";
 
