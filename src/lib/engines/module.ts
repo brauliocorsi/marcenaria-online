@@ -51,6 +51,15 @@ export interface FundoConfig {
 
 export type TipoPorta = "melamina" | "aluminio_espelho";
 
+/** Snapshot inline do puxador escolhido (caching p/ engine puro). */
+export interface PuxadorRef {
+  id?: string | null;
+  tipo: "convencional" | "cava" | "gola_j" | "gola_c";
+  config: Record<string, any>;
+  nome?: string;
+}
+export type PuxadorPos = "superior" | "inferior" | "lateral";
+
 export interface PortasConfig {
   nPortas: 0 | 1 | 2;
   modo: PortaModo;
@@ -64,6 +73,10 @@ export interface PortasConfig {
   perfilLarguraMm?: number;
   /** Espessura do perfil/painel (mm) na porta de alumínio. Default 20. */
   perfilEspessuraMm?: number;
+  /** Puxador aplicado às portas. */
+  puxador?: PuxadorRef | null;
+  /** Posiçao do puxador na frente. Default 'superior'. */
+  puxadorPos?: PuxadorPos;
 }
 
 export type CorredicaTipo = "telescopica" | "oculta" | "roldanas";
@@ -90,6 +103,10 @@ export interface GavetasConfig {
   alturaCaixaFolga: number;
   distanciaFundoGaveta?: number;     // mm do bordo inferior (default 10)
   profundidadeRasgoGaveta?: number;  // mm (default 8)
+  /** Puxador aplicado às frentes de gaveta. */
+  puxador?: PuxadorRef | null;
+  /** Posiçao do puxador na frente. Default 'superior'. */
+  puxadorPos?: PuxadorPos;
 }
 
 export interface PesConfig {

@@ -410,6 +410,36 @@ export type Database = {
         }
         Relationships: []
       }
+      puxadores: {
+        Row: {
+          config: Json
+          created_at: string
+          fabricante: string | null
+          id: string
+          nome: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          fabricante?: string | null
+          id?: string
+          nome: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          fabricante?: string | null
+          id?: string
+          nome?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           created_at: string
