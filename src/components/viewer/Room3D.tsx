@@ -14,8 +14,7 @@ import { transformColocacao, type ParedeColocavel } from "@/lib/engines/ambiente
 import { DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig } from "@/lib/engines/module";
 
 const MM = 0.001;
-const COR_CHAO = "#EDEAE3";
-const COR_PAREDE = "#F0EDE6";
+
 const COR_ARESTA = "#3a3a3a";
 const COR_MOLDURA = "#E8E4DB";
 const COR_VIDRO = "#a8c7e8";
@@ -64,8 +63,9 @@ function transformParede(room: RoomConfig, id: ParedeId): WallTransform {
 }
 
 function WallMesh({
-  comp, altura, esp, aberturas,
-}: { comp: number; altura: number; esp: number; aberturas: AberturaCalculada[] }) {
+  comp, altura, esp, aberturas, cor,
+}: { comp: number; altura: number; esp: number; aberturas: AberturaCalculada[]; cor: string }) {
+
   const shape = useMemo(() => {
     const s = new THREE.Shape();
     const W = comp * MM, H = altura * MM;
@@ -87,8 +87,9 @@ function WallMesh({
     <>
       <mesh castShadow receiveShadow>
         <extrudeGeometry args={[shape, extrudeArgs]} />
-        <meshStandardMaterial color={COR_PAREDE} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={cor} side={THREE.DoubleSide} />
         <Edges color={COR_ARESTA} threshold={20} />
+
       </mesh>
       {aberturas.filter((a) => a.valido).map((ab) => (
         <AberturaDeco key={ab.id} ab={ab} esp={esp} />
@@ -158,7 +159,7 @@ export function Room3D({ room, placements = [], showHardware = false }: Room3DPr
         <Suspense fallback={null}>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[L / 2, 0, P / 2]} receiveShadow>
             <planeGeometry args={[L, P]} />
-            <meshStandardMaterial color={COR_CHAO} />
+            <meshStandardMaterial color={room.corChao} />
           </mesh>
           <Grid
             position={[L / 2, 0.001, P / 2]}
@@ -178,7 +179,7 @@ export function Room3D({ room, placements = [], showHardware = false }: Room3DPr
             const aberturas = calcularAberturasDaParede(room, pid);
             return (
               <group key={pid} position={t.position} rotation={t.rotation}>
-                <WallMesh comp={comp} altura={room.altura} esp={room.espessuraParede} aberturas={aberturas} />
+                <WallMesh comp={comp} altura={room.altura} esp={room.espessuraParede} aberturas={aberturas} cor={room.corParede} />
               </group>
             );
           })}

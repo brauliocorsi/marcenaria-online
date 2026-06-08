@@ -24,7 +24,10 @@ const roomConfigSchema = z.object({
     direita: z.boolean(),
   }),
   aberturas: z.array(aberturaSchema).max(50).default([]),
+  corParede: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#EDEAE4"),
+  corChao: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#D9D6D0"),
 });
+
 
 const upsertSchema = z.object({
   id: z.string().uuid().optional(),

@@ -1,4 +1,4 @@
-import { calcularParedes, calcularAberturasDaParede, validarAbertura, DEFAULT_ROOM, type Abertura } from "./ambiente";
+import { calcularParedes, calcularAberturasDaParede, validarAbertura, normalizarRoom, DEFAULT_ROOM, type Abertura } from "./ambiente";
 
 export function runAmbienteAsserts() {
   const sala = { ...DEFAULT_ROOM, largura: 3000, profundidade: 2000, altura: 2400, espessuraParede: 100, aberturas: [] };
@@ -27,4 +27,14 @@ export function runAmbienteAsserts() {
   const abInv: Abertura = { id: "a2", paredeId: "fundo", tipo: "janela", x: 2500, y: 900, largura: 1200, altura: 1000 };
   const vInv = validarAbertura(sala, abInv);
   console.assert(!vInv.valido, "[ambiente] abertura inválida (excede comprimento)");
+
+  // Cores default
+  console.assert(DEFAULT_ROOM.corParede === "#EDEAE4", "[ambiente] corParede default #EDEAE4");
+  console.assert(DEFAULT_ROOM.corChao === "#D9D6D0", "[ambiente] corChao default #D9D6D0");
+  const norm = normalizarRoom({});
+  console.assert(norm.corParede === "#EDEAE4" && norm.corChao === "#D9D6D0", "[ambiente] normalizarRoom aplica cores default");
+  // Alterar cor propaga
+  const custom = normalizarRoom({ corParede: "#112233", corChao: "#445566" });
+  console.assert(custom.corParede === "#112233" && custom.corChao === "#445566", "[ambiente] cores personalizadas persistem");
 }
+

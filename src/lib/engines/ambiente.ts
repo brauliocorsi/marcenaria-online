@@ -28,7 +28,10 @@ export interface RoomConfig {
   espessuraParede: number;
   paredesVisiveis: ParedesVisiveis;
   aberturas: Abertura[];
+  corParede: string;
+  corChao: string;
 }
+
 
 export interface Parede {
   id: ParedeId;
@@ -43,7 +46,10 @@ export const DEFAULT_ROOM: RoomConfig = {
   espessuraParede: 100,
   paredesVisiveis: { fundo: true, frente: false, esquerda: true, direita: true },
   aberturas: [],
+  corParede: "#EDEAE4",
+  corChao: "#D9D6D0",
 };
+
 
 export function calcularParedes(room: RoomConfig): Parede[] {
   const { largura: L, profundidade: P, altura: A, espessuraParede: E } = room;
