@@ -591,7 +591,7 @@ function ModulosPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={cn((config.secoes && config.secoes.length > 0) && "hidden")}>
             <CardHeader className="pb-3"><CardTitle className="text-sm">Portas</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
