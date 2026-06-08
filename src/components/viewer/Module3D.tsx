@@ -1,4 +1,5 @@
 import { Suspense, useMemo } from "react";
+import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Edges, Grid, GizmoHelper, GizmoViewport, Environment, Line, Html } from "@react-three/drei";
 import { Quaternion, Vector3 } from "three";
@@ -7,6 +8,7 @@ import {
   calcularGeometria, calcularPes, dimensoesPortas, dimensoesGavetas, resolverEspessuras,
   pecasPortaAluminio,
 } from "@/lib/engines/module";
+import { geraCantoDiagonal } from "@/lib/engines/canto";
 import { aberturaGaveta, anguloPortaRad, extensaoFromTipo, pivotPorta } from "@/lib/engines/hardware-anim";
 import type { Furo } from "@/lib/engines/drilling";
 import {
@@ -18,6 +20,7 @@ import type { PuxadorSnapshot, PuxadorPosicao } from "@/lib/engines/puxadores";
 import {
   pecasGavetaPorTemplate, DEFAULT_CLASSICA, calcShiftZFrenteIntegrada, type GavetaTemplate,
 } from "@/lib/engines/gaveta-template";
+
 
 const MM_TO_M = 0.001;
 const COR_MELAMINA = "#E8E2D5";
