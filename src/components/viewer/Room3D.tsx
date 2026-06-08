@@ -159,7 +159,7 @@ export function Room3D({ room, placements = [], showHardware = false }: Room3DPr
         <Suspense fallback={null}>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[L / 2, 0, P / 2]} receiveShadow>
             <planeGeometry args={[L, P]} />
-            <meshStandardMaterial color={COR_CHAO} />
+            <meshStandardMaterial color={room.corChao} />
           </mesh>
           <Grid
             position={[L / 2, 0.001, P / 2]}
