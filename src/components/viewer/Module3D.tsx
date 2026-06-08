@@ -8,7 +8,7 @@ import {
   calcularGeometria, calcularPes, dimensoesPortas, dimensoesGavetas, resolverEspessuras,
   pecasPortaAluminio,
 } from "@/lib/engines/module";
-import { geraCantoDiagonal } from "@/lib/engines/canto";
+import { geraCantoDiagonal, geraCantoL, geraCantoCego } from "@/lib/engines/canto";
 import { aberturaGaveta, anguloPortaRad, extensaoFromTipo, pivotPorta } from "@/lib/engines/hardware-anim";
 import type { Furo } from "@/lib/engines/drilling";
 import {
