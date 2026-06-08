@@ -727,6 +727,52 @@ function aplicarRevealFrente(
 }
 
 export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
+  // [B1] Secções: gera portas por cada secção do tipo 'porta'.
+  if (temSecoes(config)) {
+    const out: PortaDim[] = [];
+    const { intervalos } = intervalosSecoes(config);
+    const W = config.dims.width, D = config.dims.depth;
+    const baseP = config.portas;
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "porta") continue;
+      const sc = (it.secao.config ?? {}) as SecaoPortaConfig;
+      const nP = (sc.nPortas ?? 1) as 0 | 1 | 2;
+      if (nP === 0) continue;
+      const f = sc.folga ?? baseP.folga;
+      const fc = sc.folgaCentral ?? baseP.folgaCentral;
+      const espOv = sc.espessura ?? baseP.espessura;
+      const espP = espOv && espOv > 0 ? espOv : config.espessuraPadrao;
+      const lado = (sc.ladoAbertura ?? baseP.ladoAbertura) as LadoAbertura;
+      // modo sobreposta (suficiente para B1)
+      const zBack = D, zFront = D + espP, cz = D + espP / 2;
+      const yMin = it.yMin + f, yMax = it.yMax - f, altura = yMax - yMin, cy = (yMin + yMax) / 2;
+      const tag = `sec ${it.idx + 1}`;
+      if (nP === 1) {
+        const xMin = f, xMax = W - f, largura = W - 2 * f, cx = W / 2;
+        const ladoDob: LadoDobradicas = lado === "direita" ? "esquerda" : "direita";
+        const xCharneira = ladoDob === "esquerda" ? xMin : xMax;
+        out.push({ idx: 0, descricao: `Porta ${tag}`, largura, altura, espessura: espP,
+          cx, cy, cz, xMin, xMax, yMin, yMax, zBack, zFront, ladoDobradicas: ladoDob, xCharneira });
+      } else {
+        const largura = (W - 2 * f - fc) / 2;
+        const xMinE = f, xMaxE = f + largura;
+        out.push({ idx: 0, descricao: `Porta esq ${tag}`, largura, altura, espessura: espP,
+          cx: xMinE + largura / 2, cy, cz, xMin: xMinE, xMax: xMaxE, yMin, yMax, zBack, zFront, ladoDobradicas: "esquerda", xCharneira: xMinE });
+        const xMaxD = W - f, xMinD = xMaxD - largura;
+        out.push({ idx: 1, descricao: `Porta dir ${tag}`, largura, altura, espessura: espP,
+          cx: xMinD + largura / 2, cy, cz, xMin: xMinD, xMax: xMaxD, yMin, yMax, zBack, zFront, ladoDobradicas: "direita", xCharneira: xMaxD });
+      }
+    }
+    const reveal = revealOfPuxador((config.portas.puxador ?? null) as PuxadorSnapshot | null);
+    if (reveal > 0) {
+      const pos = config.portas.puxadorPos ?? "superior";
+      for (const p of out) {
+        const adj = aplicarRevealFrente(p.yMin, p.yMax, p.altura, p.cy, reveal, pos);
+        p.yMin = adj.yMin; p.yMax = adj.yMax; p.altura = adj.altura; p.cy = adj.cy;
+      }
+    }
+    return out;
+  }
   const { dims, espessuraPadrao, espessuras, portas, gavetas } = config;
   if (!portas || portas.nPortas === 0) return [];
   // Regra: se houver gavetas, a frente é gavetas — portas ignoradas.
