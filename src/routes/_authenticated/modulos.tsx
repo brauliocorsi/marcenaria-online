@@ -687,7 +687,7 @@ function ModulosPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={cn((config.secoes && config.secoes.length > 0) && "hidden")}>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Gavetas</CardTitle>
             </CardHeader>
