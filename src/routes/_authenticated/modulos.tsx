@@ -292,13 +292,67 @@ function ModulosPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm">Dimensões externas (mm)</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <DimRow label="Largura" value={config.dims.width} min={100} max={3000} onChange={(v) => updDim("width", v)} />
-              <DimRow label="Altura" value={config.dims.height} min={100} max={3000} onChange={(v) => updDim("height", v)} />
-              <DimRow label="Profundidade" value={config.dims.depth} min={100} max={1200} onChange={(v) => updDim("depth", v)} />
+            <CardHeader className="pb-3"><CardTitle className="text-sm">Categoria</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Categoria do módulo</Label>
+                <Select value={config.categoria ?? "__none__"} onValueChange={(v) => upd("categoria", v === "__none__" ? undefined : v as any)}>
+                  <SelectTrigger><SelectValue placeholder="— sem categoria —" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— sem categoria —</SelectItem>
+                    <SelectItem value="base">Base</SelectItem>
+                    <SelectItem value="superior">Superior</SelectItem>
+                    <SelectItem value="coluna">Coluna</SelectItem>
+                    <SelectItem value="gaveteiro">Gaveteiro</SelectItem>
+                    <SelectItem value="canto">Canto</SelectItem>
+                    <SelectItem value="ilha">Ilha</SelectItem>
+                    <SelectItem value="roupeiro">Roupeiro</SelectItem>
+                    <SelectItem value="nicho">Nicho</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {config.categoria === "canto" && (
+                <div className="space-y-1.5">
+                  <Label>Tipo de canto</Label>
+                  <Select value={config.cantoTipo ?? "l"} onValueChange={(v) => upd("cantoTipo", v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="l">L (clássico)</SelectItem>
+                      <SelectItem value="cego">Cego</SelectItem>
+                      <SelectItem value="diagonal">Diagonal (pentagonal)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {config.categoria === "canto" && config.cantoTipo === "diagonal" ? (
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-sm">Canto diagonal (mm)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <DimRow label="Lado esquerdo (parede esq.)" value={config.cantoDiagonal?.ladoEsq ?? 900} min={300} max={1500}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoDiagonal: { ladoEsq: v, ladoDir: c.cantoDiagonal?.ladoDir ?? 900, profRetornoEsq: c.cantoDiagonal?.profRetornoEsq ?? 560, profRetornoDir: c.cantoDiagonal?.profRetornoDir ?? 560 } }))} />
+                <DimRow label="Lado direito (parede dir.)" value={config.cantoDiagonal?.ladoDir ?? 900} min={300} max={1500}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoDiagonal: { ladoEsq: c.cantoDiagonal?.ladoEsq ?? 900, ladoDir: v, profRetornoEsq: c.cantoDiagonal?.profRetornoEsq ?? 560, profRetornoDir: c.cantoDiagonal?.profRetornoDir ?? 560 } }))} />
+                <DimRow label="Profundidade retorno esq." value={config.cantoDiagonal?.profRetornoEsq ?? 560} min={300} max={900}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoDiagonal: { ladoEsq: c.cantoDiagonal?.ladoEsq ?? 900, ladoDir: c.cantoDiagonal?.ladoDir ?? 900, profRetornoEsq: v, profRetornoDir: c.cantoDiagonal?.profRetornoDir ?? 560 } }))} />
+                <DimRow label="Profundidade retorno dir." value={config.cantoDiagonal?.profRetornoDir ?? 560} min={300} max={900}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoDiagonal: { ladoEsq: c.cantoDiagonal?.ladoEsq ?? 900, ladoDir: c.cantoDiagonal?.ladoDir ?? 900, profRetornoEsq: c.cantoDiagonal?.profRetornoEsq ?? 560, profRetornoDir: v } }))} />
+                <DimRow label="Altura" value={config.dims.height} min={100} max={3000} onChange={(v) => updDim("height", v)} />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-sm">Dimensões externas (mm)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <DimRow label="Largura" value={config.dims.width} min={100} max={3000} onChange={(v) => updDim("width", v)} />
+                <DimRow label="Altura" value={config.dims.height} min={100} max={3000} onChange={(v) => updDim("height", v)} />
+                <DimRow label="Profundidade" value={config.dims.depth} min={100} max={1200} onChange={(v) => updDim("depth", v)} />
+              </CardContent>
+            </Card>
+          )}
+
 
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-sm">Construção</CardTitle></CardHeader>

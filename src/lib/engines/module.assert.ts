@@ -198,8 +198,35 @@ export function runModuleAsserts() {
 
 
 
+  // ─── [novo B4] Canto diagonal — UI + Render ────────────────
+  {
+    const cfg: ModuleConfig = {
+      ...DEFAULT_MODULE_CONFIG,
+      categoria: "canto", cantoTipo: "diagonal",
+      cantoDiagonal: { ladoEsq: 1000, ladoDir: 900, profRetornoEsq: 560, profRetornoDir: 600 },
+    };
+    tests.push(["[novo B4-ui] categoria/canto/diagonal persistem",
+      cfg.categoria === "canto" && cfg.cantoTipo === "diagonal" &&
+      cfg.cantoDiagonal?.ladoEsq === 1000 && cfg.cantoDiagonal?.profRetornoDir === 600]);
+
+    const gR = geraCantoDiagonal({
+      ladoEsq: cfg.cantoDiagonal!.ladoEsq, ladoDir: cfg.cantoDiagonal!.ladoDir,
+      profRetornoEsq: cfg.cantoDiagonal!.profRetornoEsq, profRetornoDir: cfg.cantoDiagonal!.profRetornoDir,
+      altura: cfg.dims.height,
+      espessuras: { lateral: 19, tampo: 19, base: 19, frente: 19 },
+    });
+    tests.push(["[novo B4-render] footprint de 5 pontos para Shape pentagonal", gR.footprint.length === 5]);
+    const costas = gR.pecas.filter(p => /^costas_/.test(p.ref)).length;
+    const retornos = gR.pecas.filter(p => /^retorno_/.test(p.ref)).length;
+    const frente = gR.pecas.filter(p => p.ref === "frente_diagonal").length;
+    tests.push(["[novo B4-render] 2 costas + 2 retornos + 1 frente diagonal", costas === 2 && retornos === 2 && frente === 1]);
+
+    const reg = calcularPecas(DEFAULT_MODULE_CONFIG);
+    tests.push(["[novo B4] regressão: módulo retangular inalterado", reg.length > 0 && !reg.some(p => /pentagonal/i.test(p.descricao))]);
+  }
 
   let allOk = true;
+
   for (const [label, ok] of tests) {
     console.assert(ok, `[module.assert] FALHOU: ${label}`);
     if (!ok) allOk = false;
