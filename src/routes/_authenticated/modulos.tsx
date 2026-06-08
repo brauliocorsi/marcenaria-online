@@ -23,7 +23,7 @@ import { listGavetaTemplates } from "@/lib/gaveta-templates.functions";
 import { listPuxadores } from "@/lib/puxadores.functions";
 import { PUXADOR_TIPO_LABEL, type PuxadorTipo } from "@/lib/engines/puxadores";
 import { TIPO_LABEL as GAVETA_TIPO_LABEL, type GavetaTipo } from "@/lib/engines/gaveta-template";
-import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo } from "@/lib/engines/module";
+import { calcularPecas, dimensoesGavetas, calcularRasgos, DEFAULT_MODULE_CONFIG, normalizarConfig, resolverEspessuras, intervalosSecoes, type ModuleConfig, type Veio, type CorredicaTipo, type Rasgo, type Secao, type SecaoTipo } from "@/lib/engines/module";
 import { calcularFuros, calcularDobradicas, calcularCorredicas, calcularSistema32, calcularParafusosFundo, calcularPuxadores, calcularPuxadoresRasgos, type Furo, type TipoFuro, type DrillBitLike } from "@/lib/engines/drilling";
 import { cn } from "@/lib/utils";
 
@@ -379,7 +379,151 @@ function ModulosPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          {(() => {
+            const secoesAtivas = Array.isArray(config.secoes) && config.secoes.length > 0;
+            const eRes = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+            const alturaInterna = config.dims.height - eRes.tampo - eRes.base;
+            const espDiv = eRes.prateleira;
+            const secoesArr = config.secoes ?? [];
+            const somaAlt = secoesArr.reduce((s, x) => s + x.altura_mm, 0);
+            const somaDiv = Math.max(0, secoesArr.length - 1) * espDiv;
+            const restante = alturaInterna - somaAlt - somaDiv;
+            const setSecoes = (next: Secao[] | undefined) => setConfig((c) => ({ ...c, secoes: next && next.length > 0 ? next : undefined }));
+            const distribuirIgual = () => {
+              if (secoesArr.length === 0) return;
+              const disponivel = alturaInterna - somaDiv;
+              const each = Math.max(50, Math.floor(disponivel / secoesArr.length));
+              const next = secoesArr.map((s, i) => ({ ...s, altura_mm: i === secoesArr.length - 1 ? disponivel - each * (secoesArr.length - 1) : each }));
+              setSecoes(next);
+            };
+            const addSecao = () => {
+              const id = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `s${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+              const h = Math.max(50, Math.floor(restante > 50 ? restante : alturaInterna / (secoesArr.length + 1)));
+              const nova: Secao = { id, altura_mm: h, tipo: "nicho_aberto", config: { prateleirasMoveis: 0 } };
+              setSecoes([...secoesArr, nova]);
+            };
+            const removeSecao = (id: string) => setSecoes(secoesArr.filter((s) => s.id !== id));
+            const updSecao = (id: string, patch: Partial<Secao>) => setSecoes(secoesArr.map((s) => s.id === id ? { ...s, ...patch } : s));
+            const updSecaoCfg = (id: string, patch: Record<string, any>) => setSecoes(secoesArr.map((s) => s.id === id ? { ...s, config: { ...(s.config ?? {}), ...patch } } : s));
+            const toggleSecoes = (on: boolean) => {
+              if (on) {
+                const half1 = Math.floor(alturaInterna / 2);
+                const half2 = alturaInterna - half1 - espDiv;
+                const s1: Secao = { id: "sec-1", altura_mm: half1, tipo: "nicho_aberto", config: { prateleirasMoveis: 1 } };
+                const s2: Secao = { id: "sec-2", altura_mm: Math.max(50, half2), tipo: "porta", config: { nPortas: 1 } };
+                setSecoes([s1, s2]);
+              } else {
+                setSecoes(undefined);
+              }
+            };
+            const ok = Math.abs(restante) < 0.5;
+            return (
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-sm">Secções</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="sec-on" className="text-xs">Dividir em secções</Label>
+                      <Switch id="sec-on" checked={secoesAtivas} onCheckedChange={toggleSecoes} />
+                    </div>
+                  </div>
+                </CardHeader>
+                {secoesAtivas && (
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground tabular">
+                      <div>Altura interna: <span className="text-foreground">{Math.round(alturaInterna)}</span> mm · Σ secções: <span className="text-foreground">{somaAlt}</span> + Σ divisórias: <span className="text-foreground">{somaDiv}</span></div>
+                      <div className={cn("font-medium", ok ? "text-emerald-700" : "text-amber-700")}>{ok ? "OK" : `restante ${restante} mm`}</div>
+                    </div>
+                    {!ok && (
+                      <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                        <span>Σ alturas + divisórias ≠ altura interna.</span>
+                        <Button size="sm" variant="outline" onClick={distribuirIgual}>Distribuir igualmente</Button>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      {[...secoesArr].map((s, i) => (
+                        <div key={s.id} className="rounded-md border p-2 space-y-2 bg-card">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium">Secção {i + 1} <span className="text-muted-foreground">(de baixo)</span></span>
+                            <Button size="sm" variant="ghost" onClick={() => removeSecao(s.id)} className="h-7 px-2"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1"><Label className="text-[10px]">Altura (mm)</Label>
+                              <Input type="number" min={50} step={1} className="tabular h-8"
+                                value={s.altura_mm}
+                                onChange={(e) => updSecao(s.id, { altura_mm: Math.max(50, Number(e.target.value) || 50) })} />
+                            </div>
+                            <div className="space-y-1"><Label className="text-[10px]">Tipo</Label>
+                              <Select value={s.tipo} onValueChange={(v) => updSecao(s.id, { tipo: v as SecaoTipo, config: {} })}>
+                                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="nicho_aberto">Nicho aberto</SelectItem>
+                                  <SelectItem value="porta">Porta</SelectItem>
+                                  <SelectItem value="gavetas">Gavetas</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          {s.tipo === "nicho_aberto" && (
+                            <div className="space-y-1"><Label className="text-[10px]">Prateleiras móveis</Label>
+                              <Input type="number" min={0} max={10} step={1} className="tabular h-8"
+                                value={(s.config as any)?.prateleirasMoveis ?? 0}
+                                onChange={(e) => updSecaoCfg(s.id, { prateleirasMoveis: Math.max(0, Math.min(10, Number(e.target.value) || 0)) })} />
+                            </div>
+                          )}
+                          {s.tipo === "porta" && (
+                            <div className="space-y-1"><Label className="text-[10px]">Nº de portas</Label>
+                              <Select value={String((s.config as any)?.nPortas ?? 1)} onValueChange={(v) => updSecaoCfg(s.id, { nPortas: Number(v) })}>
+                                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">1 porta</SelectItem>
+                                  <SelectItem value="2">2 portas</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                          {s.tipo === "gavetas" && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1"><Label className="text-[10px]">Nº de gavetas</Label>
+                                <Input type="number" min={1} max={10} step={1} className="tabular h-8"
+                                  value={(s.config as any)?.nGavetas ?? 1}
+                                  onChange={(e) => updSecaoCfg(s.id, { nGavetas: Math.max(1, Math.min(10, Number(e.target.value) || 1)) })} />
+                              </div>
+                              <div className="space-y-1"><Label className="text-[10px]">Corrediça</Label>
+                                <Select
+                                  value={(s.config as any)?.corredica?.hardwareId ?? "__inherit__"}
+                                  onValueChange={(v) => {
+                                    if (v === "__inherit__") { updSecaoCfg(s.id, { corredica: undefined }); return; }
+                                    const h = corredicas.find((x: any) => x.id === v);
+                                    if (!h) return;
+                                    const p: any = h.params ?? {};
+                                    const comps: number[] = Array.isArray(p.comprimentosDisponiveis) ? p.comprimentosDisponiveis : [];
+                                    const comp = comps[Math.floor(comps.length / 2)] ?? config.gavetas.corredica.comprimento;
+                                    updSecaoCfg(s.id, { corredica: { hardwareId: v, comprimento: comp, folgaLateralPorLado: typeof p.folgaLateralPorLado === "number" ? p.folgaLateralPorLado : 13, tipo: p.tipo, rebaixoFundo: !!p.rebaixoFundo } });
+                                  }}>
+                                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__inherit__">— herdar global —</SelectItem>
+                                    {corredicas.map((h: any) => (
+                                      <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <Button size="sm" variant="outline" onClick={addSecao}><Plus className="mr-2 h-3.5 w-3.5" /> Adicionar secção</Button>
+                    <p className="text-[10px] text-muted-foreground">Com secções ativas, os cards globais de Prateleiras / Portas / Gavetas ficam ocultos. O conteúdo é definido por secção.</p>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })()}
+
+          <Card className={cn((config.secoes && config.secoes.length > 0) && "hidden")}>
             <CardHeader className="pb-3"><CardTitle className="text-sm">Prateleiras</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
@@ -447,7 +591,7 @@ function ModulosPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={cn((config.secoes && config.secoes.length > 0) && "hidden")}>
             <CardHeader className="pb-3"><CardTitle className="text-sm">Portas</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -543,7 +687,7 @@ function ModulosPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={cn((config.secoes && config.secoes.length > 0) && "hidden")}>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Gavetas</CardTitle>
             </CardHeader>

@@ -123,6 +123,44 @@ export function runModuleAsserts() {
     tests.push(["[novo B1] Σ alturas + Σ divisórias === altura interna", Math.abs(somaAlt + somaDiv - inv.alturaInterna) < 0.001]);
   }
 
+  // ─── [novo B2] UI + Render ────────────────────────────────────
+  {
+    const base = DEFAULT_MODULE_CONFIG;
+    // [novo-ui] adicionar/remover secção persiste em config.secoes
+    const cfg0: ModuleConfig = { ...base, secoes: undefined };
+    const cfg1: ModuleConfig = { ...cfg0, secoes: [{ id: "u1", altura_mm: 300, tipo: "nicho_aberto", config: {} }] };
+    const cfg2: ModuleConfig = { ...cfg1, secoes: [...(cfg1.secoes ?? []), { id: "u2", altura_mm: 300, tipo: "porta", config: { nPortas: 1 } }] };
+    const cfg1b: ModuleConfig = { ...cfg2, secoes: (cfg2.secoes ?? []).filter(s => s.id !== "u1") };
+    tests.push(["[novo B2-ui] adicionar secção persiste em config.secoes",
+      (cfg1.secoes?.length === 1) && (cfg2.secoes?.length === 2)]);
+    tests.push(["[novo B2-ui] remover secção atualiza config.secoes",
+      (cfg1b.secoes?.length === 1) && (cfg1b.secoes?.[0].id === "u2")]);
+
+    // [novo-render] 3 secções (nicho/porta/gavetas) → 2 divisórias + porta no meio + gavetas em baixo
+    const cfgR: ModuleConfig = {
+      ...base, dims: { width: 600, height: 2000, depth: 560 },
+      portas: { ...base.portas, nPortas: 0 }, gavetas: { ...base.gavetas, nGavetas: 0 },
+      secoes: [
+        { id: "g", altura_mm: 660, tipo: "gavetas", config: { nGavetas: 3 } },
+        { id: "p", altura_mm: 700, tipo: "porta", config: { nPortas: 1 } },
+        { id: "n", altura_mm: 600, tipo: "nicho_aberto", config: { prateleirasMoveis: 2 } },
+      ],
+    };
+    const geo = calcularGeometria(cfgR);
+    const divisorias = geo.filter(g => g.tipo === "prateleira" && /Divisória/i.test(g.descricao));
+    const portasGeo = geo.filter(g => g.tipo === "porta");
+    const frentesGav = geo.filter(g => g.tipo === "gaveta_frente");
+    const { intervalos } = intervalosSecoes(cfgR);
+    const itPorta = intervalos.find(it => it.secao.tipo === "porta")!;
+    const itGav = intervalos.find(it => it.secao.tipo === "gavetas")!;
+    const portaNoMeio = portasGeo.length === 1 && portasGeo[0].center[1] >= itPorta.yMin && portasGeo[0].center[1] <= itPorta.yMax;
+    const gavetasEmBaixo = frentesGav.length === 3 && frentesGav.every(f => f.center[1] >= itGav.yMin && f.center[1] <= itGav.yMax);
+    tests.push(["[novo B2-render] 3 secções → 2 divisórias visíveis", divisorias.length === 2]);
+    tests.push(["[novo B2-render] porta na secção do meio", portaNoMeio]);
+    tests.push(["[novo B2-render] 3 gavetas na secção de baixo", gavetasEmBaixo]);
+  }
+
+
 
   let allOk = true;
   for (const [label, ok] of tests) {
