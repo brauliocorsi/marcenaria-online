@@ -234,6 +234,18 @@ export function calcularFuros(
     }
   }
 
+  // ── [B1] Secções: juntas estruturais das divisórias (relógio nas laterais) ──
+  if (temSecoes(config)) {
+    const { divisorias } = intervalosSecoes(config);
+    for (const d of divisorias) {
+      juntas.push({ nome: `divisoria${d.idx + 1}_esq`, xRef: e.lateral, yRef: d.yCenter,
+        dirCobre: [-1, 0, 0], dirEncosta: [1, 0, 0], pecaCobre: "lateral", pecaEncosta: "prateleira" });
+      juntas.push({ nome: `divisoria${d.idx + 1}_dir`, xRef: W - e.lateral, yRef: d.yCenter,
+        dirCobre: [1, 0, 0], dirEncosta: [-1, 0, 0], pecaCobre: "lateral", pecaEncosta: "prateleira" });
+    }
+  }
+
+
   const furos: Furo[] = [];
   const push2 = (junta: string, tCobre: TipoFuro, tEncosta: TipoFuro, j: JuntaDef, z: number) => {
     furos.push(makeFuro({
