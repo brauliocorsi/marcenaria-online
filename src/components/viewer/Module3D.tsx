@@ -788,3 +788,204 @@ function CantoDiagonalCanvas({ config, doorAngleDeg, showHardware }: { config: M
     </Canvas>
   );
 }
+
+// ─── [B5] Canto em L — render via Shape + Extrude ──────────────────
+function CantoLCanvas({ config, doorAngleDeg, showHardware }: { config: ModuleConfig; doorAngleDeg: number; showHardware: boolean }) {
+  const params = useMemo(() => {
+    const cl = config.cantoL ?? { ladoEsq: 900, ladoDir: 900, profundidade: 560 };
+    const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+    return {
+      ladoEsq: cl.ladoEsq, ladoDir: cl.ladoDir, profundidade: cl.profundidade,
+      altura: config.dims.height,
+      espessuras: { lateral: e.lateral, tampo: e.tampo, base: e.base, frente: e.lateral },
+    };
+  }, [config]);
+  const g = useMemo(() => geraCantoL(params), [params]);
+  const { ladoEsq, ladoDir, profundidade: d, altura: H, espessuras: e } = params;
+
+  const shape = useMemo(() => {
+    const s = new THREE.Shape();
+    const fp = g.footprint;
+    s.moveTo(fp[0][0] * MM_TO_M, -fp[0][1] * MM_TO_M);
+    for (let i = 1; i < fp.length; i++) s.lineTo(fp[i][0] * MM_TO_M, -fp[i][1] * MM_TO_M);
+    s.closePath();
+    return s;
+  }, [g]);
+
+  const maxDim = Math.max(ladoEsq, ladoDir, H) * MM_TO_M;
+  const target: [number, number, number] = [(ladoEsq / 2) * MM_TO_M, (H / 2) * MM_TO_M, (ladoDir / 2) * MM_TO_M];
+  const camPos: [number, number, number] = [target[0] + maxDim * 1.2, target[1] + maxDim * 0.7, target[2] + maxDim * 1.2];
+
+  const openAng = (doorAngleDeg * Math.PI) / 180;
+  const compEsq = Math.max(0, ladoEsq - d);
+  const compDir = Math.max(0, ladoDir - d);
+
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: camPos, fov: 35, near: 0.01, far: 100 }}
+      style={{ background: "linear-gradient(180deg, #f4f3ef 0%, #dcdad3 100%)" }}>
+      <ambientLight intensity={0.55} />
+      <directionalLight position={[3, 5, 4]} intensity={1.1} castShadow />
+      <Suspense fallback={null}><Environment preset="apartment" /></Suspense>
+
+      {/* Base em L */}
+      <mesh data-canto-base position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+        <extrudeGeometry args={[shape, { depth: e.base * MM_TO_M, bevelEnabled: false }]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+      {/* Tampo em L */}
+      <mesh data-canto-tampo position={[0, (H - e.tampo) * MM_TO_M, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+        <extrudeGeometry args={[shape, { depth: e.tampo * MM_TO_M, bevelEnabled: false }]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+
+      {/* Costas esq (parede esq, Z=0) */}
+      <mesh data-canto-costas position={[(ladoEsq / 2) * MM_TO_M, (H / 2) * MM_TO_M, (e.lateral / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[ladoEsq * MM_TO_M, H * MM_TO_M, e.lateral * MM_TO_M]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+      {/* Costas dir (parede dir, X=0) */}
+      <mesh data-canto-costas position={[(e.lateral / 2) * MM_TO_M, (H / 2) * MM_TO_M, (ladoDir / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[e.lateral * MM_TO_M, H * MM_TO_M, ladoDir * MM_TO_M]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+      {/* Retorno braço esq (X=ladoEsq, Z∈[0,d]) */}
+      <mesh data-canto-retorno position={[(ladoEsq - e.lateral / 2) * MM_TO_M, (H / 2) * MM_TO_M, (d / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[e.lateral * MM_TO_M, H * MM_TO_M, d * MM_TO_M]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+      {/* Retorno braço dir (Z=ladoDir, X∈[0,d]) */}
+      <mesh data-canto-retorno position={[(d / 2) * MM_TO_M, (H / 2) * MM_TO_M, (ladoDir - e.lateral / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[d * MM_TO_M, H * MM_TO_M, e.lateral * MM_TO_M]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+
+      {/* Frente braço esq (porta) — face interior Z=d, X∈[d,ladoEsq]; hinge em X=ladoEsq */}
+      {compEsq > 0 && (
+        <group position={[ladoEsq * MM_TO_M, 0, d * MM_TO_M]} rotation={[0, openAng, 0]}>
+          <mesh data-canto-frente position={[-(compEsq / 2) * MM_TO_M, (H / 2) * MM_TO_M, (e.frente / 2) * MM_TO_M]} castShadow receiveShadow>
+            <boxGeometry args={[compEsq * MM_TO_M, H * MM_TO_M, e.frente * MM_TO_M]} />
+            <meshStandardMaterial color="#D8D1C0" roughness={0.5} metalness={0.05} transparent opacity={0.92} />
+            <Edges threshold={15} color={COR_ARESTA} />
+          </mesh>
+        </group>
+      )}
+      {/* Frente braço dir (porta) — face interior X=d, Z∈[d,ladoDir]; hinge em Z=ladoDir */}
+      {compDir > 0 && (
+        <group position={[d * MM_TO_M, 0, ladoDir * MM_TO_M]} rotation={[0, Math.PI / 2 - openAng, 0]}>
+          <mesh data-canto-frente position={[(compDir / 2) * MM_TO_M, (H / 2) * MM_TO_M, (e.frente / 2) * MM_TO_M]} castShadow receiveShadow>
+            <boxGeometry args={[compDir * MM_TO_M, H * MM_TO_M, e.frente * MM_TO_M]} />
+            <meshStandardMaterial color="#D8D1C0" roughness={0.5} metalness={0.05} transparent opacity={0.92} />
+            <Edges threshold={15} color={COR_ARESTA} />
+          </mesh>
+        </group>
+      )}
+
+      {showHardware && g.furos.filter(f => f.tipo === "minifix").map((f, i) => {
+        const isEsq = /esq/.test(f.ref);
+        const x = isEsq ? (ladoEsq - e.lateral) * MM_TO_M : e.lateral * MM_TO_M;
+        const z = isEsq ? e.lateral * MM_TO_M : (ladoDir - e.lateral) * MM_TO_M;
+        return (
+          <mesh key={`mf-${i}`} position={[x, (H / 3) * MM_TO_M, z]}>
+            <cylinderGeometry args={[0.006, 0.006, 0.014, 12]} />
+            <meshStandardMaterial color={COR_MET} roughness={0.35} metalness={0.85} />
+          </mesh>
+        );
+      })}
+
+      <Grid position={[target[0], 0, target[2]]} args={[10, 10]} cellSize={0.1} cellThickness={0.6}
+        sectionSize={1} sectionThickness={1} sectionColor="#7a7367" cellColor="#b5afa3"
+        fadeDistance={15} fadeStrength={1} infiniteGrid />
+      <OrbitControls target={target} enableDamping makeDefault />
+      <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
+        <GizmoViewport axisColors={["#d94a4a", "#4ab06a", "#4a7fd9"]} labelColor="white" />
+      </GizmoHelper>
+    </Canvas>
+  );
+}
+
+// ─── [B5] Canto cego — caixa retangular + filler frontal + porta útil ──
+function CantoCegoCanvas({ config, doorAngleDeg, showHardware: _showHardware }: { config: ModuleConfig; doorAngleDeg: number; showHardware: boolean }) {
+  const params = useMemo(() => {
+    const cc = config.cantoCego ?? { largura: 900, profundidade: 560, larguraFiller: 100, larguraPortaUtil: 380 };
+    const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+    return {
+      largura: cc.largura, profundidade: cc.profundidade,
+      larguraFiller: cc.larguraFiller, larguraPortaUtil: cc.larguraPortaUtil,
+      altura: config.dims.height,
+      espessuras: { lateral: e.lateral, tampo: e.tampo, base: e.base, frente: e.lateral },
+    };
+  }, [config]);
+  const _g = useMemo(() => geraCantoCego(params), [params]);
+  const { largura: W, profundidade: D, altura: H, larguraFiller, larguraPortaUtil, espessuras: e } = params;
+
+  const maxDim = Math.max(W, H, D) * MM_TO_M;
+  const target: [number, number, number] = [(W / 2) * MM_TO_M, (H / 2) * MM_TO_M, (D / 2) * MM_TO_M];
+  const camPos: [number, number, number] = [target[0] + maxDim * 1.2, target[1] + maxDim * 0.6, target[2] + maxDim * 1.4];
+
+  const openAng = (doorAngleDeg * Math.PI) / 180;
+
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: camPos, fov: 35, near: 0.01, far: 100 }}
+      style={{ background: "linear-gradient(180deg, #f4f3ef 0%, #dcdad3 100%)" }}>
+      <ambientLight intensity={0.55} />
+      <directionalLight position={[3, 5, 4]} intensity={1.1} castShadow />
+      <Suspense fallback={null}><Environment preset="apartment" /></Suspense>
+
+      {/* Laterais */}
+      <mesh position={[(e.lateral / 2) * MM_TO_M, (H / 2) * MM_TO_M, (D / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[e.lateral * MM_TO_M, H * MM_TO_M, D * MM_TO_M]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+      <mesh position={[(W - e.lateral / 2) * MM_TO_M, (H / 2) * MM_TO_M, (D / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[e.lateral * MM_TO_M, H * MM_TO_M, D * MM_TO_M]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+      {/* Tampo */}
+      <mesh position={[(W / 2) * MM_TO_M, (H - e.tampo / 2) * MM_TO_M, (D / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[(W - 2 * e.lateral) * MM_TO_M, e.tampo * MM_TO_M, D * MM_TO_M]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+      {/* Base */}
+      <mesh position={[(W / 2) * MM_TO_M, (e.base / 2) * MM_TO_M, (D / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[(W - 2 * e.lateral) * MM_TO_M, e.base * MM_TO_M, D * MM_TO_M]} />
+        <meshStandardMaterial color={COR_MELAMINA} roughness={0.7} metalness={0.02} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+
+      {/* Filler frontal (sem abertura) */}
+      <mesh position={[(larguraFiller / 2) * MM_TO_M, (H / 2) * MM_TO_M, (D - e.frente / 2) * MM_TO_M]} castShadow receiveShadow>
+        <boxGeometry args={[larguraFiller * MM_TO_M, H * MM_TO_M, e.frente * MM_TO_M]} />
+        <meshStandardMaterial color="#C9C2B0" roughness={0.6} metalness={0.05} />
+        <Edges threshold={15} color={COR_ARESTA} />
+      </mesh>
+
+      {/* Porta útil — hinge no lado do filler (X=larguraFiller) */}
+      {larguraPortaUtil > 0 && (
+        <group position={[larguraFiller * MM_TO_M, 0, D * MM_TO_M]} rotation={[0, -openAng, 0]}>
+          <mesh position={[(larguraPortaUtil / 2) * MM_TO_M, (H / 2) * MM_TO_M, (e.frente / 2) * MM_TO_M]} castShadow receiveShadow>
+            <boxGeometry args={[larguraPortaUtil * MM_TO_M, H * MM_TO_M, e.frente * MM_TO_M]} />
+            <meshStandardMaterial color="#D8D1C0" roughness={0.5} metalness={0.05} transparent opacity={0.92} />
+            <Edges threshold={15} color={COR_ARESTA} />
+          </mesh>
+        </group>
+      )}
+
+      <Grid position={[target[0], 0, target[2]]} args={[10, 10]} cellSize={0.1} cellThickness={0.6}
+        sectionSize={1} sectionThickness={1} sectionColor="#7a7367" cellColor="#b5afa3"
+        fadeDistance={15} fadeStrength={1} infiniteGrid />
+      <OrbitControls target={target} enableDamping makeDefault />
+      <GizmoHelper alignment="bottom-right" margin={[64, 64]}>
+        <GizmoViewport axisColors={["#d94a4a", "#4ab06a", "#4a7fd9"]} labelColor="white" />
+      </GizmoHelper>
+    </Canvas>
+  );
+}
