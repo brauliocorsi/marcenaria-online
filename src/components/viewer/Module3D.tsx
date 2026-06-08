@@ -214,7 +214,11 @@ function isDrawerPiece(p: PecaGeo, idx: number): boolean {
 }
 
 export function Module3D({ config, explode = 0, furos = [], showHardware = false, doorAngleDeg = 0, drawerPct = 0, showCotas = false, gavetaTemplates, materialCorpo, materialFrente }: Module3DProps) {
+  if (config.categoria === "canto" && config.cantoTipo === "diagonal") {
+    return <CantoDiagonalCanvas config={config} doorAngleDeg={doorAngleDeg} showHardware={showHardware} />;
+  }
   const pecas = useMemo(() => calcularGeometria(config), [config]);
+
   const pes = useMemo(() => calcularPes(config), [config]);
   const portas = useMemo(() => dimensoesPortas(config), [config]);
   const gavetas = useMemo(() => dimensoesGavetas(config), [config]);
