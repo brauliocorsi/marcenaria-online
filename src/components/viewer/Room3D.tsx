@@ -87,8 +87,9 @@ function WallMesh({
     <>
       <mesh castShadow receiveShadow>
         <extrudeGeometry args={[shape, extrudeArgs]} />
-        <meshStandardMaterial color={COR_PAREDE} side={THREE.DoubleSide} />
+        <meshStandardMaterial color={cor} side={THREE.DoubleSide} />
         <Edges color={COR_ARESTA} threshold={20} />
+
       </mesh>
       {aberturas.filter((a) => a.valido).map((ab) => (
         <AberturaDeco key={ab.id} ab={ab} esp={esp} />
