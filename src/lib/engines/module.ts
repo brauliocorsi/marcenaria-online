@@ -187,6 +187,8 @@ export interface ModuleConfig {
   materialFrenteId?: string | null;
   /** [novo A1] Categoria do módulo. Opcional → módulos antigos inalterados. */
   categoria?: "base" | "superior" | "coluna" | "gaveteiro" | "canto" | "ilha" | "roupeiro" | "nicho";
+  /** [novo B1] Secções (divisórias estruturais + delegação por tipo). Opcional. */
+  secoes?: Secao[];
 }
 
 
