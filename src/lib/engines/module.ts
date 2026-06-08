@@ -512,6 +512,67 @@ export function dimensoesTamponamentos(config: ModuleConfig): TamponamentoPeca[]
 }
 
 // ─────────────────────────────────────────────────────────────
+// Secções (Fase B1) — divisórias estruturais + delegação por tipo
+// ─────────────────────────────────────────────────────────────
+export interface SecaoIntervalo {
+  idx: number;
+  secao: Secao;
+  yMin: number;
+  yMax: number;
+}
+export interface DivisoriaInfo {
+  idx: number;
+  espessura: number;
+  yMin: number;
+  yMax: number;
+  yCenter: number;
+}
+
+export function temSecoes(c: ModuleConfig): boolean {
+  return Array.isArray(c.secoes) && c.secoes.length > 0;
+}
+
+export function intervalosSecoes(config: ModuleConfig): {
+  intervalos: SecaoIntervalo[]; divisorias: DivisoriaInfo[]; alturaInterna: number;
+} {
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const yBot = e.base;
+  const yTop = config.dims.height - e.tampo;
+  const alturaInterna = yTop - yBot;
+  if (!temSecoes(config)) return { intervalos: [], divisorias: [], alturaInterna };
+  const arr = config.secoes!;
+  const intervalos: SecaoIntervalo[] = [];
+  const divisorias: DivisoriaInfo[] = [];
+  let y = yBot;
+  arr.forEach((s, idx) => {
+    const yMin = y;
+    const yMax = y + s.altura_mm;
+    intervalos.push({ idx, secao: s, yMin, yMax });
+    if (idx < arr.length - 1) {
+      const espD = e.prateleira;
+      divisorias.push({ idx, espessura: espD, yMin: yMax, yMax: yMax + espD, yCenter: yMax + espD / 2 });
+      y = yMax + espD;
+    }
+  });
+  return { intervalos, divisorias, alturaInterna };
+}
+
+export function dimensoesDivisorias(config: ModuleConfig): {
+  comprimento: number; largura: number; espessura: number; centers: { yCenter: number; idx: number }[];
+} {
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const W = config.dims.width, D = config.dims.depth;
+  const compr = W - 2 * e.lateral - config.folgas.prateleira_lateral;
+  const larg = D - config.folgas.prateleira_recuo;
+  const { divisorias } = intervalosSecoes(config);
+  return {
+    comprimento: compr, largura: larg, espessura: e.prateleira,
+    centers: divisorias.map(d => ({ yCenter: d.yCenter, idx: d.idx })),
+  };
+}
+
+
+// ─────────────────────────────────────────────────────────────
 // Geometria 3D — fonte única de verdade partilhada com calcularPecas.
 // Sistema: X=largura (0..W), Y=altura (0..H), Z=profundidade (0..D).
 // Origem num canto. `center` é o centro da caixa de cada peça.
