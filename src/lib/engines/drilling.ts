@@ -286,7 +286,7 @@ export function calcularFuros(
   }
 
   // ── Pinos Ø5 para prateleiras móveis (default) ──
-  if (nPrateleiras > 0 && prateleirasMoveis) {
+  if (nPrateleiras > 0 && prateleirasMoveis && !temSecoes(config)) {
     const innerBottom = e.base;
     const innerHeight = H - e.base - e.tampo;
     const s = config.sistema32;
@@ -295,7 +295,6 @@ export function calcularFuros(
     const zs2 = [recF, D - recT];
     for (let i = 1; i <= nPrateleiras; i++) {
       const cy = innerBottom + (innerHeight * i) / (nPrateleiras + 1);
-      // Se sistema 32 ativo, snap à coluna 32 mais próxima.
       let yPino = cy;
       if (s?.ativo) {
         const ini = s.inicioY ?? 100;
@@ -311,12 +310,43 @@ export function calcularFuros(
           furos.push(makeFuro({
             junta: `prateleira${i}_pino_${lado}`,
             tipo_furo: "pino",
-            pos: [xFace, yPino, z],
-            dir,
+            pos: [xFace, yPino, z], dir,
             diametro: diametroPara("pino", regras),
             profundidade: profundidadePara("pino", regras),
             peca: "lateral",
           }, bits, brocas));
+        }
+      }
+    }
+  }
+
+  // ── [B1] Secções 'nicho_aberto': pinos Ø5 escopados ao intervalo da secção ──
+  if (temSecoes(config)) {
+    const s = config.sistema32;
+    const recF = s?.recuoFrente ?? 37;
+    const recT = s?.recuoTras ?? 37;
+    const zs2 = [recF, D - recT];
+    const { intervalos } = intervalosSecoes(config);
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "nicho_aberto") continue;
+      const np = (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0;
+      if (np <= 0) continue;
+      const innerH = it.yMax - it.yMin;
+      for (let i = 1; i <= np; i++) {
+        const cy = it.yMin + (innerH * i) / (np + 1);
+        for (const lado of ["esq", "dir"] as const) {
+          const xFace = lado === "esq" ? e.lateral : W - e.lateral;
+          const dir: Vec3 = lado === "esq" ? [-1, 0, 0] : [1, 0, 0];
+          for (const z of zs2) {
+            furos.push(makeFuro({
+              junta: `sec${it.idx + 1}_prateleira${i}_pino_${lado}`,
+              tipo_furo: "pino",
+              pos: [xFace, cy, z], dir,
+              diametro: diametroPara("pino", regras),
+              profundidade: profundidadePara("pino", regras),
+              peca: "lateral",
+            }, bits, brocas));
+          }
         }
       }
     }
