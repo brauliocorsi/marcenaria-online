@@ -258,7 +258,7 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
-  if (nPrateleiras > 0) {
+  if (nPrateleiras > 0 && !temSecoes(config)) {
     pecas.push({
       tipo: "prateleira",
       descricao: "Prateleira",
@@ -268,6 +268,33 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
       espessura_mm: r(e.prateleira),
       veio: "comprimento",
     });
+  }
+
+  // [B1] Divisórias + prateleiras móveis por secção 'nicho_aberto'.
+  if (temSecoes(config)) {
+    const dd = dimensoesDivisorias(config);
+    if (dd.centers.length > 0) {
+      pecas.push({
+        tipo: "prateleira", descricao: "Divisória",
+        qtd: dd.centers.length,
+        comprimento_mm: r(dd.comprimento), largura_mm: r(dd.largura),
+        espessura_mm: r(dd.espessura), veio: "comprimento",
+      });
+    }
+    const { intervalos } = intervalosSecoes(config);
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "nicho_aberto") continue;
+      const np = (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0;
+      if (np > 0) {
+        pecas.push({
+          tipo: "prateleira", descricao: `Prateleira (sec ${it.idx + 1})`,
+          qtd: np,
+          comprimento_mm: r(W - 2 * e.lateral - folgas.prateleira_lateral),
+          largura_mm: r(D - folgas.prateleira_recuo),
+          espessura_mm: r(e.prateleira), veio: "comprimento",
+        });
+      }
+    }
   }
 
   {
