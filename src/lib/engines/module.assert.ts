@@ -2,7 +2,7 @@
 import { calcularPecas, calcularGeometria, dimensoesPortas, dimensoesGavetas, intervalosSecoes, DEFAULT_MODULE_CONFIG, type Peca, type PecaGeo, type ModuleConfig, type Secao } from "./module";
 import { calcularFuros } from "./drilling";
 import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
-import { geraCantoDiagonal, areaPoligono, dist2D } from "./canto";
+import { geraCantoDiagonal, geraCantoL, geraCantoCego, areaPoligono, dist2D } from "./canto";
 
 function find(ps: Peca[], tipo: string) {
   return ps.find((p) => p.tipo === tipo)!;
