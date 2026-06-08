@@ -523,8 +523,7 @@ function ModulosPage() {
             );
           })()}
 
-          {!(Array.isArray(config.secoes) && config.secoes.length > 0) && (<>
-          <Card>
+          <Card className={cn((config.secoes && config.secoes.length > 0) && "hidden")}>
             <CardHeader className="pb-3"><CardTitle className="text-sm">Prateleiras</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
