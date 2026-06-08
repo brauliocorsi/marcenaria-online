@@ -1,5 +1,7 @@
 // Testes de sanidade do motor paramétrico — corre apenas em dev.
-import { calcularPecas, calcularGeometria, dimensoesPortas, DEFAULT_MODULE_CONFIG, type Peca, type PecaGeo, type ModuleConfig } from "./module";
+import { calcularPecas, calcularGeometria, dimensoesPortas, dimensoesGavetas, intervalosSecoes, DEFAULT_MODULE_CONFIG, type Peca, type PecaGeo, type ModuleConfig, type Secao } from "./module";
+import { calcularFuros } from "./drilling";
+import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
 
 function find(ps: Peca[], tipo: string) {
   return ps.find((p) => p.tipo === tipo)!;
