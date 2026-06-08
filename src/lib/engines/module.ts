@@ -189,6 +189,15 @@ export interface ModuleConfig {
   categoria?: "base" | "superior" | "coluna" | "gaveteiro" | "canto" | "ilha" | "roupeiro" | "nicho";
   /** [novo B1] Secções (divisórias estruturais + delegação por tipo). Opcional. */
   secoes?: Secao[];
+  /** [novo B3] Subtipo de canto (categoria==='canto'). */
+  cantoTipo?: "l" | "cego" | "diagonal";
+  /** [novo B3] Parâmetros do canto diagonal (footprint pentagonal). */
+  cantoDiagonal?: {
+    ladoEsq: number;
+    ladoDir: number;
+    profRetornoEsq: number;
+    profRetornoDir: number;
+  };
 }
 
 
