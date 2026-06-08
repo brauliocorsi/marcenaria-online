@@ -63,8 +63,9 @@ function transformParede(room: RoomConfig, id: ParedeId): WallTransform {
 }
 
 function WallMesh({
-  comp, altura, esp, aberturas,
-}: { comp: number; altura: number; esp: number; aberturas: AberturaCalculada[] }) {
+  comp, altura, esp, aberturas, cor,
+}: { comp: number; altura: number; esp: number; aberturas: AberturaCalculada[]; cor: string }) {
+
   const shape = useMemo(() => {
     const s = new THREE.Shape();
     const W = comp * MM, H = altura * MM;
