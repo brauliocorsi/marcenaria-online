@@ -133,6 +133,35 @@ export interface Sistema32Config {
   fimY: number;
 }
 
+// ─── Secções (Fase B1) ─────────────────────────────────────
+export type SecaoTipo = "nicho_aberto" | "porta" | "gavetas";
+
+export interface SecaoNichoConfig { prateleirasMoveis?: number; }
+export interface SecaoPortaConfig {
+  nPortas?: 0 | 1 | 2;
+  ladoAbertura?: LadoAbertura;
+  folga?: number;
+  folgaCentral?: number;
+  espessura?: number | null;
+}
+export interface SecaoGavetasConfig {
+  nGavetas?: number;
+  folga?: number;
+  espessuraFrente?: number;
+  corredica?: CorredicaConfig;
+  espessuraCaixa?: number;
+  espessuraFundo?: number;
+  alturaCaixaFolga?: number;
+  distanciaFundoGaveta?: number;
+  profundidadeRasgoGaveta?: number;
+}
+export interface Secao {
+  id: string;
+  altura_mm: number;
+  tipo: SecaoTipo;
+  config?: Partial<SecaoNichoConfig & SecaoPortaConfig & SecaoGavetasConfig>;
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
