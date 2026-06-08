@@ -225,6 +225,60 @@ export function runModuleAsserts() {
     tests.push(["[novo B4] regressão: módulo retangular inalterado", reg.length > 0 && !reg.some(p => /pentagonal/i.test(p.descricao))]);
   }
 
+  // ─── [novo B5] Cantos L e Cego ────────────────────────────
+  {
+    // [regressão] diagonal inalterado
+    const gDiag = geraCantoDiagonal({
+      ladoEsq: 900, ladoDir: 900, profRetornoEsq: 560, profRetornoDir: 560,
+      altura: 720, espessuras: { lateral: 19, tampo: 19, base: 19, frente: 19 },
+    });
+    tests.push(["[novo B5] regressão: diagonal ainda 5 vértices", gDiag.footprint.length === 5]);
+    const regRet = calcularPecas(DEFAULT_MODULE_CONFIG);
+    tests.push(["[novo B5] regressão: retangular inalterado",
+      regRet.length > 0 && !regRet.some(p => /em L|filler/i.test(p.descricao))]);
+
+    // [novo] Canto L
+    const gL = geraCantoL({
+      ladoEsq: 1200, ladoDir: 1000, profundidade: 560, altura: 720,
+      espessuras: { lateral: 19, tampo: 19, base: 19, frente: 19 },
+    });
+    tests.push(["[novo B5-L] footprint = 6 vértices", gL.footprint.length === 6]);
+    const frentesL = gL.pecas.filter(p => p.tipo === "porta");
+    tests.push(["[novo B5-L] 2 frentes (portas)", frentesL.length === 2]);
+    const tampoL = gL.pecas.find(p => p.ref === "tampo");
+    const baseL = gL.pecas.find(p => p.ref === "base");
+    tests.push(["[novo B5-L] tampo + base em L presentes",
+      !!tampoL && !!baseL && /em L/i.test(tampoL!.descricao) && /em L/i.test(baseL!.descricao)]);
+    // Área shoelace coerente
+    tests.push(["[novo B5-L] área L === shoelace(footprint)",
+      Math.abs(gL.areaL_mm2 - areaPoligono(gL.footprint)) < 0.001]);
+
+    // [novo] Canto cego
+    const gC = geraCantoCego({
+      largura: 900, profundidade: 560, altura: 720,
+      larguraFiller: 100, larguraPortaUtil: 380,
+      espessuras: { lateral: 19, tampo: 19, base: 19, frente: 19 },
+    });
+    const fillers = gC.pecas.filter(p => p.ref === "filler");
+    const portaUtil = gC.pecas.find(p => p.ref === "porta_util");
+    const caixaPecas = gC.pecas.filter(p => /lateral|tampo|base/.test(p.tipo));
+    tests.push(["[novo B5-cego] caixa retangular (2 laterais + tampo + base)",
+      caixaPecas.length === 4]);
+    tests.push(["[novo B5-cego] 1 painel filler", fillers.length === 1]);
+    tests.push(["[novo B5-cego] largura útil + filler === largura frontal",
+      !!portaUtil && gC.larguraFrontalTotal_mm === 100 + 380]);
+
+    // [novo-ui] persistência de cantoL e cantoCego no config
+    const cfgL: ModuleConfig = { ...DEFAULT_MODULE_CONFIG, categoria: "canto", cantoTipo: "l",
+      cantoL: { ladoEsq: 1200, ladoDir: 1000, profundidade: 560 } };
+    tests.push(["[novo B5-ui] cantoL persiste",
+      cfgL.cantoTipo === "l" && cfgL.cantoL?.ladoEsq === 1200 && cfgL.cantoL?.profundidade === 560]);
+    const cfgCe: ModuleConfig = { ...DEFAULT_MODULE_CONFIG, categoria: "canto", cantoTipo: "cego",
+      cantoCego: { largura: 900, profundidade: 560, larguraFiller: 100, larguraPortaUtil: 380 } };
+    tests.push(["[novo B5-ui] cantoCego persiste",
+      cfgCe.cantoTipo === "cego" && cfgCe.cantoCego?.larguraFiller === 100 && cfgCe.cantoCego?.larguraPortaUtil === 380]);
+  }
+
   let allOk = true;
 
   for (const [label, ok] of tests) {
