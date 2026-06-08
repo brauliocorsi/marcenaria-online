@@ -179,7 +179,7 @@ export function Room3D({ room, placements = [], showHardware = false }: Room3DPr
             const aberturas = calcularAberturasDaParede(room, pid);
             return (
               <group key={pid} position={t.position} rotation={t.rotation}>
-                <WallMesh comp={comp} altura={room.altura} esp={room.espessuraParede} aberturas={aberturas} />
+                <WallMesh comp={comp} altura={room.altura} esp={room.espessuraParede} aberturas={aberturas} cor={room.corParede} />
               </group>
             );
           })}
