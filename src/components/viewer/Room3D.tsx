@@ -14,8 +14,7 @@ import { transformColocacao, type ParedeColocavel } from "@/lib/engines/ambiente
 import { DEFAULT_MODULE_CONFIG, normalizarConfig, type ModuleConfig } from "@/lib/engines/module";
 
 const MM = 0.001;
-const COR_CHAO = "#EDEAE3";
-const COR_PAREDE = "#F0EDE6";
+
 const COR_ARESTA = "#3a3a3a";
 const COR_MOLDURA = "#E8E4DB";
 const COR_VIDRO = "#a8c7e8";
