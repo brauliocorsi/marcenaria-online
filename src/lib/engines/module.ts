@@ -198,6 +198,19 @@ export interface ModuleConfig {
     profRetornoEsq: number;
     profRetornoDir: number;
   };
+  /** [novo B5] Parâmetros do canto em L (footprint 6 vértices). */
+  cantoL?: {
+    ladoEsq: number;
+    ladoDir: number;
+    profundidade: number;
+  };
+  /** [novo B5] Parâmetros do canto cego (caixa + filler frontal). */
+  cantoCego?: {
+    largura: number;
+    profundidade: number;
+    larguraFiller: number;
+    larguraPortaUtil: number;
+  };
 }
 
 

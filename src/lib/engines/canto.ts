@@ -169,3 +169,173 @@ export function geraCantoDiagonal(p: CantoDiagonalParams): CantoGeometria {
     furos,
   };
 }
+
+// ─── [B5] Canto em L ───────────────────────────────────────────────
+export interface CantoLParams {
+  ladoEsq: number;          // comprimento ao longo da parede esquerda (X)
+  ladoDir: number;          // comprimento ao longo da parede direita (Z)
+  profundidade: number;     // d (profundidade dos braços, igual em ambos)
+  altura: number;           // H
+  espessuras: {
+    lateral: number;
+    tampo: number;
+    base: number;
+    frente: number;
+  };
+}
+
+export interface CantoLGeometria {
+  footprint: Vec2[];        // 6 vértices, CCW
+  areaL_mm2: number;
+  pecas: CantoPeca[];
+  furos: CantoFuro[];
+}
+
+export function geraCantoL(p: CantoLParams): CantoLGeometria {
+  const { ladoEsq, ladoDir, profundidade: d, altura: H, espessuras: e } = p;
+
+  // Footprint em L (X, Z), CCW. P0=canto interior parede.
+  const P0: Vec2 = [0, 0];
+  const P1: Vec2 = [ladoEsq, 0];
+  const P2: Vec2 = [ladoEsq, d];
+  const P3: Vec2 = [d, d];
+  const P4: Vec2 = [d, ladoDir];
+  const P5: Vec2 = [0, ladoDir];
+  const footprint: Vec2[] = [P0, P1, P2, P3, P4, P5];
+  const areaL = areaPoligono(footprint);
+
+  const pecas: CantoPeca[] = [];
+
+  // Costas (ao longo das paredes).
+  pecas.push({
+    tipo: "lateral", ref: "costas_esq", descricao: "Costas esquerda",
+    qtd: 1, comprimento_mm: r(ladoEsq), largura_mm: r(H), espessura_mm: r(e.lateral),
+    veio: "comprimento", pos: [0, 0, 0],
+  });
+  pecas.push({
+    tipo: "lateral", ref: "costas_dir", descricao: "Costas direita",
+    qtd: 1, comprimento_mm: r(ladoDir), largura_mm: r(H), espessura_mm: r(e.lateral),
+    veio: "comprimento", pos: [0, 0, 0],
+  });
+
+  // Retornos nas pontas dos braços (faces exteriores do L).
+  // Retorno braço esq: em X=ladoEsq, Z∈[0,d]
+  pecas.push({
+    tipo: "lateral", ref: "retorno_braco_esq", descricao: "Retorno braço esquerdo",
+    qtd: 1, comprimento_mm: r(d), largura_mm: r(H), espessura_mm: r(e.lateral),
+    veio: "comprimento", pos: [ladoEsq, 0, 0],
+  });
+  // Retorno braço dir: em Z=ladoDir, X∈[0,d]
+  pecas.push({
+    tipo: "lateral", ref: "retorno_braco_dir", descricao: "Retorno braço direito",
+    qtd: 1, comprimento_mm: r(d), largura_mm: r(H), espessura_mm: r(e.lateral),
+    veio: "comprimento", pos: [0, 0, ladoDir],
+  });
+
+  // Frentes (portas) — uma por braço, nas faces interiores.
+  // Frente braço esq: Z=d, X∈[d,ladoEsq], comprimento = ladoEsq - d
+  const compEsq = Math.max(0, ladoEsq - d);
+  pecas.push({
+    tipo: "porta", ref: "frente_braco_esq", descricao: "Frente braço esquerdo (porta)",
+    qtd: 1, comprimento_mm: r(compEsq), largura_mm: r(H), espessura_mm: r(e.frente),
+    veio: "comprimento", pos: [d, 0, d], rotY: 0,
+  });
+  // Frente braço dir: X=d, Z∈[d,ladoDir], comprimento = ladoDir - d
+  const compDir = Math.max(0, ladoDir - d);
+  pecas.push({
+    tipo: "porta", ref: "frente_braco_dir", descricao: "Frente braço direito (porta)",
+    qtd: 1, comprimento_mm: r(compDir), largura_mm: r(H), espessura_mm: r(e.frente),
+    veio: "comprimento", pos: [d, 0, d], rotY: Math.PI / 2,
+  });
+
+  // Tampo + base em L (área shoelace).
+  pecas.push({
+    tipo: "tampo", ref: "tampo", descricao: "Tampo (em L)",
+    qtd: 1, comprimento_mm: r(Math.max(ladoEsq, ladoDir)),
+    largura_mm: r(Math.max(ladoEsq, ladoDir)), espessura_mm: r(e.tampo),
+    veio: "comprimento",
+  });
+  pecas.push({
+    tipo: "base", ref: "base", descricao: "Base (em L)",
+    qtd: 1, comprimento_mm: r(Math.max(ladoEsq, ladoDir)),
+    largura_mm: r(Math.max(ladoEsq, ladoDir)), espessura_mm: r(e.base),
+    veio: "comprimento",
+  });
+
+  const furos: CantoFuro[] = [
+    { ref: "j_esq_mf", pecaA: "costas_esq", pecaB: "retorno_braco_esq", tipo: "minifix" },
+    { ref: "j_esq_cv", pecaA: "costas_esq", pecaB: "retorno_braco_esq", tipo: "cavilha" },
+    { ref: "j_dir_mf", pecaA: "costas_dir", pecaB: "retorno_braco_dir", tipo: "minifix" },
+    { ref: "j_dir_cv", pecaA: "costas_dir", pecaB: "retorno_braco_dir", tipo: "cavilha" },
+  ];
+
+  return { footprint, areaL_mm2: areaL, pecas, furos };
+}
+
+// ─── [B5] Canto cego ───────────────────────────────────────────────
+export interface CantoCegoParams {
+  largura: number;            // W (frente total)
+  profundidade: number;       // D
+  altura: number;             // H
+  larguraFiller: number;      // painel de enchimento que cobre a zona cega
+  larguraPortaUtil: number;   // largura da porta utilizável
+  espessuras: {
+    lateral: number;
+    tampo: number;
+    base: number;
+    frente: number;
+  };
+}
+
+export interface CantoCegoGeometria {
+  pecas: CantoPeca[];
+  furos: CantoFuro[];
+  larguraFrontalTotal_mm: number; // = larguraPortaUtil + larguraFiller
+}
+
+export function geraCantoCego(p: CantoCegoParams): CantoCegoGeometria {
+  const { largura: W, profundidade: D, altura: H, larguraFiller, larguraPortaUtil, espessuras: e } = p;
+  const pecas: CantoPeca[] = [];
+
+  // Carcaça retangular (laterais + tampo + base).
+  pecas.push({
+    tipo: "lateral", ref: "lateral_esq", descricao: "Lateral esquerda",
+    qtd: 1, comprimento_mm: r(H), largura_mm: r(D), espessura_mm: r(e.lateral),
+    veio: "comprimento", pos: [0, 0, 0],
+  });
+  pecas.push({
+    tipo: "lateral", ref: "lateral_dir", descricao: "Lateral direita",
+    qtd: 1, comprimento_mm: r(H), largura_mm: r(D), espessura_mm: r(e.lateral),
+    veio: "comprimento", pos: [W - e.lateral, 0, 0],
+  });
+  pecas.push({
+    tipo: "tampo", ref: "tampo", descricao: "Tampo",
+    qtd: 1, comprimento_mm: r(W - 2 * e.lateral), largura_mm: r(D), espessura_mm: r(e.tampo),
+    veio: "comprimento",
+  });
+  pecas.push({
+    tipo: "base", ref: "base", descricao: "Base",
+    qtd: 1, comprimento_mm: r(W - 2 * e.lateral), largura_mm: r(D), espessura_mm: r(e.base),
+    veio: "comprimento",
+  });
+
+  // Painel filler/retorno cego na frente.
+  pecas.push({
+    tipo: "porta", ref: "filler", descricao: "Filler/retorno cego",
+    qtd: 1, comprimento_mm: r(H), largura_mm: r(larguraFiller), espessura_mm: r(e.frente),
+    veio: "comprimento", pos: [0, 0, D - e.frente],
+  });
+
+  // Porta útil.
+  pecas.push({
+    tipo: "porta", ref: "porta_util", descricao: "Porta útil",
+    qtd: 1, comprimento_mm: r(H), largura_mm: r(larguraPortaUtil), espessura_mm: r(e.frente),
+    veio: "comprimento", pos: [larguraFiller, 0, D - e.frente],
+  });
+
+  const furos: CantoFuro[] = [];
+  return {
+    pecas, furos,
+    larguraFrontalTotal_mm: r(larguraFiller + larguraPortaUtil),
+  };
+}
