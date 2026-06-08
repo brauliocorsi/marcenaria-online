@@ -643,7 +643,7 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
       size: [W, e.base, D], center: [W / 2, e.base / 2, D / 2] });
   }
 
-  if (nPrateleiras > 0) {
+  if (nPrateleiras > 0 && !temSecoes(config)) {
     const pratLen = W - 2 * e.lateral - folgas.prateleira_lateral;
     const pratDep = D - folgas.prateleira_recuo;
     const innerBottom = e.base;
@@ -655,6 +655,35 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
         size: [pratLen, e.prateleira, pratDep],
         center: [W / 2, cy, pratDep / 2],
       });
+    }
+  }
+
+  // [B1] Divisórias + prateleiras móveis por secção 'nicho_aberto' (geometria 3D)
+  if (temSecoes(config)) {
+    const pratLen = W - 2 * e.lateral - folgas.prateleira_lateral;
+    const pratDep = D - folgas.prateleira_recuo;
+    const dd = dimensoesDivisorias(config);
+    for (const c of dd.centers) {
+      out.push({
+        tipo: "prateleira", descricao: `Divisória ${c.idx + 1}`, veio: "comprimento",
+        size: [pratLen, dd.espessura, pratDep],
+        center: [W / 2, c.yCenter, pratDep / 2],
+      });
+    }
+    const { intervalos } = intervalosSecoes(config);
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "nicho_aberto") continue;
+      const np = (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0;
+      if (np <= 0) continue;
+      const innerH = it.yMax - it.yMin;
+      for (let i = 1; i <= np; i++) {
+        const cy = it.yMin + (innerH * i) / (np + 1);
+        out.push({
+          tipo: "prateleira", descricao: `Prateleira sec${it.idx + 1}#${i}`, veio: "comprimento",
+          size: [pratLen, e.prateleira, pratDep],
+          center: [W / 2, cy, pratDep / 2],
+        });
+      }
     }
   }
 
