@@ -1,4 +1,4 @@
-import { calcularParedes, calcularAberturasDaParede, validarAbertura, DEFAULT_ROOM, type Abertura } from "./ambiente";
+import { calcularParedes, calcularAberturasDaParede, validarAbertura, normalizarRoom, DEFAULT_ROOM, type Abertura } from "./ambiente";
 
 export function runAmbienteAsserts() {
   const sala = { ...DEFAULT_ROOM, largura: 3000, profundidade: 2000, altura: 2400, espessuraParede: 100, aberturas: [] };
