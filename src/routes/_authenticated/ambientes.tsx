@@ -236,8 +236,37 @@ function AmbientesPage() {
                   />
                 </div>
               ))}
+              <div className="pt-2 border-t space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="cor-parede">Cor das paredes</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="cor-parede"
+                      type="color"
+                      value={room.corParede}
+                      onChange={(e) => setRoom((r) => ({ ...r, corParede: e.target.value }))}
+                      className="h-7 w-10 cursor-pointer rounded border"
+                    />
+                    <span className="text-xs text-muted-foreground font-mono">{room.corParede}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="cor-chao">Cor do chão</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="cor-chao"
+                      type="color"
+                      value={room.corChao}
+                      onChange={(e) => setRoom((r) => ({ ...r, corChao: e.target.value }))}
+                      className="h-7 w-10 cursor-pointer rounded border"
+                    />
+                    <span className="text-xs text-muted-foreground font-mono">{room.corChao}</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
