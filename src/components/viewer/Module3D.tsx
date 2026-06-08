@@ -217,6 +217,12 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
   if (config.categoria === "canto" && config.cantoTipo === "diagonal") {
     return <CantoDiagonalCanvas config={config} doorAngleDeg={doorAngleDeg} showHardware={showHardware} />;
   }
+  if (config.categoria === "canto" && config.cantoTipo === "l") {
+    return <CantoLCanvas config={config} doorAngleDeg={doorAngleDeg} showHardware={showHardware} />;
+  }
+  if (config.categoria === "canto" && config.cantoTipo === "cego") {
+    return <CantoCegoCanvas config={config} doorAngleDeg={doorAngleDeg} showHardware={showHardware} />;
+  }
   const pecas = useMemo(() => calcularGeometria(config), [config]);
 
   const pes = useMemo(() => calcularPes(config), [config]);
