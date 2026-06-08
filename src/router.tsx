@@ -14,6 +14,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   import("./lib/engines/ambiente-modulos.assert").then((m) => m.runAmbienteModulosAsserts()).catch(() => {});
   import("./lib/engines/puxadores").then((m) => m.runPuxadoresAsserts()).catch(() => {});
   import("./lib/engines/presets-cozinha").then((m) => m.runPresetsCozinhaAsserts()).catch(() => {});
+  import("./lib/engines/projects.assert").then((m) => m.runProjectsAsserts()).catch(() => {});
 }
 
 export const getRouter = () => {

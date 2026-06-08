@@ -71,6 +71,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          project_id: string | null
           updated_at: string
           user_id: string
         }
@@ -79,6 +80,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          project_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -87,10 +89,19 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          project_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ambientes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       drill_bits: {
         Row: {
@@ -379,6 +390,9 @@ export type Database = {
       }
       projects: {
         Row: {
+          cliente_morada: string | null
+          cliente_nif: string | null
+          cliente_nome: string | null
           created_at: string
           data: Json
           id: string
@@ -389,6 +403,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cliente_morada?: string | null
+          cliente_nif?: string | null
+          cliente_nome?: string | null
           created_at?: string
           data?: Json
           id?: string
@@ -399,6 +416,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cliente_morada?: string | null
+          cliente_nif?: string | null
+          cliente_nome?: string | null
           created_at?: string
           data?: Json
           id?: string
@@ -442,6 +462,7 @@ export type Database = {
       }
       settings: {
         Row: {
+          active_project_id: string | null
           created_at: string
           currency: string
           default_thickness_mm: number
@@ -452,6 +473,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_project_id?: string | null
           created_at?: string
           currency?: string
           default_thickness_mm?: number
@@ -462,6 +484,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_project_id?: string | null
           created_at?: string
           currency?: string
           default_thickness_mm?: number
@@ -471,7 +494,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "settings_active_project_id_fkey"
+            columns: ["active_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

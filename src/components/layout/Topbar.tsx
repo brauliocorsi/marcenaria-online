@@ -1,4 +1,4 @@
-import { Menu, LogOut, User as UserIcon } from "lucide-react";
+import { Menu, LogOut, User as UserIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,11 +14,12 @@ import { useQueryClient } from "@tanstack/react-query";
 
 interface TopbarProps {
   email?: string | null;
-  projectName?: string;
+  projectName?: string | null;
+  onCloseProject?: () => void;
   onOpenSidebar?: () => void;
 }
 
-export function Topbar({ email, projectName, onOpenSidebar }: TopbarProps) {
+export function Topbar({ email, projectName, onCloseProject, onOpenSidebar }: TopbarProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -41,13 +42,27 @@ export function Topbar({ email, projectName, onOpenSidebar }: TopbarProps) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex flex-col leading-tight">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
-            Projeto
-          </span>
-          <span className="text-sm font-medium">
-            {projectName ?? "Sem projeto aberto"}
-          </span>
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col leading-tight">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              PROJETO
+            </span>
+            <span className="text-sm font-medium">
+              {projectName ?? "Sem projeto aberto"}
+            </span>
+          </div>
+          {projectName && onCloseProject ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={onCloseProject}
+              aria-label="Fechar projeto"
+              title="Fechar projeto"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          ) : null}
         </div>
       </div>
 
