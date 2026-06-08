@@ -2,7 +2,7 @@
 // X=W, Y=H, Z=D. Suporta ambos sistemas: 'laterais_cobrem' e 'tampo_base_cobrem'.
 
 
-import { resolverEspessuras, dimensoesPortas, posicoesDobradicasY, type ModuleConfig, type PieceType, type Vec3 } from "./module";
+import { resolverEspessuras, dimensoesPortas, posicoesDobradicasY, temSecoes, intervalosSecoes, type ModuleConfig, type PieceType, type Vec3, type SecaoNichoConfig } from "./module";
 import type { TemplateConfig } from "@/lib/drilling.functions";
 
 export type TipoFuro = "cavilha" | "minifix_corpo" | "minifix_perno" | "parafuso" | "dobradica" | "marcacao" | "pino";
