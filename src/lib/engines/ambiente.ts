@@ -28,7 +28,10 @@ export interface RoomConfig {
   espessuraParede: number;
   paredesVisiveis: ParedesVisiveis;
   aberturas: Abertura[];
+  corParede: string;
+  corChao: string;
 }
+
 
 export interface Parede {
   id: ParedeId;
