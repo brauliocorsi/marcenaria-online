@@ -342,6 +342,34 @@ function ModulosPage() {
                 <DimRow label="Altura" value={config.dims.height} min={100} max={3000} onChange={(v) => updDim("height", v)} />
               </CardContent>
             </Card>
+          ) : config.categoria === "canto" && config.cantoTipo === "l" ? (
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-sm">Canto em L (mm)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <DimRow label="Lado esquerdo (parede esq.)" value={config.cantoL?.ladoEsq ?? 900} min={300} max={2000}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoL: { ladoEsq: v, ladoDir: c.cantoL?.ladoDir ?? 900, profundidade: c.cantoL?.profundidade ?? 560 } }))} />
+                <DimRow label="Lado direito (parede dir.)" value={config.cantoL?.ladoDir ?? 900} min={300} max={2000}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoL: { ladoEsq: c.cantoL?.ladoEsq ?? 900, ladoDir: v, profundidade: c.cantoL?.profundidade ?? 560 } }))} />
+                <DimRow label="Profundidade (braços)" value={config.cantoL?.profundidade ?? 560} min={300} max={900}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoL: { ladoEsq: c.cantoL?.ladoEsq ?? 900, ladoDir: c.cantoL?.ladoDir ?? 900, profundidade: v } }))} />
+                <DimRow label="Altura" value={config.dims.height} min={100} max={3000} onChange={(v) => updDim("height", v)} />
+              </CardContent>
+            </Card>
+          ) : config.categoria === "canto" && config.cantoTipo === "cego" ? (
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-sm">Canto cego (mm)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <DimRow label="Largura" value={config.cantoCego?.largura ?? 900} min={300} max={1500}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoCego: { largura: v, profundidade: c.cantoCego?.profundidade ?? 560, larguraFiller: c.cantoCego?.larguraFiller ?? 100, larguraPortaUtil: c.cantoCego?.larguraPortaUtil ?? 380 } }))} />
+                <DimRow label="Profundidade" value={config.cantoCego?.profundidade ?? 560} min={300} max={900}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoCego: { largura: c.cantoCego?.largura ?? 900, profundidade: v, larguraFiller: c.cantoCego?.larguraFiller ?? 100, larguraPortaUtil: c.cantoCego?.larguraPortaUtil ?? 380 } }))} />
+                <DimRow label="Largura filler (cega)" value={config.cantoCego?.larguraFiller ?? 100} min={50} max={600}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoCego: { largura: c.cantoCego?.largura ?? 900, profundidade: c.cantoCego?.profundidade ?? 560, larguraFiller: v, larguraPortaUtil: c.cantoCego?.larguraPortaUtil ?? 380 } }))} />
+                <DimRow label="Largura porta útil" value={config.cantoCego?.larguraPortaUtil ?? 380} min={100} max={1000}
+                  onChange={(v) => setConfig((c) => ({ ...c, cantoCego: { largura: c.cantoCego?.largura ?? 900, profundidade: c.cantoCego?.profundidade ?? 560, larguraFiller: c.cantoCego?.larguraFiller ?? 100, larguraPortaUtil: v } }))} />
+                <DimRow label="Altura" value={config.dims.height} min={100} max={3000} onChange={(v) => updDim("height", v)} />
+              </CardContent>
+            </Card>
           ) : (
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm">Dimensões externas (mm)</CardTitle></CardHeader>
