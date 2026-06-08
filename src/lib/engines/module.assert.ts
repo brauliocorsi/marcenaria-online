@@ -2,6 +2,7 @@
 import { calcularPecas, calcularGeometria, dimensoesPortas, dimensoesGavetas, intervalosSecoes, DEFAULT_MODULE_CONFIG, type Peca, type PecaGeo, type ModuleConfig, type Secao } from "./module";
 import { calcularFuros } from "./drilling";
 import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
+import { geraCantoDiagonal, areaPoligono, dist2D } from "./canto";
 
 function find(ps: Peca[], tipo: string) {
   return ps.find((p) => p.tipo === tipo)!;
@@ -159,6 +160,42 @@ export function runModuleAsserts() {
     tests.push(["[novo B2-render] porta na secção do meio", portaNoMeio]);
     tests.push(["[novo B2-render] 3 gavetas na secção de baixo", gavetasEmBaixo]);
   }
+
+  // ─── [novo B3] Canto diagonal ─────────────────────────────
+  {
+    // [regressão] módulos não-canto inalterados — re-corre default e confere peças básicas
+    const regBase = calcularPecas(DEFAULT_MODULE_CONFIG);
+    tests.push(["[novo B3] regressão: default sem peças de canto",
+      !regBase.some(p => /pentagonal|diagonal|Retorno|Costas (esq|dir)/i.test(p.descricao))]);
+
+    const params = {
+      ladoEsq: 900, ladoDir: 900,
+      profRetornoEsq: 560, profRetornoDir: 560,
+      altura: 720,
+      espessuras: { lateral: 19, tampo: 19, base: 19, frente: 19 },
+    };
+    const g = geraCantoDiagonal(params);
+    const P2 = g.footprint[2], P3 = g.footprint[3];
+
+    tests.push(["[novo B3] footprint = 5 vértices", g.footprint.length === 5]);
+    const frente = g.pecas.find(p => p.ref === "frente_diagonal")!;
+    tests.push(["[novo B3] frente diagonal === dist(P2,P3)",
+      !!frente && Math.abs(frente.comprimento_mm - Math.round(dist2D(P2, P3))) < 1]);
+    tests.push(["[novo B3] área tampo === área pentágono (shoelace)",
+      Math.abs(g.areaPentagono_mm2 - areaPoligono(g.footprint)) < 0.001]);
+
+    const counts = {
+      costas: g.pecas.filter(p => /^costas_/.test(p.ref)).length,
+      retornos: g.pecas.filter(p => /^retorno_/.test(p.ref)).length,
+      frente: g.pecas.filter(p => p.ref === "frente_diagonal").length,
+      tampo: g.pecas.filter(p => p.ref === "tampo").length,
+      base: g.pecas.filter(p => p.ref === "base").length,
+    };
+    tests.push(["[novo B3] 2 costas + 2 retornos + 1 frente + tampo + base",
+      counts.costas === 2 && counts.retornos === 2 && counts.frente === 1 && counts.tampo === 1 && counts.base === 1]);
+  }
+
+
 
 
 
