@@ -921,6 +921,62 @@ export interface GavetasResult {
 }
 
 export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
+  // [B1] Secções: gera gavetas por cada secção do tipo 'gavetas'.
+  if (temSecoes(config)) {
+    const frentes: GavetaFrente[] = [];
+    const caixas: GavetaCaixa[] = [];
+    const baseG = config.gavetas ?? DEFAULT_MODULE_CONFIG.gavetas;
+    const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+    const W = config.dims.width, D = config.dims.depth;
+    const { intervalos } = intervalosSecoes(config);
+    let cnt = 0;
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "gavetas") continue;
+      const sc = (it.secao.config ?? {}) as SecaoGavetasConfig;
+      const n = sc.nGavetas ?? baseG.nGavetas ?? 1;
+      if (n <= 0) continue;
+      const f = sc.folga ?? baseG.folga;
+      const eF = sc.espessuraFrente && sc.espessuraFrente > 0 ? sc.espessuraFrente : (baseG.espessuraFrente || config.espessuraPadrao);
+      const corr = sc.corredica ?? baseG.corredica;
+      const espC = sc.espessuraCaixa ?? baseG.espessuraCaixa;
+      const espFundo = sc.espessuraFundo ?? baseG.espessuraFundo;
+      const alturaFolga = sc.alturaCaixaFolga ?? baseG.alturaCaixaFolga;
+      const xMin = f, xMax = W - f;
+      const yMin = it.yMin + f, yMax = it.yMax - f;
+      const zBack = D, zFront = D + eF, cz = D + eF / 2;
+      const larguraFrente = xMax - xMin;
+      const cx = (xMin + xMax) / 2;
+      const espacoY = yMax - yMin;
+      const alturaFrente = Math.round((espacoY - (n - 1) * f) / n);
+      const fl = corr.folgaLateralPorLado ?? corr.folgaLateral ?? 13;
+      const boxWidth = W - 2 * e.lateral - 2 * fl;
+      const boxDepth = Math.min(corr.comprimento, D - 10);
+      const boxHeight = Math.max(60, alturaFrente - alturaFolga);
+      const zStartCaixa = e.lateral;
+      const cz_caixa = zStartCaixa + boxDepth / 2;
+      for (let j = 0; j < n; j++) {
+        const cyFrente = yMin + j * (alturaFrente + f) + alturaFrente / 2;
+        frentes.push({
+          idx: cnt,
+          descricao: `Frente gaveta ${cnt + 1} (sec ${it.idx + 1})`,
+          size: [larguraFrente, alturaFrente, eF],
+          center: [cx, cyFrente, cz],
+        });
+        caixas.push({
+          idx: cnt,
+          center: [W / 2, cyFrente, cz_caixa],
+          boxWidth, boxHeight, boxDepth,
+          espessuraCaixa: espC, espessuraFundo: espFundo,
+          zBack: zStartCaixa, zFront: zStartCaixa + boxDepth,
+          folgaLateralPorLado: fl,
+          tipoCorredica: corr.tipo,
+          requerRasgoTraseira: corr.tipo === "oculta" && !!corr.rebaixoFundo,
+        });
+        cnt++;
+      }
+    }
+    return { frentes, caixas };
+  }
   const g = config.gavetas;
   if (!g || g.nGavetas <= 0) return { frentes: [], caixas: [] };
   const { dims, espessuraPadrao, espessuras } = config;
