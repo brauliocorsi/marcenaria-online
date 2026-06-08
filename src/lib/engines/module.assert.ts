@@ -1,5 +1,7 @@
 // Testes de sanidade do motor paramétrico — corre apenas em dev.
-import { calcularPecas, calcularGeometria, dimensoesPortas, DEFAULT_MODULE_CONFIG, type Peca, type PecaGeo, type ModuleConfig } from "./module";
+import { calcularPecas, calcularGeometria, dimensoesPortas, dimensoesGavetas, intervalosSecoes, DEFAULT_MODULE_CONFIG, type Peca, type PecaGeo, type ModuleConfig, type Secao } from "./module";
+import { calcularFuros } from "./drilling";
+import { DEFAULT_TEMPLATE_CONFIG } from "@/lib/drilling.functions";
 
 function find(ps: Peca[], tipo: string) {
   return ps.find((p) => p.tipo === tipo)!;
@@ -74,6 +76,53 @@ export function runModuleAsserts() {
     tests.push(["[novo 5/5] sem puxador: porta inalterada (regressão)", okSemAltura]);
     tests.push(["[novo 5/5] sem puxador: zero peças 'puxador' (regressão)", okSemPerfil]);
   }
+
+  // ─── [novo B1] Secções ────────────────────────────────────────
+  {
+    const base = DEFAULT_MODULE_CONFIG;
+    // [regressão] módulo SEM secoes inalterado
+    const semSec = calcularPecas(base);
+    const okRegSec = !semSec.some(p => p.descricao === "Divisória");
+    tests.push(["[novo B1] regressão: módulo sem secoes não tem divisórias", okRegSec]);
+
+    // 600×2000×560 com 3 secções (nicho 600 / porta 700 / gavetas 660)
+    const secoes: Secao[] = [
+      { id: "n", altura_mm: 600, tipo: "nicho_aberto", config: { prateleirasMoveis: 2 } },
+      { id: "p", altura_mm: 700, tipo: "porta", config: { nPortas: 1 } },
+      { id: "g", altura_mm: 660, tipo: "gavetas", config: { nGavetas: 3 } },
+    ];
+    const cfgSec: ModuleConfig = {
+      ...base, dims: { width: 600, height: 2000, depth: 560 },
+      portas: { ...base.portas, nPortas: 0 }, gavetas: { ...base.gavetas, nGavetas: 0 },
+      secoes,
+    };
+    const furos = calcularFuros(cfgSec, DEFAULT_TEMPLATE_CONFIG);
+    const portas = dimensoesPortas(cfgSec);
+    const gav = dimensoesGavetas(cfgSec);
+    const pinos = furos.filter(f => f.tipo_furo === "pino");
+    const furosDiv = furos.filter(f => /^divisoria/.test(f.junta));
+    const divLat = furosDiv.length > 0 && furosDiv.every(f => f.peca === "lateral" || f.peca === "prateleira");
+    tests.push(["[novo B1] 3 secções: 2 divisórias com furação", divLat && new Set(furosDiv.map(f => f.junta.match(/^divisoria\d+/)?.[0])).size === 2]);
+    tests.push(["[novo B1] secção porta → 1 porta", portas.length === 1]);
+    tests.push(["[novo B1] secção gavetas → 3 gavetas", gav.frentes.length === 3]);
+    tests.push(["[novo B1] secção nicho → pinos Ø5 nas laterais", pinos.length > 0 && pinos.every(p => p.peca === "lateral")]);
+
+    // [novo B1] invariante: Σ altura secções + Σ divisórias === altura interna
+    const cfgInv: ModuleConfig = {
+      ...base, dims: { width: 600, height: 720, depth: 560 },
+      portas: { ...base.portas, nPortas: 0 }, gavetas: { ...base.gavetas, nGavetas: 0 },
+      secoes: [
+        { id: "a", altura_mm: 200, tipo: "nicho_aberto", config: { prateleirasMoveis: 1 } },
+        { id: "b", altura_mm: 200, tipo: "porta", config: { nPortas: 1 } },
+        { id: "c", altura_mm: 244, tipo: "gavetas", config: { nGavetas: 2 } },
+      ],
+    };
+    const inv = intervalosSecoes(cfgInv);
+    const somaAlt = inv.intervalos.reduce((s, it) => s + (it.yMax - it.yMin), 0);
+    const somaDiv = inv.divisorias.reduce((s, d) => s + d.espessura, 0);
+    tests.push(["[novo B1] Σ alturas + Σ divisórias === altura interna", Math.abs(somaAlt + somaDiv - inv.alturaInterna) < 0.001]);
+  }
+
 
   let allOk = true;
   for (const [label, ok] of tests) {

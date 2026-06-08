@@ -133,6 +133,35 @@ export interface Sistema32Config {
   fimY: number;
 }
 
+// ─── Secções (Fase B1) ─────────────────────────────────────
+export type SecaoTipo = "nicho_aberto" | "porta" | "gavetas";
+
+export interface SecaoNichoConfig { prateleirasMoveis?: number; }
+export interface SecaoPortaConfig {
+  nPortas?: 0 | 1 | 2;
+  ladoAbertura?: LadoAbertura;
+  folga?: number;
+  folgaCentral?: number;
+  espessura?: number | null;
+}
+export interface SecaoGavetasConfig {
+  nGavetas?: number;
+  folga?: number;
+  espessuraFrente?: number;
+  corredica?: CorredicaConfig;
+  espessuraCaixa?: number;
+  espessuraFundo?: number;
+  alturaCaixaFolga?: number;
+  distanciaFundoGaveta?: number;
+  profundidadeRasgoGaveta?: number;
+}
+export interface Secao {
+  id: string;
+  altura_mm: number;
+  tipo: SecaoTipo;
+  config?: Partial<SecaoNichoConfig & SecaoPortaConfig & SecaoGavetasConfig>;
+}
+
 export interface ModuleConfig {
   dims: Dimensoes;
   sistemaMontagem: SistemaMontagem;
@@ -158,6 +187,8 @@ export interface ModuleConfig {
   materialFrenteId?: string | null;
   /** [novo A1] Categoria do módulo. Opcional → módulos antigos inalterados. */
   categoria?: "base" | "superior" | "coluna" | "gaveteiro" | "canto" | "ilha" | "roupeiro" | "nicho";
+  /** [novo B1] Secções (divisórias estruturais + delegação por tipo). Opcional. */
+  secoes?: Secao[];
 }
 
 
@@ -227,7 +258,7 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
-  if (nPrateleiras > 0) {
+  if (nPrateleiras > 0 && !temSecoes(config)) {
     pecas.push({
       tipo: "prateleira",
       descricao: "Prateleira",
@@ -237,6 +268,33 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
       espessura_mm: r(e.prateleira),
       veio: "comprimento",
     });
+  }
+
+  // [B1] Divisórias + prateleiras móveis por secção 'nicho_aberto'.
+  if (temSecoes(config)) {
+    const dd = dimensoesDivisorias(config);
+    if (dd.centers.length > 0) {
+      pecas.push({
+        tipo: "prateleira", descricao: "Divisória",
+        qtd: dd.centers.length,
+        comprimento_mm: r(dd.comprimento), largura_mm: r(dd.largura),
+        espessura_mm: r(dd.espessura), veio: "comprimento",
+      });
+    }
+    const { intervalos } = intervalosSecoes(config);
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "nicho_aberto") continue;
+      const np = (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0;
+      if (np > 0) {
+        pecas.push({
+          tipo: "prateleira", descricao: `Prateleira (sec ${it.idx + 1})`,
+          qtd: np,
+          comprimento_mm: r(W - 2 * e.lateral - folgas.prateleira_lateral),
+          largura_mm: r(D - folgas.prateleira_recuo),
+          espessura_mm: r(e.prateleira), veio: "comprimento",
+        });
+      }
+    }
   }
 
   {
@@ -481,6 +539,67 @@ export function dimensoesTamponamentos(config: ModuleConfig): TamponamentoPeca[]
 }
 
 // ─────────────────────────────────────────────────────────────
+// Secções (Fase B1) — divisórias estruturais + delegação por tipo
+// ─────────────────────────────────────────────────────────────
+export interface SecaoIntervalo {
+  idx: number;
+  secao: Secao;
+  yMin: number;
+  yMax: number;
+}
+export interface DivisoriaInfo {
+  idx: number;
+  espessura: number;
+  yMin: number;
+  yMax: number;
+  yCenter: number;
+}
+
+export function temSecoes(c: ModuleConfig): boolean {
+  return Array.isArray(c.secoes) && c.secoes.length > 0;
+}
+
+export function intervalosSecoes(config: ModuleConfig): {
+  intervalos: SecaoIntervalo[]; divisorias: DivisoriaInfo[]; alturaInterna: number;
+} {
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const yBot = e.base;
+  const yTop = config.dims.height - e.tampo;
+  const alturaInterna = yTop - yBot;
+  if (!temSecoes(config)) return { intervalos: [], divisorias: [], alturaInterna };
+  const arr = config.secoes!;
+  const intervalos: SecaoIntervalo[] = [];
+  const divisorias: DivisoriaInfo[] = [];
+  let y = yBot;
+  arr.forEach((s, idx) => {
+    const yMin = y;
+    const yMax = y + s.altura_mm;
+    intervalos.push({ idx, secao: s, yMin, yMax });
+    if (idx < arr.length - 1) {
+      const espD = e.prateleira;
+      divisorias.push({ idx, espessura: espD, yMin: yMax, yMax: yMax + espD, yCenter: yMax + espD / 2 });
+      y = yMax + espD;
+    }
+  });
+  return { intervalos, divisorias, alturaInterna };
+}
+
+export function dimensoesDivisorias(config: ModuleConfig): {
+  comprimento: number; largura: number; espessura: number; centers: { yCenter: number; idx: number }[];
+} {
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const W = config.dims.width, D = config.dims.depth;
+  const compr = W - 2 * e.lateral - config.folgas.prateleira_lateral;
+  const larg = D - config.folgas.prateleira_recuo;
+  const { divisorias } = intervalosSecoes(config);
+  return {
+    comprimento: compr, largura: larg, espessura: e.prateleira,
+    centers: divisorias.map(d => ({ yCenter: d.yCenter, idx: d.idx })),
+  };
+}
+
+
+// ─────────────────────────────────────────────────────────────
 // Geometria 3D — fonte única de verdade partilhada com calcularPecas.
 // Sistema: X=largura (0..W), Y=altura (0..H), Z=profundidade (0..D).
 // Origem num canto. `center` é o centro da caixa de cada peça.
@@ -524,7 +643,7 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
       size: [W, e.base, D], center: [W / 2, e.base / 2, D / 2] });
   }
 
-  if (nPrateleiras > 0) {
+  if (nPrateleiras > 0 && !temSecoes(config)) {
     const pratLen = W - 2 * e.lateral - folgas.prateleira_lateral;
     const pratDep = D - folgas.prateleira_recuo;
     const innerBottom = e.base;
@@ -536,6 +655,35 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
         size: [pratLen, e.prateleira, pratDep],
         center: [W / 2, cy, pratDep / 2],
       });
+    }
+  }
+
+  // [B1] Divisórias + prateleiras móveis por secção 'nicho_aberto' (geometria 3D)
+  if (temSecoes(config)) {
+    const pratLen = W - 2 * e.lateral - folgas.prateleira_lateral;
+    const pratDep = D - folgas.prateleira_recuo;
+    const dd = dimensoesDivisorias(config);
+    for (const c of dd.centers) {
+      out.push({
+        tipo: "prateleira", descricao: `Divisória ${c.idx + 1}`, veio: "comprimento",
+        size: [pratLen, dd.espessura, pratDep],
+        center: [W / 2, c.yCenter, pratDep / 2],
+      });
+    }
+    const { intervalos } = intervalosSecoes(config);
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "nicho_aberto") continue;
+      const np = (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0;
+      if (np <= 0) continue;
+      const innerH = it.yMax - it.yMin;
+      for (let i = 1; i <= np; i++) {
+        const cy = it.yMin + (innerH * i) / (np + 1);
+        out.push({
+          tipo: "prateleira", descricao: `Prateleira sec${it.idx + 1}#${i}`, veio: "comprimento",
+          size: [pratLen, e.prateleira, pratDep],
+          center: [W / 2, cy, pratDep / 2],
+        });
+      }
     }
   }
 
@@ -635,6 +783,52 @@ function aplicarRevealFrente(
 }
 
 export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
+  // [B1] Secções: gera portas por cada secção do tipo 'porta'.
+  if (temSecoes(config)) {
+    const out: PortaDim[] = [];
+    const { intervalos } = intervalosSecoes(config);
+    const W = config.dims.width, D = config.dims.depth;
+    const baseP = config.portas;
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "porta") continue;
+      const sc = (it.secao.config ?? {}) as SecaoPortaConfig;
+      const nP = (sc.nPortas ?? 1) as 0 | 1 | 2;
+      if (nP === 0) continue;
+      const f = sc.folga ?? baseP.folga;
+      const fc = sc.folgaCentral ?? baseP.folgaCentral;
+      const espOv = sc.espessura ?? baseP.espessura;
+      const espP = espOv && espOv > 0 ? espOv : config.espessuraPadrao;
+      const lado = (sc.ladoAbertura ?? baseP.ladoAbertura) as LadoAbertura;
+      // modo sobreposta (suficiente para B1)
+      const zBack = D, zFront = D + espP, cz = D + espP / 2;
+      const yMin = it.yMin + f, yMax = it.yMax - f, altura = yMax - yMin, cy = (yMin + yMax) / 2;
+      const tag = `sec ${it.idx + 1}`;
+      if (nP === 1) {
+        const xMin = f, xMax = W - f, largura = W - 2 * f, cx = W / 2;
+        const ladoDob: LadoDobradicas = lado === "direita" ? "esquerda" : "direita";
+        const xCharneira = ladoDob === "esquerda" ? xMin : xMax;
+        out.push({ idx: 0, descricao: `Porta ${tag}`, largura, altura, espessura: espP,
+          cx, cy, cz, xMin, xMax, yMin, yMax, zBack, zFront, ladoDobradicas: ladoDob, xCharneira });
+      } else {
+        const largura = (W - 2 * f - fc) / 2;
+        const xMinE = f, xMaxE = f + largura;
+        out.push({ idx: 0, descricao: `Porta esq ${tag}`, largura, altura, espessura: espP,
+          cx: xMinE + largura / 2, cy, cz, xMin: xMinE, xMax: xMaxE, yMin, yMax, zBack, zFront, ladoDobradicas: "esquerda", xCharneira: xMinE });
+        const xMaxD = W - f, xMinD = xMaxD - largura;
+        out.push({ idx: 1, descricao: `Porta dir ${tag}`, largura, altura, espessura: espP,
+          cx: xMinD + largura / 2, cy, cz, xMin: xMinD, xMax: xMaxD, yMin, yMax, zBack, zFront, ladoDobradicas: "direita", xCharneira: xMaxD });
+      }
+    }
+    const reveal = revealOfPuxador((config.portas.puxador ?? null) as PuxadorSnapshot | null);
+    if (reveal > 0) {
+      const pos = config.portas.puxadorPos ?? "superior";
+      for (const p of out) {
+        const adj = aplicarRevealFrente(p.yMin, p.yMax, p.altura, p.cy, reveal, pos);
+        p.yMin = adj.yMin; p.yMax = adj.yMax; p.altura = adj.altura; p.cy = adj.cy;
+      }
+    }
+    return out;
+  }
   const { dims, espessuraPadrao, espessuras, portas, gavetas } = config;
   if (!portas || portas.nPortas === 0) return [];
   // Regra: se houver gavetas, a frente é gavetas — portas ignoradas.
@@ -783,6 +977,62 @@ export interface GavetasResult {
 }
 
 export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
+  // [B1] Secções: gera gavetas por cada secção do tipo 'gavetas'.
+  if (temSecoes(config)) {
+    const frentes: GavetaFrente[] = [];
+    const caixas: GavetaCaixa[] = [];
+    const baseG = config.gavetas ?? DEFAULT_MODULE_CONFIG.gavetas;
+    const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+    const W = config.dims.width, D = config.dims.depth;
+    const { intervalos } = intervalosSecoes(config);
+    let cnt = 0;
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "gavetas") continue;
+      const sc = (it.secao.config ?? {}) as SecaoGavetasConfig;
+      const n = sc.nGavetas ?? baseG.nGavetas ?? 1;
+      if (n <= 0) continue;
+      const f = sc.folga ?? baseG.folga;
+      const eF = sc.espessuraFrente && sc.espessuraFrente > 0 ? sc.espessuraFrente : (baseG.espessuraFrente || config.espessuraPadrao);
+      const corr = sc.corredica ?? baseG.corredica;
+      const espC = sc.espessuraCaixa ?? baseG.espessuraCaixa;
+      const espFundo = sc.espessuraFundo ?? baseG.espessuraFundo;
+      const alturaFolga = sc.alturaCaixaFolga ?? baseG.alturaCaixaFolga;
+      const xMin = f, xMax = W - f;
+      const yMin = it.yMin + f, yMax = it.yMax - f;
+      const zBack = D, zFront = D + eF, cz = D + eF / 2;
+      const larguraFrente = xMax - xMin;
+      const cx = (xMin + xMax) / 2;
+      const espacoY = yMax - yMin;
+      const alturaFrente = Math.round((espacoY - (n - 1) * f) / n);
+      const fl = corr.folgaLateralPorLado ?? corr.folgaLateral ?? 13;
+      const boxWidth = W - 2 * e.lateral - 2 * fl;
+      const boxDepth = Math.min(corr.comprimento, D - 10);
+      const boxHeight = Math.max(60, alturaFrente - alturaFolga);
+      const zStartCaixa = e.lateral;
+      const cz_caixa = zStartCaixa + boxDepth / 2;
+      for (let j = 0; j < n; j++) {
+        const cyFrente = yMin + j * (alturaFrente + f) + alturaFrente / 2;
+        frentes.push({
+          idx: cnt,
+          descricao: `Frente gaveta ${cnt + 1} (sec ${it.idx + 1})`,
+          size: [larguraFrente, alturaFrente, eF],
+          center: [cx, cyFrente, cz],
+        });
+        caixas.push({
+          idx: cnt,
+          center: [W / 2, cyFrente, cz_caixa],
+          boxWidth, boxHeight, boxDepth,
+          espessuraCaixa: espC, espessuraFundo: espFundo,
+          zBack: zStartCaixa, zFront: zStartCaixa + boxDepth,
+          folgaLateralPorLado: fl,
+          tipoCorredica: corr.tipo,
+          requerRasgoTraseira: corr.tipo === "oculta" && !!corr.rebaixoFundo,
+        });
+        cnt++;
+      }
+    }
+    return { frentes, caixas };
+  }
   const g = config.gavetas;
   if (!g || g.nGavetas <= 0) return { frentes: [], caixas: [] };
   const { dims, espessuraPadrao, espessuras } = config;
