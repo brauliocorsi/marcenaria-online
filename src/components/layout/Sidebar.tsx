@@ -11,6 +11,7 @@ import {
   PackageOpen,
   Hand,
   LibraryBig,
+  Shirt,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
@@ -21,6 +22,7 @@ const items = [
   { to: "/projetos", label: "Projetos", icon: FolderKanban },
   { to: "/ambientes", label: "Ambientes", icon: Home },
   { to: "/modulos", label: "Módulos", icon: Box },
+  { to: "/roupeiros", label: "Roupeiros", icon: Shirt },
   { to: "/materiais", label: "Materiais", icon: Layers },
   { to: "/orlas", label: "Orlas", icon: Minus },
   { to: "/ferragens", label: "Ferragens", icon: Wrench },
