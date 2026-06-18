@@ -423,6 +423,8 @@ export function ModuleScene({
       puxadorGavetas={(config.gavetas?.puxador ?? null) as PuxadorSnapshot | null}
       puxadorGavetasPos={(config.gavetas?.puxadorPos ?? "superior") as PuxadorPosicao}
     />
+    <RoupeiroExtras config={config} drawerPct={drawerPct} />
+    </>
   );
 }
 
