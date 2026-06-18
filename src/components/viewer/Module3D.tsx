@@ -592,6 +592,97 @@ function ModuleSceneInner({
   );
 }
 
+// ── [Roupeiros] Varões cromados + Portas de correr (folhas + calhas) ──
+function RoupeiroExtras({ config, drawerPct }: { config: ModuleConfig; drawerPct: number }) {
+  const varoes = useMemo(() => dimensoesVaroes(config), [config]);
+  const correr = useMemo(() => dimensoesPortasCorrer(config), [config]);
+  const W = config.dims.width;
+  return (
+    <>
+      {/* Varões: cilindro horizontal Ø25 cromado + 2 suportes */}
+      {varoes.map((v, i) => {
+        const cx = (v.xMin + v.xMax) / 2 * MM_TO_M;
+        const cy = v.cy * MM_TO_M;
+        const cz = v.cz * MM_TO_M;
+        const len = v.comprimento_mm * MM_TO_M;
+        const r = v.diametro_mm / 2 * MM_TO_M;
+        return (
+          <group key={`varao-${i}`}>
+            <mesh position={[cx, cy, cz]} rotation={[0, 0, Math.PI / 2]} castShadow>
+              <cylinderGeometry args={[r, r, len, 24]} />
+              <meshStandardMaterial color="#c8cbd0" roughness={0.2} metalness={0.95} />
+            </mesh>
+            {/* suportes nas laterais */}
+            {[v.xMin, v.xMax].map((x, k) => (
+              <mesh key={k} position={[x * MM_TO_M, cy, cz]} castShadow>
+                <boxGeometry args={[0.012, r * 2.4, r * 2.4]} />
+                <meshStandardMaterial color="#9aa0a6" roughness={0.4} metalness={0.7} />
+              </mesh>
+            ))}
+          </group>
+        );
+      })}
+
+      {/* Portas de correr: 2 calhas (sup/inf) + n folhas com animação de deslize */}
+      {correr.folhas.length > 0 && (() => {
+        const cr = config.portas.correr!;
+        // deslize: drawerPct in [-1, +1] aproximadamente (reusa drawerPct ∈ [0,1])
+        const desloc = Math.max(0, Math.min(1, drawerPct)) * (cr.nFolhas >= 2 ? (W - 2 * cr.folga) / cr.nFolhas : 0);
+        return (
+          <>
+            {correr.calhas.map((k, i) => (
+              <mesh key={`calha-${i}`}
+                position={[W / 2 * MM_TO_M, k.cy * MM_TO_M, k.cz * MM_TO_M]} castShadow>
+                <boxGeometry args={[k.comprimento * MM_TO_M, k.espessura * MM_TO_M, k.largura * MM_TO_M]} />
+                <meshStandardMaterial color="#a8aaad" roughness={0.35} metalness={0.85} />
+                <Edges threshold={15} color="#2b2d30" />
+              </mesh>
+            ))}
+            {correr.folhas.map((f, i) => {
+              // folhas pares (trilho 0) deslizam para a direita, ímpares (trilho 1) para a esquerda
+              const sign = f.trilho === 0 ? 1 : -1;
+              const cx = (f.cx + sign * desloc) * MM_TO_M;
+              const cy = f.cy * MM_TO_M;
+              const cz = f.cz * MM_TO_M;
+              const sx = f.largura * MM_TO_M;
+              const sy = f.altura * MM_TO_M;
+              const sz = f.espessura * MM_TO_M;
+              return (
+                <group key={`folha-${i}`} position={[cx, cy, cz]}>
+                  {/* painel (melamina ou espelho) */}
+                  <mesh castShadow>
+                    <boxGeometry args={[sx, sy, sz * 0.6]} />
+                    {f.espelho ? (
+                      <meshPhysicalMaterial color="#dde3e8" roughness={0.05} metalness={0.95}
+                        clearcoat={1} clearcoatRoughness={0.05} />
+                    ) : (
+                      <meshStandardMaterial color="#E8E2D5" roughness={0.6} metalness={0.05} transparent opacity={0.92} />
+                    )}
+                    <Edges threshold={15} color="#2b2d30" />
+                  </mesh>
+                  {/* caixilho alumínio (4 perfis) */}
+                  {[
+                    { px: 0,        py:  sy / 2 - cr.perfilLarguraMm / 2 * MM_TO_M, sxP: sx, syP: cr.perfilLarguraMm * MM_TO_M },
+                    { px: 0,        py: -sy / 2 + cr.perfilLarguraMm / 2 * MM_TO_M, sxP: sx, syP: cr.perfilLarguraMm * MM_TO_M },
+                    { px: -sx / 2 + cr.perfilLarguraMm / 2 * MM_TO_M, py: 0, sxP: cr.perfilLarguraMm * MM_TO_M, syP: sy },
+                    { px:  sx / 2 - cr.perfilLarguraMm / 2 * MM_TO_M, py: 0, sxP: cr.perfilLarguraMm * MM_TO_M, syP: sy },
+                  ].map((perf, k) => (
+                    <mesh key={k} position={[perf.px, perf.py, sz * 0.2]} castShadow>
+                      <boxGeometry args={[perf.sxP, perf.syP, sz * 0.8]} />
+                      <meshStandardMaterial color="#a8aaad" roughness={0.35} metalness={0.85} />
+                    </mesh>
+                  ))}
+                </group>
+              );
+            })}
+          </>
+        );
+      })()}
+    </>
+  );
+}
+
+
 // ── Cotas (Largura X, Altura Y, Profundidade Z) ──
 export function cotasLabels(W: number, H: number, D: number) {
   return [
