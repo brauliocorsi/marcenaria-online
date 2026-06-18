@@ -805,8 +805,11 @@ export function dimensoesVaroes(config: ModuleConfig): VaraoItem[] {
       const sc = (it.secao.config ?? {}) as SecaoVaraoConfig;
       const recuo = sc.recuoTopoVarao_mm ?? 40;
       const cy = Math.max(it.yMin + 20, it.yMax - recuo);
+      const cz = sc.recuoFrontalVarao_mm != null
+        ? Math.max(15, D - sc.recuoFrontalVarao_mm)
+        : D / 2;
       out.push({
-        idx: it.idx, colIdx: col.idx, cy, cz: D / 2,
+        idx: it.idx, colIdx: col.idx, cy, cz,
         comprimento_mm: col.xMax - col.xMin, diametro_mm: 25,
         xMin: col.xMin, xMax: col.xMax,
       });
