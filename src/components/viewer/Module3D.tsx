@@ -409,6 +409,7 @@ export function ModuleScene({
   }
 
   return (
+    <>
     <ModuleSceneInner
       bucket={bucket} chapasByPorta={chapasByPorta} portas={portas} gavetas={gavetas}
       gavetaTpl={gavetaTpl} eRes={eRes} pes={pes} explode={explode} center3D={center3D}
