@@ -233,14 +233,14 @@ function RoupeirosPage() {
   const addSecao = (tipo: SecaoTipo) => {
     const id = uid();
     const defaultCfg: any =
-      tipo === "varao" ? { prateleiraSuperior: false } :
-      tipo === "maleiro_aberto" ? { nPrateleiras: 1 } :
-      tipo === "maleiro_fechado" ? { nPortas: 2, nPrateleiras: 1 } :
+      tipo === "varao" ? { prateleiraSuperior: false, recuoTopoVarao_mm: 40, alturaUtilRoupa_mm: 1000 } :
+      tipo === "maleiro_aberto" ? { nPrateleiras: maleiroDefault.nPrateleiras } :
+      tipo === "maleiro_fechado" ? { nPortas: 2, nPrateleiras: maleiroDefault.nPrateleiras } :
       tipo === "porta" ? { nPortas: 2 } :
-      tipo === "gavetas" ? { nGavetas: 3, interno: true } :
+      tipo === "gavetas" ? { nGavetas: 3, interno: true, frenteCega: true } :
       {};
     const def: Record<SecaoTipo, number> = {
-      varao: 1000, maleiro_aberto: 450, maleiro_fechado: 500,
+      varao: 1000, maleiro_aberto: maleiroDefault.altura_mm, maleiro_fechado: maleiroDefault.altura_mm,
       porta: 1200, gavetas: 700, nicho_aberto: 400,
     };
     setSecoes([...secoes, { id, altura_mm: def[tipo], tipo, config: defaultCfg }]);
