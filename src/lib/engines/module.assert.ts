@@ -339,6 +339,7 @@ export function runModuleAsserts() {
       folhasEspelho.length === Math.ceil(3 / 2)]);
   }
 
+  let allOk = true;
   for (const [label, ok] of tests) {
     console.assert(ok, `[module.assert] FALHOU: ${label}`);
     if (!ok) allOk = false;
