@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Save, Trash2, ArrowUp, ArrowDown, Shirt } from "lucide-react";
+import { Plus, Save, Trash2, ArrowUp, ArrowDown, Shirt, Columns3, ArrowLeft, ArrowRight, Scale } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Module3D } from "@/components/viewer/Module3D";
 
 import {
-  DEFAULT_MODULE_CONFIG, calcularPecas, intervalosSecoes,
-  type ModuleConfig, type Secao, type SecaoTipo, type EspelhoModo,
+  DEFAULT_MODULE_CONFIG, calcularPecas, colunasIntervalos,
+  resolverEspessuras,
+  type ModuleConfig, type Secao, type SecaoTipo, type EspelhoModo, type ColunaRoupeiro,
 } from "@/lib/engines/module";
 import { upsertModule } from "@/lib/modules.functions";
 
@@ -25,12 +26,12 @@ export const Route = createFileRoute("/_authenticated/roupeiros")({
 });
 
 const SECAO_LABEL: Record<SecaoTipo, string> = {
-  nicho_aberto: "Nicho aberto (mesclar)",
-  porta: "Secção com porta batente",
-  gavetas: "Gaveteiro (frente decorativa ou interno)",
+  nicho_aberto: "Nicho aberto",
+  porta: "Porta batente",
+  gavetas: "Gaveteiro",
   varao: "Cabide (varão)",
-  maleiro_aberto: "Maleiro aberto (prateleira)",
-  maleiro_fechado: "Maleiro fechado (porta + prateleira)",
+  maleiro_aberto: "Maleiro aberto",
+  maleiro_fechado: "Maleiro fechado",
 };
 
 type DoorMode = "sem" | "batente" | "correr";
@@ -48,19 +49,41 @@ const DEFAULT_CORRER = {
   sobreposicao: 40,
 };
 
+function uid() { return crypto.randomUUID(); }
+
+function defaultColumns(W: number, lateral: number): ColunaRoupeiro[] {
+  const usable = W - 2 * lateral;
+  const divEsp = lateral;
+  // 3 colunas: gavetas | varão | varão
+  const w = Math.floor((usable - 2 * divEsp) / 3);
+  const rest = usable - 2 * divEsp - 2 * w;
+  return [
+    { id: uid(), largura_mm: w, secoes: [
+      { id: uid(), altura_mm: 700, tipo: "gavetas", config: { nGavetas: 4 } },
+      { id: uid(), altura_mm: 600, tipo: "varao", config: {} },
+      { id: uid(), altura_mm: 1062, tipo: "maleiro_aberto", config: { nPrateleiras: 1 } },
+    ]},
+    { id: uid(), largura_mm: w, secoes: [
+      { id: uid(), altura_mm: 1300, tipo: "varao", config: {} },
+      { id: uid(), altura_mm: 1062, tipo: "maleiro_aberto", config: { nPrateleiras: 1 } },
+    ]},
+    { id: uid(), largura_mm: w + rest, secoes: [
+      { id: uid(), altura_mm: 1300, tipo: "varao", config: {} },
+      { id: uid(), altura_mm: 1062, tipo: "maleiro_aberto", config: { nPrateleiras: 1 } },
+    ]},
+  ];
+}
+
 function makeInitialConfig(): ModuleConfig {
   const c: ModuleConfig = {
     ...DEFAULT_MODULE_CONFIG,
-    dims: { width: 1800, height: 2400, depth: 600 },
+    dims: { width: 2400, height: 2400, depth: 600 },
     categoria: "roupeiro",
     portas: { ...DEFAULT_MODULE_CONFIG.portas, nPortas: 0 },
     gavetas: { ...DEFAULT_MODULE_CONFIG.gavetas, nGavetas: 0 },
-    secoes: [
-      { id: crypto.randomUUID(), altura_mm: 500, tipo: "maleiro_aberto", config: { nPrateleiras: 1 } },
-      { id: crypto.randomUUID(), altura_mm: 1100, tipo: "varao", config: { prateleiraSuperior: false } },
-      { id: crypto.randomUUID(), altura_mm: 740, tipo: "gavetas", config: { nGavetas: 4 } },
-    ],
+    colunas: [],
   };
+  c.colunas = defaultColumns(c.dims.width, 19);
   return c;
 }
 
@@ -80,28 +103,77 @@ function RoupeirosPage() {
   const [doorMode, setDoorMode] = useState<DoorMode>("sem");
   const [drawerPct, setDrawerPct] = useState<number>(0);
   const [doorAngle, setDoorAngle] = useState<number>(0);
+  const [activeCol, setActiveCol] = useState<number>(0);
 
-  const secoes = config.secoes ?? [];
-  const inv = useMemo(() => intervalosSecoes(config), [config]);
-  const somaAlt = secoes.reduce((s, x) => s + x.altura_mm, 0);
-  const espDiv = 19 * Math.max(0, secoes.length - 1);
-  const total = somaAlt + espDiv;
-  const ok = Math.abs(total - inv.alturaInterna) < 1;
+  const colunas = config.colunas ?? [];
+  const ci = useMemo(() => colunasIntervalos(config), [config]);
+  const e = useMemo(() => resolverEspessuras(config.espessuraPadrao, config.espessuras), [config]);
+  const alturaInterna = config.dims.height - e.base - e.tampo;
+
+  const somaLargCols = colunas.reduce((s, c) => s + c.largura_mm, 0);
+  const espDivCols = e.lateral * Math.max(0, colunas.length - 1);
+  const totalLarg = somaLargCols + espDivCols;
+  const larguraOK = Math.abs(totalLarg - ci.larguraInterna) < 1;
 
   const setDims = (k: "width" | "height" | "depth", v: number) =>
     setConfig((c) => ({ ...c, dims: { ...c.dims, [k]: Math.max(100, Math.round(v)) } }));
 
-  const setSecoes = (next: Secao[]) =>
-    setConfig((c) => ({ ...c, secoes: next.length > 0 ? next : undefined }));
+  const setColunas = (next: ColunaRoupeiro[]) =>
+    setConfig((c) => ({ ...c, colunas: next }));
 
+  const addColuna = () => {
+    const id = uid();
+    const newCol: ColunaRoupeiro = { id, largura_mm: 600, secoes: [
+      { id: uid(), altura_mm: 1300, tipo: "varao", config: {} },
+      { id: uid(), altura_mm: 1062, tipo: "maleiro_aberto", config: { nPrateleiras: 1 } },
+    ]};
+    setColunas([...colunas, newCol]);
+    setActiveCol(colunas.length);
+  };
+  const removeColuna = (i: number) => {
+    const next = colunas.slice(); next.splice(i, 1);
+    setColunas(next);
+    if (activeCol >= next.length) setActiveCol(Math.max(0, next.length - 1));
+  };
+  const moveColuna = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= colunas.length) return;
+    const next = colunas.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    setColunas(next);
+    setActiveCol(j);
+  };
+  const updColuna = (i: number, patch: Partial<ColunaRoupeiro>) =>
+    setColunas(colunas.map((c, k) => k === i ? { ...c, ...patch } : c));
+
+  const autoLarguras = () => {
+    if (colunas.length === 0) return;
+    const usable = ci.larguraInterna - espDivCols;
+    const w = Math.floor(usable / colunas.length);
+    const rest = usable - w * colunas.length;
+    setColunas(colunas.map((c, i) => ({ ...c, largura_mm: i === colunas.length - 1 ? w + rest : w })));
+  };
+
+  // Secções dentro da coluna ativa
+  const col = colunas[activeCol];
+  const secoes = col?.secoes ?? [];
+  const somaAlt = secoes.reduce((s, x) => s + x.altura_mm, 0);
+  const espDivSec = e.prateleira * Math.max(0, secoes.length - 1);
+  const totalAlt = somaAlt + espDivSec;
+  const alturaOK = Math.abs(totalAlt - alturaInterna) < 1;
+
+  const setSecoes = (next: Secao[]) => {
+    if (!col) return;
+    updColuna(activeCol, { secoes: next });
+  };
   const addSecao = (tipo: SecaoTipo) => {
-    const id = crypto.randomUUID();
+    const id = uid();
     const defaultCfg: any =
       tipo === "varao" ? { prateleiraSuperior: false } :
       tipo === "maleiro_aberto" ? { nPrateleiras: 1 } :
       tipo === "maleiro_fechado" ? { nPortas: 2, nPrateleiras: 1 } :
       tipo === "porta" ? { nPortas: 2 } :
-      tipo === "gavetas" ? { nGavetas: 3, interno: false } :
+      tipo === "gavetas" ? { nGavetas: 3, interno: true } :
       {};
     const def: Record<SecaoTipo, number> = {
       varao: 1000, maleiro_aberto: 450, maleiro_fechado: 500,
@@ -122,6 +194,14 @@ function RoupeirosPage() {
     setSecoes(secoes.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   const updSecaoCfg = (id: string, patch: Record<string, any>) =>
     setSecoes(secoes.map((s) => (s.id === id ? { ...s, config: { ...(s.config ?? {}), ...patch } } : s)));
+
+  const autoAlturas = () => {
+    if (secoes.length === 0) return;
+    const usable = alturaInterna - espDivSec;
+    const h = Math.floor(usable / secoes.length);
+    const rest = usable - h * secoes.length;
+    setSecoes(secoes.map((s, i) => ({ ...s, altura_mm: i === secoes.length - 1 ? h + rest : h })));
+  };
 
   const aplicarDoorMode = (mode: DoorMode) => {
     setDoorMode(mode);
@@ -147,14 +227,14 @@ function RoupeirosPage() {
     } as any);
   };
 
-  // helpers para portas de correr
+  // sliding-door helpers
   const cr = config.portas.correr;
   const setCr = (patch: Partial<NonNullable<ModuleConfig["portas"]["correr"]>>) =>
     setConfig((c) => ({ ...c, portas: { ...c.portas, correr: { ...(c.portas.correr ?? DEFAULT_CORRER), ...patch } } }));
 
   return (
-    <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[480px_1fr]">
-      <div className="space-y-3">
+    <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[520px_1fr]">
+      <div className="space-y-3 max-h-[calc(100vh-2rem)] overflow-auto pr-1">
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center gap-2">
             <Shirt className="h-4 w-4" /> <CardTitle className="text-sm">Roupeiro</CardTitle>
@@ -175,14 +255,6 @@ function RoupeirosPage() {
                 <Input type="number" className="tabular" value={config.dims.depth}
                   onChange={(e) => setDims("depth", Number(e.target.value))} /></div>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Altura interna:</span>
-              <span className="tabular">{Math.round(inv.alturaInterna)} mm</span>
-              <span className="text-muted-foreground">· Somatório secções:</span>
-              <span className={`tabular ${ok ? "text-emerald-600" : "text-destructive"}`}>
-                {Math.round(total)} mm
-              </span>
-            </div>
             <Button onClick={onSave} disabled={upsert.isPending} className="w-full">
               <Save className="mr-2 h-4 w-4" /> Guardar na biblioteca
             </Button>
@@ -195,7 +267,7 @@ function RoupeirosPage() {
             <Select value={doorMode} onValueChange={(v) => aplicarDoorMode(v as DoorMode)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="sem">Sem portas (módulo aberto / mesclar)</SelectItem>
+                <SelectItem value="sem">Sem portas (aberto / mesclar)</SelectItem>
                 <SelectItem value="batente">Portas batente por secção</SelectItem>
                 <SelectItem value="correr">Portas de correr globais</SelectItem>
               </SelectContent>
@@ -224,18 +296,6 @@ function RoupeirosPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label className="text-[10px]">Calha sup (mm)</Label>
-                    <Input type="number" className="tabular h-8" value={cr.alturaCalhaSup}
-                      onChange={(e) => setCr({ alturaCalhaSup: Math.max(10, Number(e.target.value)) })} /></div>
-                  <div><Label className="text-[10px]">Calha inf (mm)</Label>
-                    <Input type="number" className="tabular h-8" value={cr.alturaCalhaInf}
-                      onChange={(e) => setCr({ alturaCalhaInf: Math.max(10, Number(e.target.value)) })} /></div>
-                  <div><Label className="text-[10px]">Perfil largura (mm)</Label>
-                    <Input type="number" className="tabular h-8" value={cr.perfilLarguraMm}
-                      onChange={(e) => setCr({ perfilLarguraMm: Math.max(10, Number(e.target.value)) })} /></div>
-                  <div><Label className="text-[10px]">Sobreposição (mm)</Label>
-                    <Input type="number" className="tabular h-8" value={cr.sobreposicao}
-                      onChange={(e) => setCr({ sobreposicao: Math.max(0, Number(e.target.value)) })} /></div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[10px]">Deslizar folhas ({Math.round(drawerPct * 100)}%)</Label>
@@ -254,114 +314,177 @@ function RoupeirosPage() {
 
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm">Secções (baixo → cima)</CardTitle>
+            <div className="flex items-center gap-2">
+              <Columns3 className="h-4 w-4" />
+              <CardTitle className="text-sm">Colunas (esq → dir)</CardTitle>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="ghost" className="h-7" onClick={autoLarguras} title="Distribuir larguras igualmente">
+                <Scale className="mr-1 h-3.5 w-3.5" /> Auto
+              </Button>
+              <Button size="sm" variant="outline" className="h-7" onClick={addColuna}>
+                <Plus className="mr-1 h-3.5 w-3.5" /> Coluna
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="grid grid-cols-3 gap-2">
-              {(["varao", "maleiro_aberto", "maleiro_fechado", "porta", "gavetas", "nicho_aberto"] as SecaoTipo[]).map((t) => (
-                <Button key={t} variant="outline" size="sm" className="h-8 justify-start text-xs" onClick={() => addSecao(t)}>
-                  <Plus className="mr-1 h-3 w-3" /> {SECAO_LABEL[t].split(" ")[0]}
-                </Button>
-              ))}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Largura interna:</span>
+              <span className="tabular">{Math.round(ci.larguraInterna)} mm</span>
+              <span className="text-muted-foreground">· Soma colunas + divisórias:</span>
+              <span className={`tabular ${larguraOK ? "text-emerald-600" : "text-destructive"}`}>{Math.round(totalLarg)} mm</span>
             </div>
-            <div className="space-y-2">
-              {secoes.map((s, i) => (
-                <div key={s.id} className="space-y-2 rounded border p-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">#{i + 1} (de baixo)</span>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveSecao(s.id, -1)} disabled={i === 0}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveSecao(s.id, +1)} disabled={i === secoes.length - 1}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeSecao(s.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                    </div>
+            <div className="space-y-1">
+              {colunas.map((c, i) => (
+                <div key={c.id}
+                  className={`flex items-center gap-2 rounded border p-2 ${i === activeCol ? "border-primary bg-muted/40" : ""}`}>
+                  <Button size="sm" variant={i === activeCol ? "default" : "ghost"} className="h-7 px-2 text-xs"
+                    onClick={() => setActiveCol(i)}>Col {i + 1}</Button>
+                  <div className="flex-1">
+                    <Input type="number" className="tabular h-8" value={c.largura_mm}
+                      onChange={(e) => updColuna(i, { largura_mm: Math.max(100, Number(e.target.value) || 100) })} />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-[10px]">Altura (mm)</Label>
-                      <Input type="number" className="tabular h-8" value={s.altura_mm}
-                        onChange={(e) => updSecao(s.id, { altura_mm: Math.max(50, Number(e.target.value) || 50) })} />
-                    </div>
-                    <div><Label className="text-[10px]">Tipo</Label>
-                      <Select value={s.tipo} onValueChange={(v) => updSecao(s.id, { tipo: v as SecaoTipo, config: {} })}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(SECAO_LABEL).map(([k, label]) => (
-                            <SelectItem key={k} value={k}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  {s.tipo === "nicho_aberto" && (
-                    <div><Label className="text-[10px]">Prateleiras móveis</Label>
-                      <Input type="number" min={0} max={10} className="tabular h-8"
-                        value={(s.config as any)?.prateleirasMoveis ?? 0}
-                        onChange={(e) => updSecaoCfg(s.id, { prateleirasMoveis: Math.max(0, Math.min(10, Number(e.target.value) || 0)) })} />
-                    </div>
-                  )}
-                  {s.tipo === "varao" && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-[10px]">Recuo topo varão (mm)</Label>
-                        <Input type="number" className="tabular h-8"
-                          value={(s.config as any)?.recuoTopoVarao_mm ?? 40}
-                          onChange={(e) => updSecaoCfg(s.id, { recuoTopoVarao_mm: Math.max(20, Number(e.target.value) || 40) })} />
-                      </div>
-                      <div className="flex items-end gap-2">
-                        <Switch checked={!!(s.config as any)?.prateleiraSuperior}
-                          onCheckedChange={(v) => updSecaoCfg(s.id, { prateleiraSuperior: v })} />
-                        <Label className="text-[10px]">Prateleira superior</Label>
-                      </div>
-                    </div>
-                  )}
-                  {(s.tipo === "maleiro_aberto" || s.tipo === "maleiro_fechado") && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-[10px]">Nº prateleiras</Label>
-                        <Input type="number" min={1} max={6} className="tabular h-8"
-                          value={(s.config as any)?.nPrateleiras ?? 1}
-                          onChange={(e) => updSecaoCfg(s.id, { nPrateleiras: Math.max(1, Math.min(6, Number(e.target.value) || 1)) })} />
-                      </div>
-                      {s.tipo === "maleiro_fechado" && (
-                        <div><Label className="text-[10px]">Nº portas</Label>
-                          <Select value={String((s.config as any)?.nPortas ?? 2)} onValueChange={(v) => updSecaoCfg(s.id, { nPortas: Number(v) })}>
-                            <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1 porta</SelectItem>
-                              <SelectItem value="2">2 portas</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {s.tipo === "porta" && (
-                    <div><Label className="text-[10px]">Nº portas (batente)</Label>
-                      <Select value={String((s.config as any)?.nPortas ?? 2)} onValueChange={(v) => updSecaoCfg(s.id, { nPortas: Number(v) })}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 porta</SelectItem>
-                          <SelectItem value="2">2 portas</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  {s.tipo === "gavetas" && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-[10px]">Nº gavetas</Label>
-                        <Input type="number" min={1} max={10} className="tabular h-8"
-                          value={(s.config as any)?.nGavetas ?? 3}
-                          onChange={(e) => updSecaoCfg(s.id, { nGavetas: Math.max(1, Math.min(10, Number(e.target.value) || 3)) })} />
-                      </div>
-                      <div className="flex items-end gap-2">
-                        <Switch checked={!!(s.config as any)?.interno}
-                          onCheckedChange={(v) => updSecaoCfg(s.id, { interno: v })} />
-                        <Label className="text-[10px]">Gaveteiro interno (atrás de porta)</Label>
-                      </div>
-                    </div>
-                  )}
+                  <span className="text-[10px] text-muted-foreground">{c.secoes?.length ?? 0} secç.</span>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveColuna(i, -1)} disabled={i === 0}><ArrowLeft className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveColuna(i, +1)} disabled={i === colunas.length - 1}><ArrowRight className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeColuna(i)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                 </div>
               ))}
+              {colunas.length === 0 && (
+                <div className="rounded border border-dashed p-3 text-center text-xs text-muted-foreground">
+                  Sem colunas. Adiciona pelo menos uma.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {col && (
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Secções da Col {activeCol + 1} (baixo → cima)</CardTitle>
+              <Button size="sm" variant="ghost" className="h-7" onClick={autoAlturas} title="Distribuir alturas igualmente">
+                <Scale className="mr-1 h-3.5 w-3.5" /> Auto
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Altura interna:</span>
+                <span className="tabular">{Math.round(alturaInterna)} mm</span>
+                <span className="text-muted-foreground">· Soma:</span>
+                <span className={`tabular ${alturaOK ? "text-emerald-600" : "text-destructive"}`}>{Math.round(totalAlt)} mm</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {(["varao", "maleiro_aberto", "maleiro_fechado", "porta", "gavetas", "nicho_aberto"] as SecaoTipo[]).map((t) => (
+                  <Button key={t} variant="outline" size="sm" className="h-8 justify-start text-xs" onClick={() => addSecao(t)}>
+                    <Plus className="mr-1 h-3 w-3" /> {SECAO_LABEL[t].split(" ")[0]}
+                  </Button>
+                ))}
+              </div>
+              <div className="space-y-2">
+                {secoes.map((s, i) => (
+                  <div key={s.id} className="space-y-2 rounded border p-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">#{i + 1} (de baixo) — {SECAO_LABEL[s.tipo]}</span>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveSecao(s.id, -1)} disabled={i === 0}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveSecao(s.id, +1)} disabled={i === secoes.length - 1}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeSecao(s.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-[10px]">Altura (mm)</Label>
+                        <Input type="number" className="tabular h-8" value={s.altura_mm}
+                          onChange={(e) => updSecao(s.id, { altura_mm: Math.max(50, Number(e.target.value) || 50) })} />
+                      </div>
+                      <div><Label className="text-[10px]">Tipo</Label>
+                        <Select value={s.tipo} onValueChange={(v) => updSecao(s.id, { tipo: v as SecaoTipo, config: {} })}>
+                          <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(SECAO_LABEL).map(([k, label]) => (
+                              <SelectItem key={k} value={k}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {s.tipo === "nicho_aberto" && (
+                      <div><Label className="text-[10px]">Prateleiras móveis</Label>
+                        <Input type="number" min={0} max={10} className="tabular h-8"
+                          value={(s.config as any)?.prateleirasMoveis ?? 0}
+                          onChange={(e) => updSecaoCfg(s.id, { prateleirasMoveis: Math.max(0, Math.min(10, Number(e.target.value) || 0)) })} />
+                      </div>
+                    )}
+                    {s.tipo === "varao" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><Label className="text-[10px]">Recuo topo varão (mm)</Label>
+                          <Input type="number" className="tabular h-8"
+                            value={(s.config as any)?.recuoTopoVarao_mm ?? 40}
+                            onChange={(e) => updSecaoCfg(s.id, { recuoTopoVarao_mm: Math.max(20, Number(e.target.value) || 40) })} />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <Switch checked={!!(s.config as any)?.prateleiraSuperior}
+                            onCheckedChange={(v) => updSecaoCfg(s.id, { prateleiraSuperior: v })} />
+                          <Label className="text-[10px]">Prateleira superior</Label>
+                        </div>
+                      </div>
+                    )}
+                    {(s.tipo === "maleiro_aberto" || s.tipo === "maleiro_fechado") && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><Label className="text-[10px]">Nº prateleiras</Label>
+                          <Input type="number" min={1} max={6} className="tabular h-8"
+                            value={(s.config as any)?.nPrateleiras ?? 1}
+                            onChange={(e) => updSecaoCfg(s.id, { nPrateleiras: Math.max(1, Math.min(6, Number(e.target.value) || 1)) })} />
+                        </div>
+                        {s.tipo === "maleiro_fechado" && (
+                          <div><Label className="text-[10px]">Nº portas</Label>
+                            <Select value={String((s.config as any)?.nPortas ?? 2)} onValueChange={(v) => updSecaoCfg(s.id, { nPortas: Number(v) })}>
+                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1 porta</SelectItem>
+                                <SelectItem value="2">2 portas</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {s.tipo === "porta" && (
+                      <div><Label className="text-[10px]">Nº portas (batente)</Label>
+                        <Select value={String((s.config as any)?.nPortas ?? 2)} onValueChange={(v) => updSecaoCfg(s.id, { nPortas: Number(v) })}>
+                          <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 porta</SelectItem>
+                            <SelectItem value="2">2 portas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    {s.tipo === "gavetas" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><Label className="text-[10px]">Nº gavetas</Label>
+                          <Input type="number" min={1} max={10} className="tabular h-8"
+                            value={(s.config as any)?.nGavetas ?? 3}
+                            onChange={(e) => updSecaoCfg(s.id, { nGavetas: Math.max(1, Math.min(10, Number(e.target.value) || 3)) })} />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <Switch checked={!!(s.config as any)?.interno}
+                            onCheckedChange={(v) => updSecaoCfg(s.id, { interno: v })} />
+                          <Label className="text-[10px]">Interno (atrás de porta)</Label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {secoes.length === 0 && (
+                  <div className="rounded border border-dashed p-3 text-center text-xs text-muted-foreground">
+                    Sem secções. Adiciona pelo menos uma.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="min-h-[600px] rounded border bg-muted/20">
