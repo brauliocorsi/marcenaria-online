@@ -364,7 +364,65 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
         });
       }
     }
+    // [Roupeiros] Maleiro prateleiras (aberto/fechado + varão.prateleiraSuperior)
+    const maleiroPrats = dimensoesMaleiroPrateleiras(config);
+    for (const mp of maleiroPrats) {
+      pecas.push({
+        tipo: "prateleira", descricao: `Prateleira maleiro (sec ${mp.idx + 1})`,
+        qtd: 1,
+        comprimento_mm: r(mp.size[0]), largura_mm: r(mp.size[2]),
+        espessura_mm: r(mp.size[1]), veio: "comprimento",
+      });
+    }
+    // [Roupeiros] Varões — acessório (BOM): comprimento + 2 suportes
+    for (const v of dimensoesVaroes(config)) {
+      pecas.push({
+        tipo: "puxador", descricao: `Varão Ø${v.diametro_mm} cromado (sec ${v.idx + 1})`,
+        qtd: 1, comprimento_mm: r(v.comprimento_mm), largura_mm: v.diametro_mm,
+        espessura_mm: v.diametro_mm, veio: "sem",
+      });
+      pecas.push({
+        tipo: "puxador", descricao: `Suporte varão (sec ${v.idx + 1})`,
+        qtd: 2, comprimento_mm: 40, largura_mm: 25, espessura_mm: 25, veio: "sem",
+      });
+    }
   }
+
+  // [Roupeiros] Portas de correr — folhas + calhas
+  if (config.portas?.correr?.ativo) {
+    const cr = config.portas.correr;
+    const { folhas, calhas } = dimensoesPortasCorrer(config);
+    for (const f of folhas) {
+      pecas.push({
+        tipo: "porta",
+        descricao: `Folha correr ${f.idx + 1}${f.espelho ? " (espelho)" : ""}`,
+        qtd: 1,
+        comprimento_mm: r(f.altura),
+        largura_mm: r(f.largura),
+        espessura_mm: r(f.espessura),
+        veio: "comprimento",
+      });
+    }
+    for (const k of calhas) {
+      pecas.push({
+        tipo: "tamponamento",
+        descricao: `Calha correr ${k.posicao} (alu duas-vias)`,
+        qtd: 1,
+        comprimento_mm: r(k.comprimento),
+        largura_mm: r(k.largura),
+        espessura_mm: r(k.espessura),
+        veio: "sem",
+      });
+    }
+    // perfis verticais nas folhas (puramente acessório informativo)
+    pecas.push({
+      tipo: "puxador", descricao: `Perfil vertical folha (alu)`,
+      qtd: cr.nFolhas * 2,
+      comprimento_mm: r(config.dims.height - cr.alturaCalhaSup - cr.alturaCalhaInf),
+      largura_mm: cr.perfilLarguraMm, espessura_mm: cr.perfilEspessuraMm, veio: "sem",
+    });
+  }
+
 
   {
     const fd = dimensoesFundoCarcaca(config);
