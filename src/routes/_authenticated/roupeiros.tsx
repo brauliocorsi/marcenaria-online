@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Save, Trash2, ArrowUp, ArrowDown, Shirt, Columns3, ArrowLeft, ArrowRight, Scale } from "lucide-react";
+import { Plus, Save, Trash2, ArrowUp, ArrowDown, Shirt, Columns3, ArrowLeft, ArrowRight, Scale, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,12 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Module3D } from "@/components/viewer/Module3D";
+
+const MIN_COL_MM = 200;
+const MIN_SEC_MM = 50;
+const TOL_MM = 1;
 
 import {
   DEFAULT_MODULE_CONFIG, calcularPecas, colunasIntervalos,
@@ -113,7 +118,25 @@ function RoupeirosPage() {
   const somaLargCols = colunas.reduce((s, c) => s + c.largura_mm, 0);
   const espDivCols = e.lateral * Math.max(0, colunas.length - 1);
   const totalLarg = somaLargCols + espDivCols;
-  const larguraOK = Math.abs(totalLarg - ci.larguraInterna) < 1;
+  const deltaLarg = totalLarg - ci.larguraInterna;
+  const larguraOK = Math.abs(deltaLarg) < TOL_MM;
+  const colsAbaixoMin = colunas
+    .map((c, i) => ({ i, w: c.largura_mm }))
+    .filter((c) => c.w < MIN_COL_MM);
+
+  // Validação de alturas por coluna
+  const alturasPorCol = colunas.map((c) => {
+    const secs = c.secoes ?? [];
+    const soma = secs.reduce((s, x) => s + x.altura_mm, 0);
+    const divs = e.prateleira * Math.max(0, secs.length - 1);
+    const total = soma + divs;
+    return { total, delta: total - alturaInterna, ok: Math.abs(total - alturaInterna) < TOL_MM, vazia: secs.length === 0 };
+  });
+  const colsAltInvalidas = alturasPorCol
+    .map((a, i) => ({ ...a, i }))
+    .filter((a) => !a.ok || a.vazia);
+  const semColunas = colunas.length === 0;
+  const formValido = larguraOK && colsAbaixoMin.length === 0 && colsAltInvalidas.length === 0 && !semColunas;
 
   const setDims = (k: "width" | "height" | "depth", v: number) =>
     setConfig((c) => ({ ...c, dims: { ...c.dims, [k]: Math.max(100, Math.round(v)) } }));
@@ -214,6 +237,15 @@ function RoupeirosPage() {
   };
 
   const onSave = () => {
+    if (!formValido) {
+      const msgs: string[] = [];
+      if (semColunas) msgs.push("Adiciona pelo menos uma coluna.");
+      if (!larguraOK) msgs.push(`Larguras somam ${Math.round(totalLarg)} mm mas o módulo interno tem ${Math.round(ci.larguraInterna)} mm (Δ ${deltaLarg > 0 ? "+" : ""}${Math.round(deltaLarg)} mm).`);
+      if (colsAbaixoMin.length) msgs.push(`Coluna(s) ${colsAbaixoMin.map((c) => c.i + 1).join(", ")} abaixo do mínimo (${MIN_COL_MM} mm).`);
+      if (colsAltInvalidas.length) msgs.push(`Altura inválida nas colunas: ${colsAltInvalidas.map((a) => `${a.i + 1}${a.vazia ? " (vazia)" : ` (Δ ${a.delta > 0 ? "+" : ""}${Math.round(a.delta)} mm)`}`).join(", ")}.`);
+      toast.error(msgs.join(" "));
+      return;
+    }
     const pecas = calcularPecas(config);
     upsert.mutate({
       data: {
@@ -255,7 +287,32 @@ function RoupeirosPage() {
                 <Input type="number" className="tabular" value={config.dims.depth}
                   onChange={(e) => setDims("depth", Number(e.target.value))} /></div>
             </div>
-            <Button onClick={onSave} disabled={upsert.isPending} className="w-full">
+            {!formValido && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle className="text-xs">Configuração inválida</AlertTitle>
+                <AlertDescription className="text-[11px] space-y-0.5">
+                  {semColunas && <div>• Adiciona pelo menos uma coluna.</div>}
+                  {!larguraOK && !semColunas && (
+                    <div>• Larguras: {Math.round(totalLarg)} / {Math.round(ci.larguraInterna)} mm (Δ {deltaLarg > 0 ? "+" : ""}{Math.round(deltaLarg)} mm).</div>
+                  )}
+                  {colsAbaixoMin.length > 0 && (
+                    <div>• Coluna(s) {colsAbaixoMin.map((c) => c.i + 1).join(", ")} &lt; {MIN_COL_MM} mm.</div>
+                  )}
+                  {colsAltInvalidas.map((a) => (
+                    <div key={a.i}>
+                      • Col {a.i + 1}: {a.vazia ? "sem secções" : `altura ${Math.round(a.total)} / ${Math.round(alturaInterna)} mm (Δ ${a.delta > 0 ? "+" : ""}${Math.round(a.delta)} mm)`}.
+                    </div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
+            {formValido && (
+              <div className="flex items-center gap-1 text-[11px] text-emerald-600">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Configuração válida
+              </div>
+            )}
+            <Button onClick={onSave} disabled={upsert.isPending || !formValido} className="w-full">
               <Save className="mr-2 h-4 w-4" /> Guardar na biblioteca
             </Button>
           </CardContent>
@@ -335,21 +392,28 @@ function RoupeirosPage() {
               <span className={`tabular ${larguraOK ? "text-emerald-600" : "text-destructive"}`}>{Math.round(totalLarg)} mm</span>
             </div>
             <div className="space-y-1">
-              {colunas.map((c, i) => (
+              {colunas.map((c, i) => {
+                const wBad = c.largura_mm < MIN_COL_MM;
+                const altBad = !alturasPorCol[i]?.ok || alturasPorCol[i]?.vazia;
+                return (
                 <div key={c.id}
-                  className={`flex items-center gap-2 rounded border p-2 ${i === activeCol ? "border-primary bg-muted/40" : ""}`}>
+                  className={`flex items-center gap-2 rounded border p-2 ${i === activeCol ? "border-primary bg-muted/40" : ""} ${altBad ? "border-destructive/60" : ""}`}>
                   <Button size="sm" variant={i === activeCol ? "default" : "ghost"} className="h-7 px-2 text-xs"
                     onClick={() => setActiveCol(i)}>Col {i + 1}</Button>
                   <div className="flex-1">
-                    <Input type="number" className="tabular h-8" value={c.largura_mm}
-                      onChange={(e) => updColuna(i, { largura_mm: Math.max(100, Number(e.target.value) || 100) })} />
+                    <Input type="number" min={MIN_COL_MM}
+                      className={`tabular h-8 ${wBad ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      value={c.largura_mm}
+                      title={wBad ? `Mínimo ${MIN_COL_MM} mm` : undefined}
+                      onChange={(e) => updColuna(i, { largura_mm: Math.max(MIN_COL_MM / 2, Number(e.target.value) || MIN_COL_MM) })} />
                   </div>
-                  <span className="text-[10px] text-muted-foreground">{c.secoes?.length ?? 0} secç.</span>
+                  <span className={`text-[10px] ${altBad ? "text-destructive" : "text-muted-foreground"}`}>{c.secoes?.length ?? 0} secç.</span>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveColuna(i, -1)} disabled={i === 0}><ArrowLeft className="h-3.5 w-3.5" /></Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveColuna(i, +1)} disabled={i === colunas.length - 1}><ArrowRight className="h-3.5 w-3.5" /></Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeColuna(i)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                 </div>
-              ))}
+                );
+              })}
               {colunas.length === 0 && (
                 <div className="rounded border border-dashed p-3 text-center text-xs text-muted-foreground">
                   Sem colunas. Adiciona pelo menos uma.
@@ -394,8 +458,11 @@ function RoupeirosPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div><Label className="text-[10px]">Altura (mm)</Label>
-                        <Input type="number" className="tabular h-8" value={s.altura_mm}
-                          onChange={(e) => updSecao(s.id, { altura_mm: Math.max(50, Number(e.target.value) || 50) })} />
+                        <Input type="number" min={MIN_SEC_MM}
+                          className={`tabular h-8 ${s.altura_mm < MIN_SEC_MM ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                          value={s.altura_mm}
+                          title={s.altura_mm < MIN_SEC_MM ? `Mínimo ${MIN_SEC_MM} mm` : undefined}
+                          onChange={(e) => updSecao(s.id, { altura_mm: Math.max(MIN_SEC_MM, Number(e.target.value) || MIN_SEC_MM) })} />
                       </div>
                       <div><Label className="text-[10px]">Tipo</Label>
                         <Select value={s.tipo} onValueChange={(v) => updSecao(s.id, { tipo: v as SecaoTipo, config: {} })}>
