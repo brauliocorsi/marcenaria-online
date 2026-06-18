@@ -287,7 +287,32 @@ function RoupeirosPage() {
                 <Input type="number" className="tabular" value={config.dims.depth}
                   onChange={(e) => setDims("depth", Number(e.target.value))} /></div>
             </div>
-            <Button onClick={onSave} disabled={upsert.isPending} className="w-full">
+            {!formValido && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle className="text-xs">Configuração inválida</AlertTitle>
+                <AlertDescription className="text-[11px] space-y-0.5">
+                  {semColunas && <div>• Adiciona pelo menos uma coluna.</div>}
+                  {!larguraOK && !semColunas && (
+                    <div>• Larguras: {Math.round(totalLarg)} / {Math.round(ci.larguraInterna)} mm (Δ {deltaLarg > 0 ? "+" : ""}{Math.round(deltaLarg)} mm).</div>
+                  )}
+                  {colsAbaixoMin.length > 0 && (
+                    <div>• Coluna(s) {colsAbaixoMin.map((c) => c.i + 1).join(", ")} &lt; {MIN_COL_MM} mm.</div>
+                  )}
+                  {colsAltInvalidas.map((a) => (
+                    <div key={a.i}>
+                      • Col {a.i + 1}: {a.vazia ? "sem secções" : `altura ${Math.round(a.total)} / ${Math.round(alturaInterna)} mm (Δ ${a.delta > 0 ? "+" : ""}${Math.round(a.delta)} mm)`}.
+                    </div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
+            {formValido && (
+              <div className="flex items-center gap-1 text-[11px] text-emerald-600">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Configuração válida
+              </div>
+            )}
+            <Button onClick={onSave} disabled={upsert.isPending || !formValido} className="w-full">
               <Save className="mr-2 h-4 w-4" /> Guardar na biblioteca
             </Button>
           </CardContent>
