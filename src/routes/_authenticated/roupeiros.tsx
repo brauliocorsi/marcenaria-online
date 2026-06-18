@@ -118,7 +118,24 @@ function RoupeirosPage() {
   const somaLargCols = colunas.reduce((s, c) => s + c.largura_mm, 0);
   const espDivCols = e.lateral * Math.max(0, colunas.length - 1);
   const totalLarg = somaLargCols + espDivCols;
-  const larguraOK = Math.abs(totalLarg - ci.larguraInterna) < 1;
+  const deltaLarg = totalLarg - ci.larguraInterna;
+  const larguraOK = Math.abs(deltaLarg) < TOL_MM;
+  const colsAbaixoMin = colunas
+    .map((c, i) => ({ i, w: c.largura_mm }))
+    .filter((c) => c.w < MIN_COL_MM);
+
+  // Validação de alturas por coluna
+  const alturasPorCol = colunas.map((c) => {
+    const soma = c.secoes.reduce((s, x) => s + x.altura_mm, 0);
+    const divs = e.prateleira * Math.max(0, c.secoes.length - 1);
+    const total = soma + divs;
+    return { total, delta: total - alturaInterna, ok: Math.abs(total - alturaInterna) < TOL_MM, vazia: c.secoes.length === 0 };
+  });
+  const colsAltInvalidas = alturasPorCol
+    .map((a, i) => ({ ...a, i }))
+    .filter((a) => !a.ok || a.vazia);
+  const semColunas = colunas.length === 0;
+  const formValido = larguraOK && colsAbaixoMin.length === 0 && colsAltInvalidas.length === 0 && !semColunas;
 
   const setDims = (k: "width" | "height" | "depth", v: number) =>
     setConfig((c) => ({ ...c, dims: { ...c.dims, [k]: Math.max(100, Math.round(v)) } }));
