@@ -152,6 +152,33 @@ function RoupeirosPage() {
   const semColunas = colunas.length === 0;
   const formValido = larguraOK && colsAbaixoMin.length === 0 && colsAltInvalidas.length === 0 && !semColunas;
 
+  // Auto-ajuste: a última secção (topo) de cada coluna absorve a diferença para fechar a soma = alturaInterna
+  const normalizingRef = useRef(false);
+  useEffect(() => {
+    if (normalizingRef.current) { normalizingRef.current = false; return; }
+    if (!colunas.length) return;
+    let mutated = false;
+    const next = colunas.map((c) => {
+      const secs = c.secoes ?? [];
+      if (secs.length === 0) return c;
+      const divs = e.prateleira * (secs.length - 1);
+      const others = secs.slice(0, -1).reduce((s, x) => s + x.altura_mm, 0);
+      const target = Math.round(alturaInterna - others - divs);
+      const top = secs[secs.length - 1];
+      if (target < MIN_SEC_MM) return c; // não vale a pena, deixa validador apontar
+      if (Math.abs(top.altura_mm - target) < 1) return c;
+      mutated = true;
+      const newSecs = secs.slice();
+      newSecs[newSecs.length - 1] = { ...top, altura_mm: target };
+      return { ...c, secoes: newSecs };
+    });
+    if (mutated) {
+      normalizingRef.current = true;
+      setConfig((cfg) => ({ ...cfg, colunas: next }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alturaInterna, e.prateleira, JSON.stringify(colunas.map((c) => ({ n: c.secoes?.length ?? 0, h: (c.secoes ?? []).slice(0, -1).map((s) => s.altura_mm) })))]);
+
   const setDims = (k: "width" | "height" | "depth", v: number) =>
     setConfig((c) => ({ ...c, dims: { ...c.dims, [k]: Math.max(100, Math.round(v)) } }));
 
