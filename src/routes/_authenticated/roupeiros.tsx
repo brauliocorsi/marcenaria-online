@@ -328,6 +328,9 @@ function RoupeirosPage() {
                 <Input type="number" className="tabular" value={config.dims.depth}
                   onChange={(e) => setDims("depth", Number(e.target.value))} /></div>
             </div>
+            <p className="text-[10px] text-muted-foreground">
+              A última secção (topo) de cada coluna ajusta-se automaticamente para fechar a altura interna.
+            </p>
             {!formValido && (
               <Alert variant="destructive" className="py-2">
                 <AlertTriangle className="h-4 w-4" />
