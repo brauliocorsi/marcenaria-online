@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Save, Trash2, ArrowUp, ArrowDown, Shirt, Columns3, ArrowLeft, ArrowRight, Scale, AlertTriangle, CheckCircle2 } from "lucide-react";
 
@@ -53,6 +53,19 @@ const DEFAULT_CORRER = {
   folga: 10,
   sobreposicao: 40,
 };
+
+const MALEIRO_DEFAULT_KEY = "roupeiros.maleiroDefault.v1";
+type MaleiroDefault = { altura_mm: number; nPrateleiras: number };
+const FALLBACK_MALEIRO: MaleiroDefault = { altura_mm: 450, nPrateleiras: 1 };
+function loadMaleiroDefault(): MaleiroDefault {
+  if (typeof window === "undefined") return FALLBACK_MALEIRO;
+  try {
+    const raw = window.localStorage.getItem(MALEIRO_DEFAULT_KEY);
+    if (!raw) return FALLBACK_MALEIRO;
+    const p = JSON.parse(raw);
+    return { altura_mm: Math.max(150, Number(p.altura_mm) || 450), nPrateleiras: Math.max(0, Math.min(6, Number(p.nPrateleiras) || 1)) };
+  } catch { return FALLBACK_MALEIRO; }
+}
 
 function uid() { return crypto.randomUUID(); }
 
@@ -109,6 +122,7 @@ function RoupeirosPage() {
   const [drawerPct, setDrawerPct] = useState<number>(0);
   const [doorAngle, setDoorAngle] = useState<number>(0);
   const [activeCol, setActiveCol] = useState<number>(0);
+  const [maleiroDefault, setMaleiroDefault] = useState<MaleiroDefault>(() => loadMaleiroDefault());
 
   const colunas = config.colunas ?? [];
   const ci = useMemo(() => colunasIntervalos(config), [config]);
@@ -137,6 +151,33 @@ function RoupeirosPage() {
     .filter((a) => !a.ok || a.vazia);
   const semColunas = colunas.length === 0;
   const formValido = larguraOK && colsAbaixoMin.length === 0 && colsAltInvalidas.length === 0 && !semColunas;
+
+  // Auto-ajuste: a última secção (topo) de cada coluna absorve a diferença para fechar a soma = alturaInterna
+  const normalizingRef = useRef(false);
+  useEffect(() => {
+    if (normalizingRef.current) { normalizingRef.current = false; return; }
+    if (!colunas.length) return;
+    let mutated = false;
+    const next = colunas.map((c) => {
+      const secs = c.secoes ?? [];
+      if (secs.length === 0) return c;
+      const divs = e.prateleira * (secs.length - 1);
+      const others = secs.slice(0, -1).reduce((s, x) => s + x.altura_mm, 0);
+      const target = Math.round(alturaInterna - others - divs);
+      const top = secs[secs.length - 1];
+      if (target < MIN_SEC_MM) return c; // não vale a pena, deixa validador apontar
+      if (Math.abs(top.altura_mm - target) < 1) return c;
+      mutated = true;
+      const newSecs = secs.slice();
+      newSecs[newSecs.length - 1] = { ...top, altura_mm: target };
+      return { ...c, secoes: newSecs };
+    });
+    if (mutated) {
+      normalizingRef.current = true;
+      setConfig((cfg) => ({ ...cfg, colunas: next }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alturaInterna, e.prateleira, JSON.stringify(colunas.map((c) => ({ n: c.secoes?.length ?? 0, h: (c.secoes ?? []).slice(0, -1).map((s) => s.altura_mm) })))]);
 
   const setDims = (k: "width" | "height" | "depth", v: number) =>
     setConfig((c) => ({ ...c, dims: { ...c.dims, [k]: Math.max(100, Math.round(v)) } }));
@@ -192,14 +233,14 @@ function RoupeirosPage() {
   const addSecao = (tipo: SecaoTipo) => {
     const id = uid();
     const defaultCfg: any =
-      tipo === "varao" ? { prateleiraSuperior: false } :
-      tipo === "maleiro_aberto" ? { nPrateleiras: 1 } :
-      tipo === "maleiro_fechado" ? { nPortas: 2, nPrateleiras: 1 } :
+      tipo === "varao" ? { prateleiraSuperior: false, recuoTopoVarao_mm: 40, alturaUtilRoupa_mm: 1000 } :
+      tipo === "maleiro_aberto" ? { nPrateleiras: maleiroDefault.nPrateleiras } :
+      tipo === "maleiro_fechado" ? { nPortas: 2, nPrateleiras: maleiroDefault.nPrateleiras } :
       tipo === "porta" ? { nPortas: 2 } :
-      tipo === "gavetas" ? { nGavetas: 3, interno: true } :
+      tipo === "gavetas" ? { nGavetas: 3, interno: true, frenteCega: true } :
       {};
     const def: Record<SecaoTipo, number> = {
-      varao: 1000, maleiro_aberto: 450, maleiro_fechado: 500,
+      varao: 1000, maleiro_aberto: maleiroDefault.altura_mm, maleiro_fechado: maleiroDefault.altura_mm,
       porta: 1200, gavetas: 700, nicho_aberto: 400,
     };
     setSecoes([...secoes, { id, altura_mm: def[tipo], tipo, config: defaultCfg }]);
@@ -287,6 +328,9 @@ function RoupeirosPage() {
                 <Input type="number" className="tabular" value={config.dims.depth}
                   onChange={(e) => setDims("depth", Number(e.target.value))} /></div>
             </div>
+            <p className="text-[10px] text-muted-foreground">
+              A última secção (topo) de cada coluna ajusta-se automaticamente para fechar a altura interna.
+            </p>
             {!formValido && (
               <Alert variant="destructive" className="py-2">
                 <AlertTriangle className="h-4 w-4" />
@@ -317,6 +361,34 @@ function RoupeirosPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Maleiro — padrão</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-[10px]">Altura padrão (mm)</Label>
+                <Input type="number" min={150} className="tabular h-8" value={maleiroDefault.altura_mm}
+                  onChange={(ev) => setMaleiroDefault((m) => ({ ...m, altura_mm: Math.max(150, Number(ev.target.value) || 450) }))} />
+              </div>
+              <div><Label className="text-[10px]">Nº prateleiras</Label>
+                <Input type="number" min={0} max={6} className="tabular h-8" value={maleiroDefault.nPrateleiras}
+                  onChange={(ev) => setMaleiroDefault((m) => ({ ...m, nPrateleiras: Math.max(0, Math.min(6, Number(ev.target.value) || 1)) }))} />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Aplicado apenas a novos maleiros adicionados depois de guardar.
+            </p>
+            <Button size="sm" variant="outline" className="w-full h-8"
+              onClick={() => {
+                try { window.localStorage.setItem(MALEIRO_DEFAULT_KEY, JSON.stringify(maleiroDefault)); } catch {}
+                toast.success(`Padrão guardado: ${maleiroDefault.altura_mm} mm · ${maleiroDefault.nPrateleiras} prateleira(s)`);
+              }}>
+              <Save className="mr-2 h-3.5 w-3.5" /> Guardar padrão do maleiro
+            </Button>
+          </CardContent>
+        </Card>
+
+
 
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Sistema de portas (global)</CardTitle></CardHeader>
@@ -482,20 +554,43 @@ function RoupeirosPage() {
                           onChange={(e) => updSecaoCfg(s.id, { prateleirasMoveis: Math.max(0, Math.min(10, Number(e.target.value) || 0)) })} />
                       </div>
                     )}
-                    {s.tipo === "varao" && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div><Label className="text-[10px]">Recuo topo varão (mm)</Label>
-                          <Input type="number" className="tabular h-8"
-                            value={(s.config as any)?.recuoTopoVarao_mm ?? 40}
-                            onChange={(e) => updSecaoCfg(s.id, { recuoTopoVarao_mm: Math.max(20, Number(e.target.value) || 40) })} />
+                    {s.tipo === "varao" && (() => {
+                      const cfg = (s.config ?? {}) as any;
+                      const recuoTopo = cfg.recuoTopoVarao_mm ?? 40;
+                      const alturaUtil = cfg.alturaUtilRoupa_mm ?? 1000;
+                      const recuoFrontal = cfg.recuoFrontalVarao_mm ?? Math.round(config.dims.depth / 2);
+                      const alturaSeccaoLivre = s.altura_mm - recuoTopo;
+                      const utilOk = alturaSeccaoLivre >= alturaUtil;
+                      return (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div><Label className="text-[10px]">Recuo topo (mm)</Label>
+                              <Input type="number" min={20} className="tabular h-8" value={recuoTopo}
+                                onChange={(e) => updSecaoCfg(s.id, { recuoTopoVarao_mm: Math.max(20, Number(e.target.value) || 40) })} />
+                            </div>
+                            <div><Label className="text-[10px]">Recuo frontal (mm)</Label>
+                              <Input type="number" min={20} max={config.dims.depth - 20} className="tabular h-8" value={recuoFrontal}
+                                onChange={(e) => updSecaoCfg(s.id, { recuoFrontalVarao_mm: Math.max(20, Math.min(config.dims.depth - 20, Number(e.target.value) || 300)) })} />
+                            </div>
+                            <div><Label className="text-[10px]">Alt. útil roupa (mm)</Label>
+                              <Input type="number" min={400} className={`tabular h-8 ${utilOk ? "" : "border-destructive focus-visible:ring-destructive"}`} value={alturaUtil}
+                                title={utilOk ? undefined : `Disponível abaixo do varão: ${Math.round(alturaSeccaoLivre)} mm`}
+                                onChange={(e) => updSecaoCfg(s.id, { alturaUtilRoupa_mm: Math.max(400, Number(e.target.value) || 1000) })} />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className={utilOk ? "text-emerald-600" : "text-destructive"}>
+                              Livre abaixo do varão: {Math.round(alturaSeccaoLivre)} mm
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Switch checked={!!cfg.prateleiraSuperior}
+                                onCheckedChange={(v) => updSecaoCfg(s.id, { prateleiraSuperior: v })} />
+                              <Label className="text-[10px]">Prateleira superior</Label>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-end gap-2">
-                          <Switch checked={!!(s.config as any)?.prateleiraSuperior}
-                            onCheckedChange={(v) => updSecaoCfg(s.id, { prateleiraSuperior: v })} />
-                          <Label className="text-[10px]">Prateleira superior</Label>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                     {(s.tipo === "maleiro_aberto" || s.tipo === "maleiro_fechado") && (
                       <div className="grid grid-cols-2 gap-2">
                         <div><Label className="text-[10px]">Nº prateleiras</Label>
@@ -527,20 +622,68 @@ function RoupeirosPage() {
                         </Select>
                       </div>
                     )}
-                    {s.tipo === "gavetas" && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div><Label className="text-[10px]">Nº gavetas</Label>
-                          <Input type="number" min={1} max={10} className="tabular h-8"
-                            value={(s.config as any)?.nGavetas ?? 3}
-                            onChange={(e) => updSecaoCfg(s.id, { nGavetas: Math.max(1, Math.min(10, Number(e.target.value) || 3)) })} />
+                    {s.tipo === "gavetas" && (() => {
+                      const cfg = (s.config ?? {}) as any;
+                      const n = Math.max(1, Math.min(10, Number(cfg.nGavetas) || 3));
+                      const alturas: number[] = Array.isArray(cfg.alturasGavetas_mm) ? cfg.alturasGavetas_mm.slice(0, n) : [];
+                      while (alturas.length < n) alturas.push(Math.floor(s.altura_mm / n));
+                      const somaG = alturas.reduce((a, b) => a + b, 0);
+                      const okG = Math.abs(somaG - s.altura_mm) < TOL_MM;
+                      const setAlturas = (next: number[]) => updSecaoCfg(s.id, { alturasGavetas_mm: next });
+                      const autoEqual = () => {
+                        const h = Math.floor(s.altura_mm / n);
+                        const rest = s.altura_mm - h * n;
+                        setAlturas(Array.from({ length: n }, (_, i) => i === n - 1 ? h + rest : h));
+                      };
+                      return (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div><Label className="text-[10px]">Nº gavetas</Label>
+                              <Input type="number" min={1} max={10} className="tabular h-8" value={n}
+                                onChange={(e) => {
+                                  const nn = Math.max(1, Math.min(10, Number(e.target.value) || 3));
+                                  const nextH = alturas.slice(0, nn);
+                                  while (nextH.length < nn) nextH.push(Math.floor(s.altura_mm / nn));
+                                  updSecaoCfg(s.id, { nGavetas: nn, alturasGavetas_mm: nextH });
+                                }} />
+                            </div>
+                            <div className="flex items-end gap-3">
+                              <div className="flex items-center gap-2">
+                                <Switch checked={!!cfg.interno}
+                                  onCheckedChange={(v) => updSecaoCfg(s.id, { interno: v })} />
+                                <Label className="text-[10px]">Interno</Label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Switch checked={cfg.frenteCega !== false}
+                                  onCheckedChange={(v) => updSecaoCfg(s.id, { frenteCega: v })} />
+                                <Label className="text-[10px]">Frente cega</Label>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-1 rounded border bg-muted/20 p-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px]">Alturas por gaveta (mm)</Label>
+                              <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={autoEqual}>
+                                <Scale className="mr-1 h-3 w-3" /> Igualar
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1">
+                              {alturas.map((h, gi) => (
+                                <Input key={gi} type="number" min={60} className="tabular h-7 text-[11px]" value={h}
+                                  onChange={(e) => {
+                                    const nx = alturas.slice();
+                                    nx[gi] = Math.max(60, Number(e.target.value) || 60);
+                                    setAlturas(nx);
+                                  }} />
+                              ))}
+                            </div>
+                            <div className={`text-[10px] ${okG ? "text-emerald-600" : "text-destructive"}`}>
+                              Soma: {somaG} / {s.altura_mm} mm {okG ? "✓" : `(Δ ${somaG - s.altura_mm > 0 ? "+" : ""}${somaG - s.altura_mm})`}
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-end gap-2">
-                          <Switch checked={!!(s.config as any)?.interno}
-                            onCheckedChange={(v) => updSecaoCfg(s.id, { interno: v })} />
-                          <Label className="text-[10px]">Interno (atrás de porta)</Label>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 ))}
                 {secoes.length === 0 && (

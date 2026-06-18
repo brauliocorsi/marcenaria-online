@@ -179,10 +179,18 @@ export interface SecaoGavetasConfig {
   profundidadeRasgoGaveta?: number;
   /** [Roupeiros] Gaveteiro interno: frente em material de carcaça, sem puxador. */
   interno?: boolean;
+  /** [Roupeiros] Frente cega (sem puxador, sem rasgo) vs com puxador. Default true para internas. */
+  frenteCega?: boolean;
+  /** [Roupeiros] Alturas individuais por gaveta (mm). Quando definido, ignora divisão igualitária. Soma deve = altura útil. */
+  alturasGavetas_mm?: number[];
 }
 export interface SecaoVaraoConfig {
   /** Distância do topo da secção ao varão (mm). Default 40. */
   recuoTopoVarao_mm?: number;
+  /** Recuo do varão à frente do roupeiro (mm). Default = profundidade/2. */
+  recuoFrontalVarao_mm?: number;
+  /** Altura útil mínima para roupa pendurada (mm). Informativo/validação. Default 1000. */
+  alturaUtilRoupa_mm?: number;
   /** Adiciona prateleira superior (típico maleiro pequeno acima do varão). */
   prateleiraSuperior?: boolean;
   /** Distância do topo da secção à prateleira superior (mm). Default 80. */
@@ -797,8 +805,11 @@ export function dimensoesVaroes(config: ModuleConfig): VaraoItem[] {
       const sc = (it.secao.config ?? {}) as SecaoVaraoConfig;
       const recuo = sc.recuoTopoVarao_mm ?? 40;
       const cy = Math.max(it.yMin + 20, it.yMax - recuo);
+      const cz = sc.recuoFrontalVarao_mm != null
+        ? Math.max(15, D - sc.recuoFrontalVarao_mm)
+        : D / 2;
       out.push({
-        idx: it.idx, colIdx: col.idx, cy, cz: D / 2,
+        idx: it.idx, colIdx: col.idx, cy, cz,
         comprimento_mm: col.xMax - col.xMin, diametro_mm: 25,
         xMin: col.xMin, xMax: col.xMax,
       });
