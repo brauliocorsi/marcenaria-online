@@ -150,8 +150,14 @@ export interface Sistema32Config {
   fimY: number;
 }
 
-// ─── Secções (Fase B1) ─────────────────────────────────────
-export type SecaoTipo = "nicho_aberto" | "porta" | "gavetas";
+// ─── Secções (Fase B1 + Roupeiros) ─────────────────────────
+export type SecaoTipo =
+  | "nicho_aberto"
+  | "porta"
+  | "gavetas"
+  | "varao"
+  | "maleiro_aberto"
+  | "maleiro_fechado";
 
 export interface SecaoNichoConfig { prateleirasMoveis?: number; }
 export interface SecaoPortaConfig {
@@ -171,12 +177,36 @@ export interface SecaoGavetasConfig {
   alturaCaixaFolga?: number;
   distanciaFundoGaveta?: number;
   profundidadeRasgoGaveta?: number;
+  /** [Roupeiros] Gaveteiro interno: frente em material de carcaça, sem puxador. */
+  interno?: boolean;
+}
+export interface SecaoVaraoConfig {
+  /** Distância do topo da secção ao varão (mm). Default 40. */
+  recuoTopoVarao_mm?: number;
+  /** Adiciona prateleira superior (típico maleiro pequeno acima do varão). */
+  prateleiraSuperior?: boolean;
+  /** Distância do topo da secção à prateleira superior (mm). Default 80. */
+  alturaPrateleira_mm?: number;
+}
+export interface SecaoMaleiroConfig {
+  /** Altura da prateleira fixa dentro da secção (a partir do fundo da secção). Default = metade da secção. */
+  alturaPrateleira_mm?: number;
+  /** Nº de prateleiras fixas extra (default 1). */
+  nPrateleiras?: number;
+  /** Só para maleiro_fechado — reusa SecaoPortaConfig. */
+  nPortas?: 0 | 1 | 2;
+  ladoAbertura?: LadoAbertura;
+  folga?: number;
+  folgaCentral?: number;
+  espessura?: number | null;
 }
 export interface Secao {
   id: string;
   altura_mm: number;
   tipo: SecaoTipo;
-  config?: Partial<SecaoNichoConfig & SecaoPortaConfig & SecaoGavetasConfig>;
+  config?: Partial<
+    SecaoNichoConfig & SecaoPortaConfig & SecaoGavetasConfig & SecaoVaraoConfig & SecaoMaleiroConfig
+  >;
 }
 
 export interface ModuleConfig {
