@@ -669,6 +669,156 @@ export function dimensoesDivisorias(config: ModuleConfig): {
 
 
 // ─────────────────────────────────────────────────────────────
+// [Roupeiros] Varões, prateleiras de maleiro e portas de correr
+// ─────────────────────────────────────────────────────────────
+export interface VaraoItem {
+  idx: number;
+  cy: number;          // altura do eixo do varão (mm)
+  cz: number;          // profundidade central (mm)
+  comprimento_mm: number;
+  diametro_mm: number; // Ø25 cromado
+  xMin: number; xMax: number;
+}
+export interface MaleiroPrateleira {
+  idx: number;
+  cy: number;
+  size: Vec3; // [largura, espessura, profundidade]
+  center: Vec3;
+}
+
+export function dimensoesVaroes(config: ModuleConfig): VaraoItem[] {
+  if (!temSecoes(config)) return [];
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const W = config.dims.width, D = config.dims.depth;
+  const xMin = e.lateral, xMax = W - e.lateral;
+  const out: VaraoItem[] = [];
+  const { intervalos } = intervalosSecoes(config);
+  for (const it of intervalos) {
+    if (it.secao.tipo !== "varao") continue;
+    const sc = (it.secao.config ?? {}) as SecaoVaraoConfig;
+    const recuo = sc.recuoTopoVarao_mm ?? 40;
+    const cy = Math.max(it.yMin + 20, it.yMax - recuo);
+    out.push({
+      idx: it.idx,
+      cy,
+      cz: D / 2,
+      comprimento_mm: xMax - xMin,
+      diametro_mm: 25,
+      xMin, xMax,
+    });
+  }
+  return out;
+}
+
+export function dimensoesMaleiroPrateleiras(config: ModuleConfig): MaleiroPrateleira[] {
+  if (!temSecoes(config)) return [];
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const W = config.dims.width, D = config.dims.depth;
+  const pratLen = W - 2 * e.lateral - config.folgas.prateleira_lateral;
+  const pratDep = D - config.folgas.prateleira_recuo;
+  const out: MaleiroPrateleira[] = [];
+  const { intervalos } = intervalosSecoes(config);
+  for (const it of intervalos) {
+    if (it.secao.tipo === "maleiro_aberto" || it.secao.tipo === "maleiro_fechado") {
+      const sc = (it.secao.config ?? {}) as SecaoMaleiroConfig;
+      const n = Math.max(1, sc.nPrateleiras ?? 1);
+      const innerH = it.yMax - it.yMin;
+      for (let i = 1; i <= n; i++) {
+        const cy = it.yMin + (innerH * i) / (n + 1);
+        out.push({
+          idx: it.idx,
+          cy,
+          size: [pratLen, e.prateleira, pratDep],
+          center: [W / 2, cy, pratDep / 2],
+        });
+      }
+    } else if (it.secao.tipo === "varao") {
+      const sc = (it.secao.config ?? {}) as SecaoVaraoConfig;
+      if (sc.prateleiraSuperior) {
+        const altP = sc.alturaPrateleira_mm ?? 80;
+        const cy = Math.max(it.yMin + 20, it.yMax - altP);
+        out.push({
+          idx: it.idx,
+          cy,
+          size: [pratLen, e.prateleira, pratDep],
+          center: [W / 2, cy, pratDep / 2],
+        });
+      }
+    }
+  }
+  return out;
+}
+
+export interface CorrerFolha {
+  idx: number;          // 0..n-1
+  largura: number;
+  altura: number;
+  espessura: number;
+  espelho: boolean;
+  cx: number; cy: number; cz: number;
+  trilho: 0 | 1;        // qual via (frontal/traseira) no perfil duas-vias
+}
+export interface CorrerCalha {
+  posicao: "sup" | "inf";
+  comprimento: number;  // = W
+  largura: number;      // perfilLargura
+  espessura: number;    // altura do perfil
+  cy: number;
+  cz: number;
+}
+export interface CorrerResult {
+  folhas: CorrerFolha[];
+  calhas: CorrerCalha[];
+}
+
+function folhaTemEspelho(modo: EspelhoModo, i: number, n: number): boolean {
+  if (modo === "todas") return true;
+  if (modo === "alternadas") return i % 2 === 0;
+  if (modo === "apenas_uma") return i === 0;
+  return false;
+}
+
+export function dimensoesPortasCorrer(config: ModuleConfig): CorrerResult {
+  const c = config.portas?.correr;
+  if (!c || !c.ativo) return { folhas: [], calhas: [] };
+  const W = config.dims.width, H = config.dims.height, D = config.dims.depth;
+  const n = c.nFolhas;
+  const sob = Math.max(0, c.sobreposicao);
+  const fl = Math.max(0, c.folga);
+  // largura útil entre laterais externas
+  const usefulW = W - 2 * fl + (n - 1) * sob;
+  const larguraFolha = usefulW / n;
+  const alturaFolha = H - c.alturaCalhaSup - c.alturaCalhaInf;
+  const cyFolha = c.alturaCalhaInf + alturaFolha / 2;
+  // 2 vias (frontal/traseira) — pares numa via, ímpares na outra
+  const zVia0 = D + c.recuoFrente + c.perfilEspessuraMm / 2;
+  const zVia1 = D + c.recuoFrente + c.perfilEspessuraMm + c.perfilEspessuraMm / 2;
+  const folhas: CorrerFolha[] = [];
+  for (let i = 0; i < n; i++) {
+    const cx = fl + larguraFolha / 2 + i * (larguraFolha - sob);
+    const via = (i % 2) as 0 | 1;
+    folhas.push({
+      idx: i,
+      largura: larguraFolha,
+      altura: alturaFolha,
+      espessura: c.perfilEspessuraMm,
+      espelho: folhaTemEspelho(c.espelho, i, n),
+      cx, cy: cyFolha, cz: via === 0 ? zVia0 : zVia1,
+      trilho: via,
+    });
+  }
+  const zCalhaCenter = D + c.recuoFrente + c.perfilEspessuraMm;
+  const calhas: CorrerCalha[] = [
+    { posicao: "sup", comprimento: W, largura: c.perfilLarguraMm, espessura: c.alturaCalhaSup,
+      cy: H - c.alturaCalhaSup / 2, cz: zCalhaCenter },
+    { posicao: "inf", comprimento: W, largura: c.perfilLarguraMm, espessura: c.alturaCalhaInf,
+      cy: c.alturaCalhaInf / 2, cz: zCalhaCenter },
+  ];
+  return { folhas, calhas };
+}
+
+
+// ─────────────────────────────────────────────────────────────
 // Geometria 3D — fonte única de verdade partilhada com calcularPecas.
 // Sistema: X=largura (0..W), Y=altura (0..H), Z=profundidade (0..D).
 // Origem num canto. `center` é o centro da caixa de cada peça.
