@@ -337,6 +337,8 @@ export function Module3D({ config, explode = 0, furos = [], showHardware = false
         puxadorGavetasPos={(config.gavetas?.puxadorPos ?? "superior") as PuxadorPosicao}
       />
 
+      <RoupeiroExtras config={config} drawerPct={drawerPct} />
+
       <Grid
         position={[target[0], 0, target[2]]}
         args={[10, 10]} cellSize={0.1} cellThickness={0.6} sectionSize={1} sectionThickness={1}
