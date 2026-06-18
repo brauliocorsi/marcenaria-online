@@ -126,10 +126,11 @@ function RoupeirosPage() {
 
   // Validação de alturas por coluna
   const alturasPorCol = colunas.map((c) => {
-    const soma = c.secoes.reduce((s, x) => s + x.altura_mm, 0);
-    const divs = e.prateleira * Math.max(0, c.secoes.length - 1);
+    const secs = c.secoes ?? [];
+    const soma = secs.reduce((s, x) => s + x.altura_mm, 0);
+    const divs = e.prateleira * Math.max(0, secs.length - 1);
     const total = soma + divs;
-    return { total, delta: total - alturaInterna, ok: Math.abs(total - alturaInterna) < TOL_MM, vazia: c.secoes.length === 0 };
+    return { total, delta: total - alturaInterna, ok: Math.abs(total - alturaInterna) < TOL_MM, vazia: secs.length === 0 };
   });
   const colsAltInvalidas = alturasPorCol
     .map((a, i) => ({ ...a, i }))
