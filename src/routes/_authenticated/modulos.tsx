@@ -540,8 +540,11 @@ function ModulosPage() {
                                 <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="nicho_aberto">Nicho aberto</SelectItem>
-                                  <SelectItem value="porta">Porta</SelectItem>
+                                  <SelectItem value="porta">Porta batente</SelectItem>
                                   <SelectItem value="gavetas">Gavetas</SelectItem>
+                                  <SelectItem value="varao">Varão (cabide)</SelectItem>
+                                  <SelectItem value="maleiro_aberto">Maleiro aberto</SelectItem>
+                                  <SelectItem value="maleiro_fechado">Maleiro fechado</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>

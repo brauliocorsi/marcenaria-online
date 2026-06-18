@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTemplatesGavetaRouteImport } from './routes/_authenticated/templates-gaveta'
 import { Route as AuthenticatedTemplatesFuracaoRouteImport } from './routes/_authenticated/templates-furacao'
+import { Route as AuthenticatedRoupeirosRouteImport } from './routes/_authenticated/roupeiros'
 import { Route as AuthenticatedPuxadoresRouteImport } from './routes/_authenticated/puxadores'
 import { Route as AuthenticatedProjetosRouteImport } from './routes/_authenticated/projetos'
 import { Route as AuthenticatedOrlasRouteImport } from './routes/_authenticated/orlas'
@@ -51,6 +52,11 @@ const AuthenticatedTemplatesFuracaoRoute =
     path: '/templates-furacao',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedRoupeirosRoute = AuthenticatedRoupeirosRouteImport.update({
+  id: '/roupeiros',
+  path: '/roupeiros',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPuxadoresRoute = AuthenticatedPuxadoresRouteImport.update({
   id: '/puxadores',
   path: '/puxadores',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/orlas': typeof AuthenticatedOrlasRoute
   '/projetos': typeof AuthenticatedProjetosRoute
   '/puxadores': typeof AuthenticatedPuxadoresRoute
+  '/roupeiros': typeof AuthenticatedRoupeirosRoute
   '/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
   '/templates-gaveta': typeof AuthenticatedTemplatesGavetaRoute
 }
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/orlas': typeof AuthenticatedOrlasRoute
   '/projetos': typeof AuthenticatedProjetosRoute
   '/puxadores': typeof AuthenticatedPuxadoresRoute
+  '/roupeiros': typeof AuthenticatedRoupeirosRoute
   '/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
   '/templates-gaveta': typeof AuthenticatedTemplatesGavetaRoute
 }
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/_authenticated/orlas': typeof AuthenticatedOrlasRoute
   '/_authenticated/projetos': typeof AuthenticatedProjetosRoute
   '/_authenticated/puxadores': typeof AuthenticatedPuxadoresRoute
+  '/_authenticated/roupeiros': typeof AuthenticatedRoupeirosRoute
   '/_authenticated/templates-furacao': typeof AuthenticatedTemplatesFuracaoRoute
   '/_authenticated/templates-gaveta': typeof AuthenticatedTemplatesGavetaRoute
 }
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/orlas'
     | '/projetos'
     | '/puxadores'
+    | '/roupeiros'
     | '/templates-furacao'
     | '/templates-gaveta'
   fileRoutesByTo: FileRoutesByTo
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/orlas'
     | '/projetos'
     | '/puxadores'
+    | '/roupeiros'
     | '/templates-furacao'
     | '/templates-gaveta'
   id:
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orlas'
     | '/_authenticated/projetos'
     | '/_authenticated/puxadores'
+    | '/_authenticated/roupeiros'
     | '/_authenticated/templates-furacao'
     | '/_authenticated/templates-gaveta'
   fileRoutesById: FileRoutesById
@@ -245,6 +257,13 @@ declare module '@tanstack/react-router' {
       path: '/templates-furacao'
       fullPath: '/templates-furacao'
       preLoaderRoute: typeof AuthenticatedTemplatesFuracaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/roupeiros': {
+      id: '/_authenticated/roupeiros'
+      path: '/roupeiros'
+      fullPath: '/roupeiros'
+      preLoaderRoute: typeof AuthenticatedRoupeirosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/puxadores': {
@@ -331,6 +350,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOrlasRoute: typeof AuthenticatedOrlasRoute
   AuthenticatedProjetosRoute: typeof AuthenticatedProjetosRoute
   AuthenticatedPuxadoresRoute: typeof AuthenticatedPuxadoresRoute
+  AuthenticatedRoupeirosRoute: typeof AuthenticatedRoupeirosRoute
   AuthenticatedTemplatesFuracaoRoute: typeof AuthenticatedTemplatesFuracaoRoute
   AuthenticatedTemplatesGavetaRoute: typeof AuthenticatedTemplatesGavetaRoute
 }
@@ -346,6 +366,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOrlasRoute: AuthenticatedOrlasRoute,
   AuthenticatedProjetosRoute: AuthenticatedProjetosRoute,
   AuthenticatedPuxadoresRoute: AuthenticatedPuxadoresRoute,
+  AuthenticatedRoupeirosRoute: AuthenticatedRoupeirosRoute,
   AuthenticatedTemplatesFuracaoRoute: AuthenticatedTemplatesFuracaoRoute,
   AuthenticatedTemplatesGavetaRoute: AuthenticatedTemplatesGavetaRoute,
 }
@@ -361,13 +382,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

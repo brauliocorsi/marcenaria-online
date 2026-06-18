@@ -279,8 +279,67 @@ export function runModuleAsserts() {
       cfgCe.cantoTipo === "cego" && cfgCe.cantoCego?.larguraFiller === 100 && cfgCe.cantoCego?.larguraPortaUtil === 380]);
   }
 
-  let allOk = true;
+  // ─── [novo Roupeiros] Varão, maleiro e portas de correr ────
+  {
+    const base = DEFAULT_MODULE_CONFIG;
+    // Varão: gera 1 item varão + 2 suportes, comprimento = largura interna
+    const cfgV: ModuleConfig = {
+      ...base, dims: { width: 900, height: 2400, depth: 600 },
+      portas: { ...base.portas, nPortas: 0 }, gavetas: { ...base.gavetas, nGavetas: 0 },
+      secoes: [{ id: "v", altura_mm: 2200, tipo: "varao", config: { prateleiraSuperior: true } }],
+    };
+    const pcsV = calcularPecas(cfgV);
+    const varao = pcsV.find(p => /^Varão/i.test(p.descricao));
+    const suporte = pcsV.find(p => /^Suporte var/i.test(p.descricao));
+    const internoW = 900 - 2 * 19;
+    tests.push(["[Roupeiros] varão emite 1 item BOM com comprimento = largura interna",
+      !!varao && Math.abs(varao!.comprimento_mm - internoW) < 1]);
+    tests.push(["[Roupeiros] varão emite 2 suportes",
+      !!suporte && suporte!.qtd === 2]);
+    const pratSupVarao = pcsV.find(p => /Prateleira maleiro/i.test(p.descricao));
+    tests.push(["[Roupeiros] varão.prateleiraSuperior emite prateleira", !!pratSupVarao]);
 
+    // Maleiro aberto: 1 prateleira fixa
+    const cfgMA: ModuleConfig = {
+      ...base, dims: { width: 900, height: 2400, depth: 600 },
+      portas: { ...base.portas, nPortas: 0 }, gavetas: { ...base.gavetas, nGavetas: 0 },
+      secoes: [{ id: "ma", altura_mm: 500, tipo: "maleiro_aberto", config: { nPrateleiras: 1 } }],
+    };
+    const pcsMA = calcularPecas(cfgMA);
+    const pratMA = pcsMA.filter(p => /Prateleira maleiro/i.test(p.descricao));
+    tests.push(["[Roupeiros] maleiro_aberto: 1 prateleira fixa", pratMA.length === 1]);
+
+    // Maleiro fechado: gera porta(s)
+    const cfgMF: ModuleConfig = {
+      ...base, dims: { width: 900, height: 2400, depth: 600 },
+      portas: { ...base.portas, nPortas: 0 }, gavetas: { ...base.gavetas, nGavetas: 0 },
+      secoes: [{ id: "mf", altura_mm: 500, tipo: "maleiro_fechado", config: { nPortas: 2, nPrateleiras: 1 } }],
+    };
+    const portasMF = dimensoesPortas(cfgMF);
+    tests.push(["[Roupeiros] maleiro_fechado: 2 portas batentes", portasMF.length === 2]);
+
+    // Portas de correr ativo → suprime batentes (mesmo com secção 'porta')
+    const cfgC: ModuleConfig = {
+      ...base, dims: { width: 1800, height: 2400, depth: 600 },
+      portas: { ...base.portas, nPortas: 0,
+        correr: { ativo: true, nFolhas: 3, espelho: "alternadas",
+          perfilLarguraMm: 25, perfilEspessuraMm: 20, recuoFrente: 5,
+          alturaCalhaSup: 40, alturaCalhaInf: 40, folga: 10, sobreposicao: 40 } },
+      gavetas: { ...base.gavetas, nGavetas: 0 },
+      secoes: [{ id: "p", altura_mm: 2200, tipo: "porta", config: { nPortas: 2 } }],
+    };
+    tests.push(["[Roupeiros] correr ativo suprime portas batentes",
+      dimensoesPortas(cfgC).length === 0]);
+    const pcsC = calcularPecas(cfgC);
+    const folhas = pcsC.filter(p => /^Folha correr/i.test(p.descricao));
+    const calhas = pcsC.filter(p => /^Calha correr/i.test(p.descricao));
+    const folhasEspelho = folhas.filter(p => /\(espelho\)/.test(p.descricao));
+    tests.push(["[Roupeiros] correr 3 folhas + 2 calhas", folhas.length === 3 && calhas.length === 2]);
+    tests.push(["[Roupeiros] espelho 'alternadas' → ⌈n/2⌉ folhas com espelho",
+      folhasEspelho.length === Math.ceil(3 / 2)]);
+  }
+
+  let allOk = true;
   for (const [label, ok] of tests) {
     console.assert(ok, `[module.assert] FALHOU: ${label}`);
     if (!ok) allOk = false;
