@@ -237,6 +237,15 @@ function RoupeirosPage() {
   };
 
   const onSave = () => {
+    if (!formValido) {
+      const msgs: string[] = [];
+      if (semColunas) msgs.push("Adiciona pelo menos uma coluna.");
+      if (!larguraOK) msgs.push(`Larguras somam ${Math.round(totalLarg)} mm mas o módulo interno tem ${Math.round(ci.larguraInterna)} mm (Δ ${deltaLarg > 0 ? "+" : ""}${Math.round(deltaLarg)} mm).`);
+      if (colsAbaixoMin.length) msgs.push(`Coluna(s) ${colsAbaixoMin.map((c) => c.i + 1).join(", ")} abaixo do mínimo (${MIN_COL_MM} mm).`);
+      if (colsAltInvalidas.length) msgs.push(`Altura inválida nas colunas: ${colsAltInvalidas.map((a) => `${a.i + 1}${a.vazia ? " (vazia)" : ` (Δ ${a.delta > 0 ? "+" : ""}${Math.round(a.delta)} mm)`}`).join(", ")}.`);
+      toast.error(msgs.join(" "));
+      return;
+    }
     const pecas = calcularPecas(config);
     upsert.mutate({
       data: {
