@@ -458,8 +458,11 @@ function RoupeirosPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div><Label className="text-[10px]">Altura (mm)</Label>
-                        <Input type="number" className="tabular h-8" value={s.altura_mm}
-                          onChange={(e) => updSecao(s.id, { altura_mm: Math.max(50, Number(e.target.value) || 50) })} />
+                        <Input type="number" min={MIN_SEC_MM}
+                          className={`tabular h-8 ${s.altura_mm < MIN_SEC_MM ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                          value={s.altura_mm}
+                          title={s.altura_mm < MIN_SEC_MM ? `Mínimo ${MIN_SEC_MM} mm` : undefined}
+                          onChange={(e) => updSecao(s.id, { altura_mm: Math.max(MIN_SEC_MM, Number(e.target.value) || MIN_SEC_MM) })} />
                       </div>
                       <div><Label className="text-[10px]">Tipo</Label>
                         <Select value={s.tipo} onValueChange={(v) => updSecao(s.id, { tipo: v as SecaoTipo, config: {} })}>
