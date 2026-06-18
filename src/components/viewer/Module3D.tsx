@@ -6,7 +6,7 @@ import { Quaternion, Vector3 } from "three";
 import type { ModuleConfig, PecaGeo, PortaDim, GavetaCaixa } from "@/lib/engines/module";
 import {
   calcularGeometria, calcularPes, dimensoesPortas, dimensoesGavetas, resolverEspessuras,
-  pecasPortaAluminio,
+  pecasPortaAluminio, dimensoesVaroes, dimensoesPortasCorrer,
 } from "@/lib/engines/module";
 import { geraCantoDiagonal, geraCantoL, geraCantoCego } from "@/lib/engines/canto";
 import { aberturaGaveta, anguloPortaRad, extensaoFromTipo, pivotPorta } from "@/lib/engines/hardware-anim";
