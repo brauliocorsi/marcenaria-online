@@ -54,6 +54,19 @@ const DEFAULT_CORRER = {
   sobreposicao: 40,
 };
 
+const MALEIRO_DEFAULT_KEY = "roupeiros.maleiroDefault.v1";
+type MaleiroDefault = { altura_mm: number; nPrateleiras: number };
+const FALLBACK_MALEIRO: MaleiroDefault = { altura_mm: 450, nPrateleiras: 1 };
+function loadMaleiroDefault(): MaleiroDefault {
+  if (typeof window === "undefined") return FALLBACK_MALEIRO;
+  try {
+    const raw = window.localStorage.getItem(MALEIRO_DEFAULT_KEY);
+    if (!raw) return FALLBACK_MALEIRO;
+    const p = JSON.parse(raw);
+    return { altura_mm: Math.max(150, Number(p.altura_mm) || 450), nPrateleiras: Math.max(0, Math.min(6, Number(p.nPrateleiras) || 1)) };
+  } catch { return FALLBACK_MALEIRO; }
+}
+
 function uid() { return crypto.randomUUID(); }
 
 function defaultColumns(W: number, lateral: number): ColunaRoupeiro[] {
