@@ -392,21 +392,28 @@ function RoupeirosPage() {
               <span className={`tabular ${larguraOK ? "text-emerald-600" : "text-destructive"}`}>{Math.round(totalLarg)} mm</span>
             </div>
             <div className="space-y-1">
-              {colunas.map((c, i) => (
+              {colunas.map((c, i) => {
+                const wBad = c.largura_mm < MIN_COL_MM;
+                const altBad = !alturasPorCol[i]?.ok || alturasPorCol[i]?.vazia;
+                return (
                 <div key={c.id}
-                  className={`flex items-center gap-2 rounded border p-2 ${i === activeCol ? "border-primary bg-muted/40" : ""}`}>
+                  className={`flex items-center gap-2 rounded border p-2 ${i === activeCol ? "border-primary bg-muted/40" : ""} ${altBad ? "border-destructive/60" : ""}`}>
                   <Button size="sm" variant={i === activeCol ? "default" : "ghost"} className="h-7 px-2 text-xs"
                     onClick={() => setActiveCol(i)}>Col {i + 1}</Button>
                   <div className="flex-1">
-                    <Input type="number" className="tabular h-8" value={c.largura_mm}
-                      onChange={(e) => updColuna(i, { largura_mm: Math.max(100, Number(e.target.value) || 100) })} />
+                    <Input type="number" min={MIN_COL_MM}
+                      className={`tabular h-8 ${wBad ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      value={c.largura_mm}
+                      title={wBad ? `Mínimo ${MIN_COL_MM} mm` : undefined}
+                      onChange={(e) => updColuna(i, { largura_mm: Math.max(MIN_COL_MM / 2, Number(e.target.value) || MIN_COL_MM) })} />
                   </div>
-                  <span className="text-[10px] text-muted-foreground">{c.secoes?.length ?? 0} secç.</span>
+                  <span className={`text-[10px] ${altBad ? "text-destructive" : "text-muted-foreground"}`}>{c.secoes?.length ?? 0} secç.</span>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveColuna(i, -1)} disabled={i === 0}><ArrowLeft className="h-3.5 w-3.5" /></Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => moveColuna(i, +1)} disabled={i === colunas.length - 1}><ArrowRight className="h-3.5 w-3.5" /></Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeColuna(i)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                 </div>
-              ))}
+                );
+              })}
               {colunas.length === 0 && (
                 <div className="rounded border border-dashed p-3 text-center text-xs text-muted-foreground">
                   Sem colunas. Adiciona pelo menos uma.
