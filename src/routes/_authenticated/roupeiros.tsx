@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Save, Trash2, ArrowUp, ArrowDown, Shirt, Columns3, ArrowLeft, ArrowRight, Scale } from "lucide-react";
+import { Plus, Save, Trash2, ArrowUp, ArrowDown, Shirt, Columns3, ArrowLeft, ArrowRight, Scale, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,12 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Module3D } from "@/components/viewer/Module3D";
+
+const MIN_COL_MM = 200;
+const MIN_SEC_MM = 50;
+const TOL_MM = 1;
 
 import {
   DEFAULT_MODULE_CONFIG, calcularPecas, colunasIntervalos,
