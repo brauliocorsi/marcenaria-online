@@ -363,6 +363,34 @@ function RoupeirosPage() {
         </Card>
 
         <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Maleiro — padrão</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-[10px]">Altura padrão (mm)</Label>
+                <Input type="number" min={150} className="tabular h-8" value={maleiroDefault.altura_mm}
+                  onChange={(ev) => setMaleiroDefault((m) => ({ ...m, altura_mm: Math.max(150, Number(ev.target.value) || 450) }))} />
+              </div>
+              <div><Label className="text-[10px]">Nº prateleiras</Label>
+                <Input type="number" min={0} max={6} className="tabular h-8" value={maleiroDefault.nPrateleiras}
+                  onChange={(ev) => setMaleiroDefault((m) => ({ ...m, nPrateleiras: Math.max(0, Math.min(6, Number(ev.target.value) || 1)) }))} />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Aplicado apenas a novos maleiros adicionados depois de guardar.
+            </p>
+            <Button size="sm" variant="outline" className="w-full h-8"
+              onClick={() => {
+                try { window.localStorage.setItem(MALEIRO_DEFAULT_KEY, JSON.stringify(maleiroDefault)); } catch {}
+                toast.success(`Padrão guardado: ${maleiroDefault.altura_mm} mm · ${maleiroDefault.nPrateleiras} prateleira(s)`);
+              }}>
+              <Save className="mr-2 h-3.5 w-3.5" /> Guardar padrão do maleiro
+            </Button>
+          </CardContent>
+        </Card>
+
+
+
+        <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Sistema de portas (global)</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Select value={doorMode} onValueChange={(v) => aplicarDoorMode(v as DoorMode)}>
