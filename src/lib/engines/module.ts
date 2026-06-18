@@ -179,10 +179,18 @@ export interface SecaoGavetasConfig {
   profundidadeRasgoGaveta?: number;
   /** [Roupeiros] Gaveteiro interno: frente em material de carcaça, sem puxador. */
   interno?: boolean;
+  /** [Roupeiros] Frente cega (sem puxador, sem rasgo) vs com puxador. Default true para internas. */
+  frenteCega?: boolean;
+  /** [Roupeiros] Alturas individuais por gaveta (mm). Quando definido, ignora divisão igualitária. Soma deve = altura útil. */
+  alturasGavetas_mm?: number[];
 }
 export interface SecaoVaraoConfig {
   /** Distância do topo da secção ao varão (mm). Default 40. */
   recuoTopoVarao_mm?: number;
+  /** Recuo do varão à frente do roupeiro (mm). Default = profundidade/2. */
+  recuoFrontalVarao_mm?: number;
+  /** Altura útil mínima para roupa pendurada (mm). Informativo/validação. Default 1000. */
+  alturaUtilRoupa_mm?: number;
   /** Adiciona prateleira superior (típico maleiro pequeno acima do varão). */
   prateleiraSuperior?: boolean;
   /** Distância do topo da secção à prateleira superior (mm). Default 80. */
