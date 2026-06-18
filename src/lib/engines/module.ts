@@ -962,7 +962,17 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
         });
       }
     }
+    // [Roupeiros] Prateleiras fixas de maleiro (aberto/fechado) + prateleira sup. varão
+    for (const mp of dimensoesMaleiroPrateleiras(config)) {
+      out.push({
+        tipo: "prateleira",
+        descricao: `Prateleira maleiro sec${mp.idx + 1}`,
+        veio: "comprimento",
+        size: mp.size, center: mp.center,
+      });
+    }
   }
+
 
   {
     const fd = dimensoesFundoCarcaca(config);
