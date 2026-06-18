@@ -61,6 +61,21 @@ export interface PuxadorRef {
 }
 export type PuxadorPos = "superior" | "inferior" | "lateral";
 
+export type EspelhoModo = "nenhum" | "todas" | "alternadas" | "apenas_uma";
+
+export interface PortasCorrerConfig {
+  ativo: boolean;
+  nFolhas: 2 | 3 | 4;
+  espelho: EspelhoModo;
+  perfilLarguraMm: number;       // perfil alumínio (largura)
+  perfilEspessuraMm: number;     // espessura do painel/perfil
+  recuoFrente: number;           // mm — distância das calhas à frente do módulo
+  alturaCalhaSup: number;        // mm — altura da calha superior (perfil)
+  alturaCalhaInf: number;        // mm — altura da calha inferior
+  folga: number;                 // mm — folga lateral entre folhas e laterais
+  sobreposicao: number;          // mm — quanto as folhas sobrepõem entre si
+}
+
 export interface PortasConfig {
   nPortas: 0 | 1 | 2;
   modo: PortaModo;
@@ -78,6 +93,8 @@ export interface PortasConfig {
   puxador?: PuxadorRef | null;
   /** Posiçao do puxador na frente. Default 'superior'. */
   puxadorPos?: PuxadorPos;
+  /** [Roupeiros] Portas de correr globais. Quando ativo suprime portas batentes (módulo + secções). */
+  correr?: PortasCorrerConfig;
 }
 
 export type CorredicaTipo = "telescopica" | "oculta" | "roldanas";
