@@ -1,68 +1,90 @@
-# Fase 2 — Motor Paramétrico do Módulo
+## Objetivo
+Suporte fiel a roupeiros: novos tipos de secção (varão, maleiro aberto/fechado), gaveteiro interno (reusa secção `gavetas`), portas de correr (globais) com opção espelho, e página dedicada `/roupeiros` para construir o móvel completo.
 
-## PASSO 0 — Verificação
-Confirmar via `read_query` que `materials`, `edge_bands`, `hardware`, `drill_bits`, `settings` continuam intactos (contagem + RLS). Reportar no fim. Sem alterações.
+Mantém o motor existente e os asserts a passar. Tudo opcional → módulos antigos inalterados.
 
-## 1. Migration aditiva
-Nova tabela `public.modules`:
-- `id uuid PK`, `user_id uuid not null`
-- `name text not null`
-- `width_mm int`, `height_mm int`, `depth_mm int`
-- `config jsonb not null default '{}'` — configuração completa de construção/espessuras/folgas/fundo
-- `pieces jsonb not null default '[]'` — cache da última lista calculada
-- `material_id uuid` (referência lógica a `materials.id`, nullable — sem FK rígida para evitar bloqueios em apagar materiais)
-- `created_at`, `updated_at` + trigger `set_updated_at`
-- GRANTs (authenticated + service_role), RLS `auth.uid() = user_id` (padrão das outras tabelas)
+---
 
-## 2. Motor de cálculo (puro, determinístico)
-`src/lib/engines/module.ts`:
+## PARTE 1 — Motor (`module.ts`)
 
-- Tipos: `PieceType`, `SistemaMontagem = 'laterais_cobrem' | 'tampo_base_cobrem'`, `FundoModo = 'sobreposto' | 'ranhura'`, `Peca`, `ModuleConfig`.
-- Função pura `calcularPecas(config: ModuleConfig): Peca[]`.
-- Fórmulas implementadas literalmente conforme especificação:
-  - `laterais_cobrem`: laterais = H×D, tampo/base = (W−2·e_lat)×D, prateleira = (W−2·e_lat−folga)×(D−recuo).
-  - `tampo_base_cobrem`: tampo/base = W×D, laterais = (H−e_tampo−e_base)×D.
-  - Fundo sobreposto: W×H×e_fundo.
-  - Fundo em ranhura: (W−2·e_lat+2·prof)×(H−e_tampo−e_base+2·prof)×e_fundo.
-- Todas as medidas arredondadas a inteiro (`Math.round`) no fim.
-- Regra "padrão + override": função `resolverEspessuras(padrao, overrides)` resolve cada peça.
+Estender `SecaoTipo`:
+```
+"nicho_aberto" | "porta" | "gavetas" | "varao" | "maleiro_aberto" | "maleiro_fechado"
+```
 
-## 3. Testes de sanidade
-`src/lib/engines/module.assert.ts`: corre `console.assert` para o cenário W=800, H=720, D=560, todas 19mm, fundo sobreposto 4mm, 1 prateleira, folga 2mm, recuo 10mm. Verifica resultados exatos: Lateral 720×560×19, Tampo/Base 762×560×19, Prateleira 760×550×19, Fundo 800×720×4. Importado dinamicamente apenas em dev (`import.meta.env.DEV`) a partir do entry do cliente (`src/router.tsx`) para correr no arranque sem afetar produção.
+Novas configs:
+- `SecaoVaraoConfig { alturaVarao_mm?, prateleiraSuperior?: boolean, alturaPrateleira_mm? }`
+- `SecaoMaleiroConfig { alturaPrateleira_mm?, nPrateleiras?: number }` (usado por aberto e fechado; fechado adiciona `nPortas?, ladoAbertura?, folga?` reutilizando `SecaoPortaConfig`)
 
-## 4. Server functions
-`src/lib/modules.functions.ts` (padrão `catalog.functions.ts`):
-- `listModules`, `getModule(id)`, `upsertModule({id?, name, dims, config, pieces, material_id})`, `deleteModule(id)`.
-- Todas com `requireSupabaseAuth` + validação zod.
+Em `PortasConfig` adicionar bloco opcional `correr`:
+```ts
+correr?: {
+  ativo: boolean;          // se true, ignora portas batentes do módulo + secções "porta"
+  nFolhas: 2 | 3 | 4;
+  espelho: "nenhum" | "todas" | "alternadas" | "apenas_uma";
+  perfilEspessura_mm: number;   // perfil alumínio
+  recuoFrente_mm: number;       // calha duas vias
+  alturaCalhaSup_mm: number;
+  alturaCalhaInf_mm: number;
+}
+```
 
-## 5. UI — Página /modulos
-Nova rota `src/routes/_authenticated/modulos.tsx` + entrada na sidebar (ícone `Box`, antes de "Materiais").
+Geração:
+- `geraPecas`: se `portas.correr.ativo` → emite calha sup/inf (perfil alumínio, BOM), folhas (frente com perfil + painel melamina ou espelho conforme regra), e **não** gera portas batentes das secções `porta`. Secção `porta` com correr ativo torna-se equivalente a `nicho_aberto` estrutural (mantém divisórias).
+- `varao`: emite item BOM "Varão Ø25 cromado" (comprimento = largura interna), 2 suportes; sem mesh estrutural extra além das divisórias.
+- `maleiro_aberto`: prateleira fixa a `alturaPrateleira_mm` dentro da secção.
+- `maleiro_fechado`: mesmo que `maleiro_aberto` + porta(s) batente(s) da secção (reutilizar pipeline da secção `porta`).
+- Gaveteiro interno = secção `gavetas` normal mas com flag `interno?: boolean` em `SecaoGavetasConfig` → frente em material de carcaça, sem puxador (só altera BOM/aparência).
 
-Layout desktop: grelha 2 colunas (`lg:grid-cols-[1fr_1.2fr]`). Mobile: colunas empilhadas.
+---
 
-**Coluna esquerda — Painel de configuração** (componentes pequenos):
-- Cabeçalho com Nome (input) + botão "Guardar módulo".
-- Card "Dimensões": 3 controlos (W/H/D) cada um com slider + input numérico sincronizados (mm inteiros, min/max razoáveis 100–3000).
-- Card "Construção": SELECT sistema de montagem + SELECT material (lista do catálogo).
-- Card "Espessuras": input espessura padrão; bloco colapsável "Ajustar por peça" com 4 inputs opcionais (lateral/tampo/base/prateleira).
-- Card "Prateleiras": nº prateleiras (int), folga lateral, recuo frontal.
-- Card "Fundo": SELECT modo, espessura (default 4mm), prof. ranhura, recuo.
+## PARTE 2 — Render (`Module3D.tsx`)
 
-**Coluna direita — Tabela de peças**:
-- Cabeçalho sticky com nome do módulo.
-- `<Table>` com colunas Peça / Qtd / Comprimento / Largura / Espessura / Veio (tabular-nums, sufixo "mm").
-- Rodapé: total de peças e área total m² (Σ qtd·C·L / 1 000 000).
-- Estado vazio quando dims inválidas (ex: tampo ≤ 0) → mostra aviso.
+- Suporte a divisórias e prateleiras já existe; acrescentar:
+  - **Varão**: cilindro horizontal Ø25 mm + 2 cilindros suporte nas laterais.
+  - **Maleiro aberto/fechado**: prateleira fixa (reusa mesh prateleira).
+  - **Portas de correr globais**: 2 folhas (ou n) à frente do módulo, animadas no eixo X (deslizam), com material espelho (MeshPhysicalMaterial reflectivo) quando aplicável; calhas sup/inf como barras finas. Quando correr ativo, suprimir meshes de portas batentes.
+  - **Gaveteiro interno**: aplicar material da carcaça à frente da gaveta.
 
-**Recálculo em tempo real**: `useMemo(() => calcularPecas(config), [config])` — atualiza a cada keystroke/slider, sem botão.
+---
 
-**Lista de módulos guardados**: barra horizontal no topo da página com cards pequenos (nome + dims) carregados via `useQuery(['modules'])`. Clicar → carrega no painel. Ícone para apagar (ConfirmDelete reutilizado).
+## PARTE 3 — UI nova `/roupeiros`
 
-## Não inclui
-3D, portas/dobradiças, gavetas, furação automática, nesting, MPR, orçamento.
+Nova rota `src/routes/_authenticated/roupeiros.tsx` + entry no menu lateral.
+
+Layout:
+1. **Cabeçalho do roupeiro**: nome, largura, altura, profundidade, espessura, material corpo/frente, pés/rodapé, tamponamentos.
+2. **Sistema de portas (global)**:
+   - Modo: `Sem portas` | `Batente por secção` | `Correr global`.
+   - Se correr: nº folhas, espelho (nenhum/todas/alternadas/apenas uma), recuo, alturas das calhas.
+3. **Empilhador de secções** (baixo→cima), drag-reorder, com tipos:
+   - Gaveteiro (n gavetas, altura, corrediça, "interno" toggle)
+   - Cabide / Varão (altura do varão, prateleira superior opcional)
+   - Maleiro aberto (altura prateleira, nº prateleiras)
+   - Maleiro fechado (idem + nº portas, lado abertura)
+   - Nicho aberto (prateleiras móveis)
+   - Secção porta batente (só se modo = batente por secção)
+   - Sem porta / mesclar (= nicho_aberto)
+   - Soma de alturas validada vs altura total (badge erro se mismatch).
+4. **Preview 3D** ao lado (reusa `Module3D`).
+5. Guardar como módulo na biblioteca + associar ao ambiente activo.
+
+Editor existente em `/modulos` mantém os tipos novos disponíveis no card "Secções" (também ganha os novos selects), para uso pontual.
+
+---
+
+## PARTE 4 — Asserts (`module.assert.ts`)
+
+- Regressão: cadeia completa passa; módulos sem `secoes` inalterados.
+- Novo: secção `varao` gera 1 item BOM varão + 2 suportes; comprimento = largura interna.
+- Novo: `maleiro_aberto` gera 1 prateleira fixa à altura definida; `maleiro_fechado` adiciona porta(s).
+- Novo: `portas.correr.ativo=true` suprime portas batentes mesmo com secções `porta`; gera n folhas + 2 calhas; espelho="alternadas" ⇒ metade das folhas com material espelho.
+- Novo: gaveta `interno=true` usa material carcaça e sem puxador.
+- Novo: rota `/roupeiros` monta e cria módulo com >=3 secções (maleiro+varão+gaveteiro) corretamente.
+
+---
 
 ## Entregável
-- Migration `modules` aplicada com RLS.
-- `module.ts` motor puro + asserts em dev.
-- `/modulos` operacional: configurar → recalcular instantaneamente → guardar/carregar/apagar.
-- Relatório de PASSO 0 e dos `console.assert` na resposta final.
+- `/roupeiros` funcional com construção fiel (varão, maleiro aberto/fechado, gaveteiros internos, portas de correr com espelho, secções mistas sem porta).
+- Editor genérico `/modulos` continua a oferecer as secções novas.
+- Cadeia de asserts verde.
