@@ -122,6 +122,7 @@ function RoupeirosPage() {
   const [drawerPct, setDrawerPct] = useState<number>(0);
   const [doorAngle, setDoorAngle] = useState<number>(0);
   const [activeCol, setActiveCol] = useState<number>(0);
+  const [maleiroDefault, setMaleiroDefault] = useState<MaleiroDefault>(() => loadMaleiroDefault());
 
   const colunas = config.colunas ?? [];
   const ci = useMemo(() => colunasIntervalos(config), [config]);
