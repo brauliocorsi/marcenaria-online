@@ -852,14 +852,16 @@ function aplicarRevealFrente(
 }
 
 export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
-  // [B1] Secções: gera portas por cada secção do tipo 'porta'.
+  // [Roupeiros] Portas de correr globais suprimem TODAS as batentes (módulo + secções).
+  if (config.portas?.correr?.ativo) return [];
+  // [B1] Secções: gera portas por cada secção do tipo 'porta' OU 'maleiro_fechado'.
   if (temSecoes(config)) {
     const out: PortaDim[] = [];
     const { intervalos } = intervalosSecoes(config);
     const W = config.dims.width, D = config.dims.depth;
     const baseP = config.portas;
     for (const it of intervalos) {
-      if (it.secao.tipo !== "porta") continue;
+      if (it.secao.tipo !== "porta" && it.secao.tipo !== "maleiro_fechado") continue;
       const sc = (it.secao.config ?? {}) as SecaoPortaConfig;
       const nP = (sc.nPortas ?? 1) as 0 | 1 | 2;
       if (nP === 0) continue;
