@@ -236,6 +236,8 @@ export interface ModuleConfig {
   categoria?: "base" | "superior" | "coluna" | "gaveteiro" | "canto" | "ilha" | "roupeiro" | "nicho";
   /** [novo B1] Secções (divisórias estruturais + delegação por tipo). Opcional. */
   secoes?: Secao[];
+  /** [Roupeiros P2] Colunas verticais (largura + pilha de secções). Quando presente, substitui `secoes`. */
+  colunas?: ColunaRoupeiro[];
   /** [novo B3] Subtipo de canto (categoria==='canto'). */
   cantoTipo?: "l" | "cego" | "diagonal";
   /** [novo B3] Parâmetros do canto diagonal (footprint pentagonal). */
@@ -258,6 +260,13 @@ export interface ModuleConfig {
     larguraFiller: number;
     larguraPortaUtil: number;
   };
+}
+
+/** [Roupeiros P2] Coluna vertical de um roupeiro. */
+export interface ColunaRoupeiro {
+  id: string;
+  largura_mm: number;
+  secoes?: Secao[];
 }
 
 
@@ -327,7 +336,7 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
     });
   }
 
-  if (nPrateleiras > 0 && !temSecoes(config)) {
+  if (nPrateleiras > 0 && !temSecoesOuColunas(config)) {
     pecas.push({
       tipo: "prateleira",
       descricao: "Prateleira",
@@ -340,53 +349,69 @@ export function calcularPecas(config: ModuleConfig): Peca[] {
   }
 
   // [B1] Divisórias + prateleiras móveis por secção 'nicho_aberto'.
-  if (temSecoes(config)) {
+  if (temSecoesOuColunas(config)) {
     const dd = dimensoesDivisorias(config);
-    if (dd.centers.length > 0) {
+    for (const c of dd.centers) {
       pecas.push({
-        tipo: "prateleira", descricao: "Divisória",
-        qtd: dd.centers.length,
-        comprimento_mm: r(dd.comprimento), largura_mm: r(dd.largura),
+        tipo: "prateleira", descricao: `Divisória horiz. col${c.idx + 1}`,
+        qtd: 1,
+        comprimento_mm: r(c.comprimento), largura_mm: r(c.largura),
         espessura_mm: r(dd.espessura), veio: "comprimento",
       });
     }
-    const { intervalos } = intervalosSecoes(config);
-    for (const it of intervalos) {
-      if (it.secao.tipo !== "nicho_aberto") continue;
-      const np = (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0;
-      if (np > 0) {
+    // [Roupeiros P2] Divisórias verticais entre colunas
+    if (temColunas(config)) {
+      const ci = colunasIntervalos(config);
+      for (const dv of ci.divisoriasVerticais) {
         pecas.push({
-          tipo: "prateleira", descricao: `Prateleira (sec ${it.idx + 1})`,
-          qtd: np,
-          comprimento_mm: r(W - 2 * e.lateral - folgas.prateleira_lateral),
-          largura_mm: r(D - folgas.prateleira_recuo),
-          espessura_mm: r(e.prateleira), veio: "comprimento",
+          tipo: "lateral", descricao: `Divisória vertical ${dv.idx + 1}`,
+          qtd: 1,
+          comprimento_mm: r(dv.yMax - dv.yMin),
+          largura_mm: r(D),
+          espessura_mm: r(dv.espessura),
+          veio: "comprimento",
         });
       }
     }
-    // [Roupeiros] Maleiro prateleiras (aberto/fechado + varão.prateleiraSuperior)
-    const maleiroPrats = dimensoesMaleiroPrateleiras(config);
-    for (const mp of maleiroPrats) {
+    // Prateleiras móveis por nicho (iteradas por coluna via paraCadaColuna)
+    const nichos = paraCadaColuna(config, ({ col, intervalos }) =>
+      intervalos.filter(it => it.secao.tipo === "nicho_aberto").map(it => ({
+        col, it, np: (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0,
+      }))
+    );
+    for (const n of nichos) {
+      if (n.np <= 0) continue;
       pecas.push({
-        tipo: "prateleira", descricao: `Prateleira maleiro (sec ${mp.idx + 1})`,
+        tipo: "prateleira", descricao: `Prateleira nicho col${n.col.idx + 1}#${n.it.idx + 1}`,
+        qtd: n.np,
+        comprimento_mm: r(n.col.larguraUtil - folgas.prateleira_lateral),
+        largura_mm: r(D - folgas.prateleira_recuo),
+        espessura_mm: r(e.prateleira), veio: "comprimento",
+      });
+    }
+    // [Roupeiros] Maleiro prateleiras
+    for (const mp of dimensoesMaleiroPrateleiras(config)) {
+      pecas.push({
+        tipo: "prateleira", descricao: `Prateleira maleiro col${mp.colIdx + 1} sec${mp.idx + 1}`,
         qtd: 1,
         comprimento_mm: r(mp.size[0]), largura_mm: r(mp.size[2]),
         espessura_mm: r(mp.size[1]), veio: "comprimento",
       });
     }
-    // [Roupeiros] Varões — acessório (BOM): comprimento + 2 suportes
+    // [Roupeiros] Varões
     for (const v of dimensoesVaroes(config)) {
       pecas.push({
-        tipo: "puxador", descricao: `Varão Ø${v.diametro_mm} cromado (sec ${v.idx + 1})`,
+        tipo: "puxador", descricao: `Varão Ø${v.diametro_mm} cromado col${v.colIdx + 1} sec${v.idx + 1}`,
         qtd: 1, comprimento_mm: r(v.comprimento_mm), largura_mm: v.diametro_mm,
         espessura_mm: v.diametro_mm, veio: "sem",
       });
       pecas.push({
-        tipo: "puxador", descricao: `Suporte varão (sec ${v.idx + 1})`,
+        tipo: "puxador", descricao: `Suporte varão col${v.colIdx + 1} sec${v.idx + 1}`,
         qtd: 2, comprimento_mm: 40, largura_mm: 25, espessura_mm: 25, veio: "sem",
       });
     }
   }
+
 
   // [Roupeiros] Portas de correr — folhas + calhas
   if (config.portas?.correr?.ativo) {
@@ -711,18 +736,34 @@ export function intervalosSecoes(config: ModuleConfig): {
   return { intervalos, divisorias, alturaInterna };
 }
 
+/** Helper: existe alguma estrutura de secções (legado `secoes` OU novo `colunas`). */
+export function temSecoesOuColunas(c: ModuleConfig): boolean {
+  return temSecoes(c) || temColunas(c);
+}
+
 export function dimensoesDivisorias(config: ModuleConfig): {
-  comprimento: number; largura: number; espessura: number; centers: { yCenter: number; idx: number }[];
+  espessura: number;
+  centers: { yCenter: number; idx: number; xMin: number; xMax: number; comprimento: number; largura: number }[];
 } {
   const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
-  const W = config.dims.width, D = config.dims.depth;
-  const compr = W - 2 * e.lateral - config.folgas.prateleira_lateral;
+  const D = config.dims.depth;
   const larg = D - config.folgas.prateleira_recuo;
-  const { divisorias } = intervalosSecoes(config);
-  return {
-    comprimento: compr, largura: larg, espessura: e.prateleira,
-    centers: divisorias.map(d => ({ yCenter: d.yCenter, idx: d.idx })),
-  };
+  const fLat = config.folgas.prateleira_lateral;
+  const centers: { yCenter: number; idx: number; xMin: number; xMax: number; comprimento: number; largura: number }[] = [];
+  const { intervalos: cols } = colunasIntervalos(config);
+  for (const col of cols) {
+    const secoes = temColunas(config) ? col.secoes : (config.secoes ?? []);
+    if (secoes.length === 0) continue;
+    const { divisorias } = intervalosSecoesLista(config, secoes);
+    for (const d of divisorias) {
+      centers.push({
+        yCenter: d.yCenter, idx: d.idx,
+        xMin: col.xMin, xMax: col.xMax,
+        comprimento: col.larguraUtil - fLat, largura: larg,
+      });
+    }
+  }
+  return { espessura: e.prateleira, centers };
 }
 
 
@@ -731,6 +772,7 @@ export function dimensoesDivisorias(config: ModuleConfig): {
 // ─────────────────────────────────────────────────────────────
 export interface VaraoItem {
   idx: number;
+  colIdx: number;
   cy: number;          // altura do eixo do varão (mm)
   cz: number;          // profundidade central (mm)
   comprimento_mm: number;
@@ -739,73 +781,72 @@ export interface VaraoItem {
 }
 export interface MaleiroPrateleira {
   idx: number;
+  colIdx: number;
   cy: number;
   size: Vec3; // [largura, espessura, profundidade]
   center: Vec3;
 }
 
 export function dimensoesVaroes(config: ModuleConfig): VaraoItem[] {
-  if (!temSecoes(config)) return [];
-  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
-  const W = config.dims.width, D = config.dims.depth;
-  const xMin = e.lateral, xMax = W - e.lateral;
-  const out: VaraoItem[] = [];
-  const { intervalos } = intervalosSecoes(config);
-  for (const it of intervalos) {
-    if (it.secao.tipo !== "varao") continue;
-    const sc = (it.secao.config ?? {}) as SecaoVaraoConfig;
-    const recuo = sc.recuoTopoVarao_mm ?? 40;
-    const cy = Math.max(it.yMin + 20, it.yMax - recuo);
-    out.push({
-      idx: it.idx,
-      cy,
-      cz: D / 2,
-      comprimento_mm: xMax - xMin,
-      diametro_mm: 25,
-      xMin, xMax,
-    });
-  }
-  return out;
+  if (!temSecoesOuColunas(config)) return [];
+  const D = config.dims.depth;
+  return paraCadaColuna(config, ({ col, intervalos }) => {
+    const out: VaraoItem[] = [];
+    for (const it of intervalos) {
+      if (it.secao.tipo !== "varao") continue;
+      const sc = (it.secao.config ?? {}) as SecaoVaraoConfig;
+      const recuo = sc.recuoTopoVarao_mm ?? 40;
+      const cy = Math.max(it.yMin + 20, it.yMax - recuo);
+      out.push({
+        idx: it.idx, colIdx: col.idx, cy, cz: D / 2,
+        comprimento_mm: col.xMax - col.xMin, diametro_mm: 25,
+        xMin: col.xMin, xMax: col.xMax,
+      });
+    }
+    return out;
+  });
 }
 
 export function dimensoesMaleiroPrateleiras(config: ModuleConfig): MaleiroPrateleira[] {
-  if (!temSecoes(config)) return [];
+  if (!temSecoesOuColunas(config)) return [];
   const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
-  const W = config.dims.width, D = config.dims.depth;
-  const pratLen = W - 2 * e.lateral - config.folgas.prateleira_lateral;
+  const D = config.dims.depth;
+  const fLat = config.folgas.prateleira_lateral;
   const pratDep = D - config.folgas.prateleira_recuo;
-  const out: MaleiroPrateleira[] = [];
-  const { intervalos } = intervalosSecoes(config);
-  for (const it of intervalos) {
-    if (it.secao.tipo === "maleiro_aberto" || it.secao.tipo === "maleiro_fechado") {
-      const sc = (it.secao.config ?? {}) as SecaoMaleiroConfig;
-      const n = Math.max(1, sc.nPrateleiras ?? 1);
-      const innerH = it.yMax - it.yMin;
-      for (let i = 1; i <= n; i++) {
-        const cy = it.yMin + (innerH * i) / (n + 1);
-        out.push({
-          idx: it.idx,
-          cy,
-          size: [pratLen, e.prateleira, pratDep],
-          center: [W / 2, cy, pratDep / 2],
-        });
-      }
-    } else if (it.secao.tipo === "varao") {
-      const sc = (it.secao.config ?? {}) as SecaoVaraoConfig;
-      if (sc.prateleiraSuperior) {
-        const altP = sc.alturaPrateleira_mm ?? 80;
-        const cy = Math.max(it.yMin + 20, it.yMax - altP);
-        out.push({
-          idx: it.idx,
-          cy,
-          size: [pratLen, e.prateleira, pratDep],
-          center: [W / 2, cy, pratDep / 2],
-        });
+  return paraCadaColuna(config, ({ col, intervalos }) => {
+    const pratLen = col.larguraUtil - fLat;
+    const xCenter = (col.xMin + col.xMax) / 2;
+    const out: MaleiroPrateleira[] = [];
+    for (const it of intervalos) {
+      if (it.secao.tipo === "maleiro_aberto" || it.secao.tipo === "maleiro_fechado") {
+        const sc = (it.secao.config ?? {}) as SecaoMaleiroConfig;
+        const n = Math.max(1, sc.nPrateleiras ?? 1);
+        const innerH = it.yMax - it.yMin;
+        for (let i = 1; i <= n; i++) {
+          const cy = it.yMin + (innerH * i) / (n + 1);
+          out.push({
+            idx: it.idx, colIdx: col.idx, cy,
+            size: [pratLen, e.prateleira, pratDep],
+            center: [xCenter, cy, pratDep / 2],
+          });
+        }
+      } else if (it.secao.tipo === "varao") {
+        const sc = (it.secao.config ?? {}) as SecaoVaraoConfig;
+        if (sc.prateleiraSuperior) {
+          const altP = sc.alturaPrateleira_mm ?? 80;
+          const cy = Math.max(it.yMin + 20, it.yMax - altP);
+          out.push({
+            idx: it.idx, colIdx: col.idx, cy,
+            size: [pratLen, e.prateleira, pratDep],
+            center: [xCenter, cy, pratDep / 2],
+          });
+        }
       }
     }
-  }
-  return out;
+    return out;
+  });
 }
+
 
 export interface CorrerFolha {
   idx: number;          // 0..n-1
@@ -877,6 +918,108 @@ export function dimensoesPortasCorrer(config: ModuleConfig): CorrerResult {
 
 
 // ─────────────────────────────────────────────────────────────
+// [Roupeiros P2] Colunas verticais
+// ─────────────────────────────────────────────────────────────
+export interface ColunaIntervalo {
+  idx: number;
+  coluna: ColunaRoupeiro;
+  xMin: number;
+  xMax: number;
+  larguraUtil: number;
+  secoes: Secao[];
+}
+export interface DivisoriaVertical {
+  idx: number;
+  xCenter: number;
+  espessura: number;
+  yMin: number;
+  yMax: number;
+}
+export function temColunas(c: ModuleConfig): boolean {
+  return Array.isArray(c.colunas) && c.colunas.length > 0;
+}
+
+export function colunasIntervalos(config: ModuleConfig): {
+  intervalos: ColunaIntervalo[];
+  divisoriasVerticais: DivisoriaVertical[];
+  larguraInterna: number;
+} {
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const xLeft = e.lateral;
+  const xRight = config.dims.width - e.lateral;
+  const larguraInterna = xRight - xLeft;
+  const yBot = e.base;
+  const yTop = config.dims.height - e.tampo;
+  if (!temColunas(config)) {
+    return {
+      intervalos: [{ idx: 0, coluna: { id: "_default", largura_mm: larguraInterna, secoes: config.secoes ?? [] }, xMin: xLeft, xMax: xRight, larguraUtil: larguraInterna, secoes: config.secoes ?? [] }],
+      divisoriasVerticais: [],
+      larguraInterna,
+    };
+  }
+  const cols = config.colunas!;
+  const intervalos: ColunaIntervalo[] = [];
+  const divisorias: DivisoriaVertical[] = [];
+  let x = xLeft;
+  cols.forEach((col, i) => {
+    const xMin = x;
+    const xMax = x + col.largura_mm;
+    intervalos.push({ idx: i, coluna: col, xMin, xMax, larguraUtil: col.largura_mm, secoes: col.secoes ?? [] });
+    if (i < cols.length - 1) {
+      const esp = e.lateral;
+      divisorias.push({ idx: i, xCenter: xMax + esp / 2, espessura: esp, yMin: yBot, yMax: yTop });
+      x = xMax + esp;
+    } else {
+      x = xMax;
+    }
+  });
+  return { intervalos, divisoriasVerticais: divisorias, larguraInterna };
+}
+
+/** Calcula intervalos verticais (yMin/yMax + divisórias horizontais) a partir de um array de secoes
+ *  com base/tampo do módulo. Reusa lógica de `intervalosSecoes` mas para uma lista arbitrária. */
+function intervalosSecoesLista(config: ModuleConfig, secoes: Secao[]): {
+  intervalos: SecaoIntervalo[]; divisorias: DivisoriaInfo[]; alturaInterna: number;
+} {
+  const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
+  const yBot = e.base;
+  const yTop = config.dims.height - e.tampo;
+  const alturaInterna = yTop - yBot;
+  if (secoes.length === 0) return { intervalos: [], divisorias: [], alturaInterna };
+  const intervalos: SecaoIntervalo[] = [];
+  const divisorias: DivisoriaInfo[] = [];
+  let y = yBot;
+  secoes.forEach((s, idx) => {
+    const yMin = y;
+    const yMax = y + s.altura_mm;
+    intervalos.push({ idx, secao: s, yMin, yMax });
+    if (idx < secoes.length - 1) {
+      const espD = e.prateleira;
+      divisorias.push({ idx, espessura: espD, yMin: yMax, yMax: yMax + espD, yCenter: yMax + espD / 2 });
+      y = yMax + espD;
+    }
+  });
+  return { intervalos, divisorias, alturaInterna };
+}
+
+/** Itera todas as colunas (ou única "coluna implícita" quando não há colunas) e devolve
+ *  para cada uma os intervalos verticais e bounds X. Usado pelos emit-helpers. */
+export function paraCadaColuna<T>(
+  config: ModuleConfig,
+  fn: (ctx: { col: ColunaIntervalo; intervalos: SecaoIntervalo[]; divisorias: DivisoriaInfo[] }) => T[],
+): T[] {
+  const out: T[] = [];
+  const { intervalos: cols } = colunasIntervalos(config);
+  for (const col of cols) {
+    const secoes = temColunas(config) ? col.secoes : (config.secoes ?? []);
+    const { intervalos, divisorias } = intervalosSecoesLista(config, secoes);
+    out.push(...fn({ col, intervalos, divisorias }));
+  }
+  return out;
+}
+
+
+
 // Geometria 3D — fonte única de verdade partilhada com calcularPecas.
 // Sistema: X=largura (0..W), Y=altura (0..H), Z=profundidade (0..D).
 // Origem num canto. `center` é o centro da caixa de cada peça.
@@ -920,7 +1063,7 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
       size: [W, e.base, D], center: [W / 2, e.base / 2, D / 2] });
   }
 
-  if (nPrateleiras > 0 && !temSecoes(config)) {
+  if (nPrateleiras > 0 && !temSecoesOuColunas(config)) {
     const pratLen = W - 2 * e.lateral - folgas.prateleira_lateral;
     const pratDep = D - folgas.prateleira_recuo;
     const innerBottom = e.base;
@@ -935,43 +1078,65 @@ export function calcularGeometria(config: ModuleConfig): PecaGeo[] {
     }
   }
 
-  // [B1] Divisórias + prateleiras móveis por secção 'nicho_aberto' (geometria 3D)
-  if (temSecoes(config)) {
-    const pratLen = W - 2 * e.lateral - folgas.prateleira_lateral;
+  // [B1 + P2 Roupeiros] Divisórias verticais (colunas), divisórias horizontais por coluna,
+  // nichos, maleiro shelves, prateleira superior de varão.
+  if (temSecoesOuColunas(config)) {
     const pratDep = D - folgas.prateleira_recuo;
-    const dd = dimensoesDivisorias(config);
-    for (const c of dd.centers) {
-      out.push({
-        tipo: "prateleira", descricao: `Divisória ${c.idx + 1}`, veio: "comprimento",
-        size: [pratLen, dd.espessura, pratDep],
-        center: [W / 2, c.yCenter, pratDep / 2],
-      });
-    }
-    const { intervalos } = intervalosSecoes(config);
-    for (const it of intervalos) {
-      if (it.secao.tipo !== "nicho_aberto") continue;
-      const np = (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0;
-      if (np <= 0) continue;
-      const innerH = it.yMax - it.yMin;
-      for (let i = 1; i <= np; i++) {
-        const cy = it.yMin + (innerH * i) / (np + 1);
+
+    // Divisórias verticais entre colunas
+    if (temColunas(config)) {
+      const ci = colunasIntervalos(config);
+      for (const dv of ci.divisoriasVerticais) {
+        const h = dv.yMax - dv.yMin;
         out.push({
-          tipo: "prateleira", descricao: `Prateleira sec${it.idx + 1}#${i}`, veio: "comprimento",
-          size: [pratLen, e.prateleira, pratDep],
-          center: [W / 2, cy, pratDep / 2],
+          tipo: "lateral", descricao: `Divisória vertical ${dv.idx + 1}`, veio: "comprimento",
+          size: [dv.espessura, h, D],
+          center: [dv.xCenter, dv.yMin + h / 2, D / 2],
         });
       }
     }
-    // [Roupeiros] Prateleiras fixas de maleiro (aberto/fechado) + prateleira sup. varão
+
+    // Divisórias horizontais por coluna
+    const dd = dimensoesDivisorias(config);
+    for (const c of dd.centers) {
+      out.push({
+        tipo: "prateleira", descricao: `Divisória horiz. col${c.idx + 1}`, veio: "comprimento",
+        size: [c.comprimento, dd.espessura, c.largura],
+        center: [(c.xMin + c.xMax) / 2, c.yCenter, c.largura / 2],
+      });
+    }
+
+    // Prateleiras móveis por nicho
+    const nichoExt = paraCadaColuna(config, ({ col, intervalos }) =>
+      intervalos.filter(it => it.secao.tipo === "nicho_aberto").map(it => ({ col, it }))
+    );
+    for (const { col, it } of nichoExt) {
+      const np = (it.secao.config as SecaoNichoConfig | undefined)?.prateleirasMoveis ?? 0;
+      if (np <= 0) continue;
+      const innerH = it.yMax - it.yMin;
+      const pratLen = col.larguraUtil - folgas.prateleira_lateral;
+      const xC = (col.xMin + col.xMax) / 2;
+      for (let i = 1; i <= np; i++) {
+        const cy = it.yMin + (innerH * i) / (np + 1);
+        out.push({
+          tipo: "prateleira", descricao: `Prateleira nicho col${col.idx + 1} sec${it.idx + 1}#${i}`, veio: "comprimento",
+          size: [pratLen, e.prateleira, pratDep],
+          center: [xC, cy, pratDep / 2],
+        });
+      }
+    }
+
+    // Prateleiras fixas de maleiro (aberto/fechado) + prateleira sup. varão
     for (const mp of dimensoesMaleiroPrateleiras(config)) {
       out.push({
         tipo: "prateleira",
-        descricao: `Prateleira maleiro sec${mp.idx + 1}`,
+        descricao: `Prateleira maleiro col${mp.colIdx + 1} sec${mp.idx + 1}`,
         veio: "comprimento",
         size: mp.size, center: mp.center,
       });
     }
   }
+
 
 
   {
@@ -1073,12 +1238,14 @@ export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
   // [Roupeiros] Portas de correr globais suprimem TODAS as batentes (módulo + secções).
   if (config.portas?.correr?.ativo) return [];
   // [B1] Secções: gera portas por cada secção do tipo 'porta' OU 'maleiro_fechado'.
-  if (temSecoes(config)) {
+  if (temSecoesOuColunas(config)) {
     const out: PortaDim[] = [];
-    const { intervalos } = intervalosSecoes(config);
-    const W = config.dims.width, D = config.dims.depth;
+    const D = config.dims.depth;
     const baseP = config.portas;
-    for (const it of intervalos) {
+    const colsIter = paraCadaColuna(config, ({ col, intervalos }) =>
+      intervalos.map(it => ({ col, it }))
+    );
+    for (const { col, it } of colsIter) {
       if (it.secao.tipo !== "porta" && it.secao.tipo !== "maleiro_fechado") continue;
       const sc = (it.secao.config ?? {}) as SecaoPortaConfig;
       const nP = (sc.nPortas ?? 1) as 0 | 1 | 2;
@@ -1088,22 +1255,23 @@ export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
       const espOv = sc.espessura ?? baseP.espessura;
       const espP = espOv && espOv > 0 ? espOv : config.espessuraPadrao;
       const lado = (sc.ladoAbertura ?? baseP.ladoAbertura) as LadoAbertura;
-      // modo sobreposta (suficiente para B1)
       const zBack = D, zFront = D + espP, cz = D + espP / 2;
       const yMin = it.yMin + f, yMax = it.yMax - f, altura = yMax - yMin, cy = (yMin + yMax) / 2;
-      const tag = `sec ${it.idx + 1}`;
+      const tag = `col${col.idx + 1} sec${it.idx + 1}`;
+      const cxMin = col.xMin, cxMax = col.xMax;
       if (nP === 1) {
-        const xMin = f, xMax = W - f, largura = W - 2 * f, cx = W / 2;
+        const xMin = cxMin + f, xMax = cxMax - f, largura = xMax - xMin, cx = (xMin + xMax) / 2;
         const ladoDob: LadoDobradicas = lado === "direita" ? "esquerda" : "direita";
         const xCharneira = ladoDob === "esquerda" ? xMin : xMax;
         out.push({ idx: 0, descricao: `Porta ${tag}`, largura, altura, espessura: espP,
           cx, cy, cz, xMin, xMax, yMin, yMax, zBack, zFront, ladoDobradicas: ladoDob, xCharneira });
       } else {
-        const largura = (W - 2 * f - fc) / 2;
-        const xMinE = f, xMaxE = f + largura;
+        const larguraTotal = (cxMax - cxMin) - 2 * f - fc;
+        const largura = larguraTotal / 2;
+        const xMinE = cxMin + f, xMaxE = xMinE + largura;
         out.push({ idx: 0, descricao: `Porta esq ${tag}`, largura, altura, espessura: espP,
           cx: xMinE + largura / 2, cy, cz, xMin: xMinE, xMax: xMaxE, yMin, yMax, zBack, zFront, ladoDobradicas: "esquerda", xCharneira: xMinE });
-        const xMaxD = W - f, xMinD = xMaxD - largura;
+        const xMaxD = cxMax - f, xMinD = xMaxD - largura;
         out.push({ idx: 1, descricao: `Porta dir ${tag}`, largura, altura, espessura: espP,
           cx: xMinD + largura / 2, cy, cz, xMin: xMinD, xMax: xMaxD, yMin, yMax, zBack, zFront, ladoDobradicas: "direita", xCharneira: xMaxD });
       }
@@ -1118,6 +1286,7 @@ export function dimensoesPortas(config: ModuleConfig): PortaDim[] {
     }
     return out;
   }
+
   const { dims, espessuraPadrao, espessuras, portas, gavetas } = config;
   if (!portas || portas.nPortas === 0) return [];
   // Regra: se houver gavetas, a frente é gavetas — portas ignoradas.
@@ -1267,15 +1436,16 @@ export interface GavetasResult {
 
 export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
   // [B1] Secções: gera gavetas por cada secção do tipo 'gavetas'.
-  if (temSecoes(config)) {
+  if (temSecoesOuColunas(config)) {
     const frentes: GavetaFrente[] = [];
     const caixas: GavetaCaixa[] = [];
     const baseG = config.gavetas ?? DEFAULT_MODULE_CONFIG.gavetas;
-    const e = resolverEspessuras(config.espessuraPadrao, config.espessuras);
-    const W = config.dims.width, D = config.dims.depth;
-    const { intervalos } = intervalosSecoes(config);
+    const D = config.dims.depth;
     let cnt = 0;
-    for (const it of intervalos) {
+    const colsIter = paraCadaColuna(config, ({ col, intervalos }) =>
+      intervalos.map(it => ({ col, it }))
+    );
+    for (const { col, it } of colsIter) {
       if (it.secao.tipo !== "gavetas") continue;
       const sc = (it.secao.config ?? {}) as SecaoGavetasConfig;
       const n = sc.nGavetas ?? baseG.nGavetas ?? 1;
@@ -1286,7 +1456,7 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
       const espC = sc.espessuraCaixa ?? baseG.espessuraCaixa;
       const espFundo = sc.espessuraFundo ?? baseG.espessuraFundo;
       const alturaFolga = sc.alturaCaixaFolga ?? baseG.alturaCaixaFolga;
-      const xMin = f, xMax = W - f;
+      const xMin = col.xMin + f, xMax = col.xMax - f;
       const yMin = it.yMin + f, yMax = it.yMax - f;
       const zBack = D, zFront = D + eF, cz = D + eF / 2;
       const larguraFrente = xMax - xMin;
@@ -1294,22 +1464,22 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
       const espacoY = yMax - yMin;
       const alturaFrente = Math.round((espacoY - (n - 1) * f) / n);
       const fl = corr.folgaLateralPorLado ?? corr.folgaLateral ?? 13;
-      const boxWidth = W - 2 * e.lateral - 2 * fl;
+      const boxWidth = col.larguraUtil - 2 * fl;
       const boxDepth = Math.min(corr.comprimento, D - 10);
       const boxHeight = Math.max(60, alturaFrente - alturaFolga);
-      const zStartCaixa = e.lateral;
+      const zStartCaixa = 0;
       const cz_caixa = zStartCaixa + boxDepth / 2;
       for (let j = 0; j < n; j++) {
         const cyFrente = yMin + j * (alturaFrente + f) + alturaFrente / 2;
         frentes.push({
           idx: cnt,
-          descricao: `Frente gaveta ${cnt + 1} (sec ${it.idx + 1})`,
+          descricao: `Frente gaveta ${cnt + 1} (col${col.idx + 1} sec${it.idx + 1})`,
           size: [larguraFrente, alturaFrente, eF],
           center: [cx, cyFrente, cz],
         });
         caixas.push({
           idx: cnt,
-          center: [W / 2, cyFrente, cz_caixa],
+          center: [cx, cyFrente, cz_caixa],
           boxWidth, boxHeight, boxDepth,
           espessuraCaixa: espC, espessuraFundo: espFundo,
           zBack: zStartCaixa, zFront: zStartCaixa + boxDepth,
@@ -1322,6 +1492,7 @@ export function dimensoesGavetas(config: ModuleConfig): GavetasResult {
     }
     return { frentes, caixas };
   }
+
   const g = config.gavetas;
   if (!g || g.nGavetas <= 0) return { frentes: [], caixas: [] };
   const { dims, espessuraPadrao, espessuras } = config;
